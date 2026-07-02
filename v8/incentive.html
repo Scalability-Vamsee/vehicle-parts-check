@@ -252,6 +252,22 @@ body.pinned #hbg{display:none}
 .fm-submit:hover{background:#B01010;}
 .fm-submit:disabled{background:#CBD5E1;cursor:not-allowed;}
 .fm-status{font-size:.75rem;margin-top:8px;min-height:16px;text-align:center;}
+
+/* ── Mic row ── */
+.fm-mic-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.fm-mic-btn{display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:10px;border:none;background:#0F172A;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;flex-shrink:0;}
+.fm-mic-btn:hover{background:#1E293B;}
+.fm-mic-btn.recording{background:#DC2626;}
+.fm-mic-btn.recording:hover{background:#B01010;}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+.rec-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#DC2626;animation:pulse-dot 1s ease-in-out infinite;flex-shrink:0;}
+.fm-audio-preview{display:none;width:100%;margin-top:8px;border-radius:8px;height:36px;}
+
+/* ── PWA install banner ── */
+#pwa-install-bar{display:none;background:linear-gradient(90deg,#0F172A,#1E3A5F);color:#fff;padding:10px 16px;align-items:center;gap:12px;font-size:.8rem;}
+#pwa-install-bar.show{display:flex;}
+#pwa-install-btn{background:#E8191C;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
+#pwa-install-dismiss{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem;margin-left:auto;flex-shrink:0;padding:0 4px;}
 </style>
 </head>
 <body>
@@ -313,6 +329,14 @@ body.pinned #hbg{display:none}
       <button id="logout-btn" onclick="signOut()" style="display:none;background:none;border:1px solid #E5E7EB;border-radius:8px;padding:5px 12px;font-size:.72rem;font-weight:600;color:#6B7280;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s" onmouseover="this.style.borderColor='#E8191C';this.style.color='#E8191C'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#6B7280'" data-i18n="signOut">Sign out</button>
     </div>
   </header>
+
+  <!-- PWA Install Banner (shown when browser fires beforeinstallprompt) -->
+  <div id="pwa-install-bar">
+    <span>📲</span>
+    <span style="flex:1;">Install <b>My Incentives</b> as an app — works offline, opens instantly</span>
+    <button id="pwa-install-btn" onclick="triggerPwaInstall()">Install</button>
+    <button id="pwa-install-dismiss" onclick="dismissPwaInstall()" aria-label="Dismiss">✕</button>
+  </div>
 
   <!-- Tab Navigation -->
   <div class="tab-nav" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
@@ -2092,31 +2116,122 @@ async function loadLastSyncTime(){
   }catch(e){}
 }
 
-/* ── Feedback Modal ─────────────────────────────────────────────────── */
+/* ── Audio Recording + Feedback Modal ──────────────────────────────── */
+const _SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const _LANG_MAP={en:'en-IN',hi:'hi-IN',kn:'kn-IN',te:'te-IN'};
+let _mediaRecorder=null,_audioChunks=[],_audioBlob=null,_recognition=null,_isRecording=false;
+
+async function toggleRecording(){
+  _isRecording?stopRecording():await startRecording();
+}
+
+async function startRecording(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    _audioChunks=[];_audioBlob=null;
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':
+                MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4';
+    _mediaRecorder=new MediaRecorder(stream,{mimeType:mime});
+    _mediaRecorder.ondataavailable=e=>{if(e.data.size>0)_audioChunks.push(e.data);};
+    _mediaRecorder.onstop=()=>{
+      _audioBlob=new Blob(_audioChunks,{type:mime});
+      const prev=document.getElementById('fm-audio-preview');
+      prev.src=URL.createObjectURL(_audioBlob);prev.style.display='block';
+      stream.getTracks().forEach(t=>t.stop());
+    };
+    _mediaRecorder.start(250);
+    if(_SR){
+      _recognition=new _SR();
+      _recognition.continuous=true;_recognition.interimResults=true;
+      _recognition.lang=_LANG_MAP[localStorage.getItem('fp_lang')||'en']||'en-IN';
+      let finalText=document.getElementById('fm-text').value;
+      _recognition.onresult=e=>{
+        let interim='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          if(e.results[i].isFinal)finalText+=e.results[i][0].transcript+' ';
+          else interim+=e.results[i][0].transcript;
+        }
+        document.getElementById('fm-text').value=finalText+interim;
+      };
+      _recognition.onerror=e=>console.warn('SpeechRecognition:',e.error);
+      _recognition.start();
+    }
+    _isRecording=true;
+    const btn=document.getElementById('fm-mic-btn');
+    btn.textContent='⏹ Stop';btn.classList.add('recording');
+    document.getElementById('fm-rec-dot').style.display='inline-block';
+    document.getElementById('fm-rec-label').style.display='inline';
+  }catch(e){
+    alert('Microphone access denied. Allow mic access and try again.');
+  }
+}
+
+function stopRecording(){
+  if(_mediaRecorder&&_mediaRecorder.state!=='inactive')_mediaRecorder.stop();
+  if(_recognition){_recognition.stop();_recognition=null;}
+  _isRecording=false;
+  const btn=document.getElementById('fm-mic-btn');
+  btn.textContent='🎙 Record again';btn.classList.remove('recording');
+  document.getElementById('fm-rec-dot').style.display='none';
+  document.getElementById('fm-rec-label').style.display='none';
+}
+
+function _resetFeedbackModal(){
+  if(_isRecording)stopRecording();
+  _audioBlob=null;_audioChunks=[];
+  const prev=document.getElementById('fm-audio-preview');
+  if(prev){prev.src='';prev.style.display='none';}
+  const btn=document.getElementById('fm-mic-btn');
+  if(btn){btn.textContent='🎙 Tap to speak';btn.classList.remove('recording');}
+  const rd=document.getElementById('fm-rec-dot');if(rd)rd.style.display='none';
+  const rl=document.getElementById('fm-rec-label');if(rl)rl.style.display='none';
+}
+
 function openFeedbackModal(){
-  // Pre-fill subject hint using tech name if available
+  _resetFeedbackModal();
   const fab=document.getElementById('help-fab');
   if(fab&&window._currentTechName){
-    const enc=encodeURIComponent('Incentive Query — '+window._currentTechName);
-    fab.href='mailto:vamsee@bounceshare.com?subject='+enc;
+    fab.href='mailto:vamsee@bounceshare.com?subject='+encodeURIComponent('Incentive Query — '+window._currentTechName);
   }
   document.getElementById('fm-text').value='';
   document.getElementById('fm-status').textContent='';
-  document.getElementById('fm-submit-btn').disabled=false;
+  const sb=document.getElementById('fm-submit-btn');
+  if(sb){sb.disabled=false;sb.textContent='Send ✉';}
   document.getElementById('feedback-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('fm-text').focus(),100);
+  setTimeout(()=>document.getElementById('fm-text').focus(),120);
 }
+
 function closeFeedbackModal(){
+  if(_isRecording)stopRecording();
   document.getElementById('feedback-modal').classList.remove('open');
 }
+
 async function submitFeedback(){
   const msg=document.getElementById('fm-text').value.trim();
-  if(!msg)return;
+  if(!msg&&!_audioBlob){
+    const st=document.getElementById('fm-status');
+    st.style.color='#DC2626';st.textContent='Please speak or type a message first.';
+    return;
+  }
   const btn=document.getElementById('fm-submit-btn');
   const status=document.getElementById('fm-status');
   btn.disabled=true;btn.textContent='Sending…';
   status.style.color='#6B7280';status.textContent='';
   try{
+    let audioUrl=null;
+    if(_audioBlob){
+      status.textContent='Uploading audio…';
+      const ext=_audioBlob.type.includes('mp4')?'mp4':'webm';
+      const path=Date.now()+'_'+((CURRENT_USER_EMAIL||'anon').replace(/[^a-z0-9]/gi,'_'))+'.'+ext;
+      const{data:upData,error:upErr}=await sbClient.storage.from('feedback-audio').upload(path,_audioBlob,{contentType:_audioBlob.type,upsert:false});
+      if(!upErr){
+        const{data:urlData}=sbClient.storage.from('feedback-audio').getPublicUrl(path);
+        audioUrl=urlData.publicUrl;
+      }else{
+        console.warn('Audio upload failed:',upErr.message);
+      }
+    }
+    status.textContent='Sending…';
     const res=await fetch(SB_URL+'/functions/v1/send-feedback',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+K},
@@ -2124,20 +2239,55 @@ async function submitFeedback(){
         tech_name:window._currentTechName||null,
         email:CURRENT_USER_EMAIL||null,
         hub_name:window._currentHubName||null,
-        message:msg,
+        message:msg||null,
+        audio_url:audioUrl,
       }),
     });
     if(res.ok){
-      status.style.color='#16A34A';status.textContent='✓ Sent! We’ll get back to you.';
+      status.style.color='#16A34A';
+      status.textContent=audioUrl?'✓ Sent with recording!':'✓ Sent!';
       btn.textContent='Sent ✓';
-      setTimeout(closeFeedbackModal,1800);
+      setTimeout(closeFeedbackModal,2000);
     }else{
       throw new Error('Server error '+res.status);
     }
   }catch(e){
-    status.style.color='#DC2626';status.textContent='Failed to send. Try emailing vamsee@bounceshare.com directly.';
+    status.style.color='#DC2626';
+    status.textContent='Failed. Email vamsee@bounceshare.com directly.';
     btn.disabled=false;btn.textContent='Send ✉';
   }
+}
+
+/* ── PWA Install Prompt ─────────────────────────────────────────────── */
+let _pwaInstallEvent=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  _pwaInstallEvent=e;
+  if(!localStorage.getItem('pwa_install_dismissed')){
+    const bar=document.getElementById('pwa-install-bar');
+    if(bar)bar.classList.add('show');
+  }
+});
+window.addEventListener('appinstalled',()=>{
+  const bar=document.getElementById('pwa-install-bar');
+  if(bar)bar.classList.remove('show');
+  _pwaInstallEvent=null;
+});
+function triggerPwaInstall(){
+  if(!_pwaInstallEvent)return;
+  _pwaInstallEvent.prompt();
+  _pwaInstallEvent.userChoice.then(c=>{
+    if(c.outcome==='accepted'){
+      const bar=document.getElementById('pwa-install-bar');
+      if(bar)bar.classList.remove('show');
+    }
+    _pwaInstallEvent=null;
+  });
+}
+function dismissPwaInstall(){
+  const bar=document.getElementById('pwa-install-bar');
+  if(bar)bar.classList.remove('show');
+  localStorage.setItem('pwa_install_dismissed','1');
 }
 
 /* ── Admin: Toggle payment done ─────────────────────────────────────── */
@@ -2223,8 +2373,15 @@ async function togglePaymentDone(weekStart,done){
 <div id="feedback-modal" onclick="if(event.target===this)closeFeedbackModal()">
   <div class="fm-card">
     <div class="fm-title">💬 Send Feedback</div>
-    <div class="fm-sub">Questions, issues, or suggestions about your incentive? We'll get back to you.</div>
-    <textarea id="fm-text" class="fm-textarea" placeholder="Type your message here…"></textarea>
+    <div class="fm-sub">Speak or type — questions, issues, or suggestions about your incentive.</div>
+    <!-- Mic row -->
+    <div class="fm-mic-row">
+      <button class="fm-mic-btn" id="fm-mic-btn" onclick="toggleRecording()">🎤 Tap to speak</button>
+      <span class="rec-dot" id="fm-rec-dot" style="display:none;"></span>
+      <span id="fm-rec-label" style="font-size:.75rem;color:#DC2626;font-weight:600;display:none;">Recording…</span>
+    </div>
+    <textarea id="fm-text" class="fm-textarea" placeholder="Speak or type your message…"></textarea>
+    <audio id="fm-audio-preview" class="fm-audio-preview" controls></audio>
     <div class="fm-actions">
       <button class="fm-cancel" onclick="closeFeedbackModal()">Cancel</button>
       <button class="fm-submit" id="fm-submit-btn" onclick="submitFeedback()">Send ✉</button>
