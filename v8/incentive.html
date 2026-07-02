@@ -221,6 +221,37 @@ body.pinned #hbg{display:none}
 /* ── Tier Nudge Celebration ── */
 @keyframes pop{0%{transform:scale(.9);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
 .nudge-celebrate{animation:pop .4s ease;background:linear-gradient(135deg,#FFFBEB,#FEF3C7)!important;border-left-color:#F59E0B!important;}
+
+/* ── Frozen Week Banner ── */
+#frozen-banner{display:none;border-radius:14px;padding:16px 20px;margin-bottom:20px;align-items:center;gap:14px;border:1px solid #FDE68A;}
+#frozen-banner.show{display:flex;}
+#frozen-banner.state-inprogress{background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border-color:#FDE68A;}
+#frozen-banner.state-paid{background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-color:#BBF7D0;}
+.frozen-icon{font-size:2rem;flex-shrink:0;}
+.frozen-text-main{font-size:.92rem;font-weight:800;color:#0F172A;}
+.frozen-text-sub{font-size:.75rem;color:#6B7280;margin-top:3px;line-height:1.4;}
+
+/* ── Help / Feedback FABs ── */
+#fab-group{position:fixed;bottom:24px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:800;}
+.fab-btn{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:transform .15s,box-shadow .15s;font-family:inherit;text-decoration:none;}
+.fab-btn:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(0,0,0,.26);}
+.fab-help{background:#0F172A;color:#fff;}
+.fab-feedback{background:#E8191C;color:#fff;}
+
+/* ── Feedback Modal ── */
+#feedback-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:4000;align-items:center;justify-content:center;padding:16px;}
+#feedback-modal.open{display:flex;}
+.fm-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:420px;box-shadow:0 24px 80px rgba(0,0,0,.25);}
+.fm-title{font-size:1rem;font-weight:800;color:#0F172A;margin-bottom:3px;}
+.fm-sub{font-size:.75rem;color:#6B7280;margin-bottom:16px;line-height:1.4;}
+.fm-textarea{width:100%;min-height:100px;border:1.5px solid #E5E7EB;border-radius:10px;padding:12px;font-size:.85rem;font-family:'Inter',sans-serif;resize:vertical;outline:none;transition:border-color .15s;color:#111827;}
+.fm-textarea:focus{border-color:#E8191C;}
+.fm-actions{display:flex;gap:10px;margin-top:14px;}
+.fm-cancel{flex:1;padding:11px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;color:#6B7280;}
+.fm-submit{flex:2;padding:11px;background:#E8191C;color:#fff;border:none;border-radius:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+.fm-submit:hover{background:#B01010;}
+.fm-submit:disabled{background:#CBD5E1;cursor:not-allowed;}
+.fm-status{font-size:.75rem;margin-top:8px;min-height:16px;text-align:center;}
 </style>
 </head>
 <body>
@@ -314,6 +345,15 @@ body.pinned #hbg{display:none}
           <div class="tab-subtitle" id="dashboard-subtitle">Loading…</div>
         </div>
         <div></div>
+      </div>
+
+      <!-- Frozen Week Banner -->
+      <div id="frozen-banner" class="state-inprogress">
+        <div class="frozen-icon" id="frozen-icon">🔒</div>
+        <div>
+          <div class="frozen-text-main" id="frozen-text-main">Incentive calculation frozen · Payouts are in progress</div>
+          <div class="frozen-text-sub" id="frozen-text-sub">This week is locked for payout processing. Your numbers are final.</div>
+        </div>
       </div>
 
       <!-- KPI Cards -->
@@ -646,6 +686,7 @@ body.pinned #hbg{display:none}
               <th>Earners</th>
               <th>Median JCs</th>
               <th>Total Payout</th>
+              <th>Payment</th>
             </tr>
           </thead>
           <tbody id="burn-tbody">
@@ -873,6 +914,7 @@ async function loadDashboard(){
         }
       }catch(e){}
       if(!techName)techName=userEmail.split('@')[0];
+    window._currentTechName=techName;
     }
     // Update dashboard title
     const titleEl=document.getElementById('dashboard-title');
@@ -900,6 +942,25 @@ async function loadDashboard(){
     const isFrozen=weekStats.is_frozen||false;
     const payout=Math.round(calcPayout(eligible));
 
+    // Frozen banner — fetch payment_done status from incentive_week_config
+    {
+      const banner=document.getElementById('frozen-banner');
+      if(isFrozen){
+        const{data:cfg}=await sbClient.from('incentive_week_config').select('payment_done,payment_done_at').eq('week_start',selectedWeek).maybeSingle();
+        const paid=cfg?.payment_done||false;
+        banner.className=paid?'show state-paid':'show state-inprogress';
+        document.getElementById('frozen-icon').textContent=paid?'✅':'🔒';
+        document.getElementById('frozen-text-main').textContent=paid
+          ?'Payment Processed — Payout credited for this week'
+          :'Incentive calculation frozen · Payouts are in progress';
+        document.getElementById('frozen-text-sub').textContent=paid
+          ?'Your payout has been processed. Check with your hub manager if you have questions.'
+          :'This week is locked for payout processing. Your numbers are final.';
+      }else{
+        banner.className='';// hide
+      }
+    }
+
     document.getElementById('kpi-total').textContent=total;
     document.getElementById('kpi-voided').textContent=voided;
     document.getElementById('kpi-eligible').textContent=eligible;
@@ -912,6 +973,8 @@ async function loadDashboard(){
     // Update dashboard subtitle
     const hub=weekStats.hub_name||'Unknown';
     document.getElementById('dashboard-subtitle').textContent=`${hub} · ${formatDateRange(weekStart)}`;
+    // Store for feedback modal
+    window._currentHubName=hub;
 
     // Get leaderboard rank for selected week
     const{data:allStats}=await sbClient.from('incentive_weekly_stats').select('tech_name,eligible_jcs').eq('week_start',selectedWeek).order('eligible_jcs',{ascending:false});
@@ -1126,9 +1189,11 @@ async function loadAdminData(){
   if(!fpCan('incentive-admin'))return;
 
   try{
-    // Burn overview
-    const{data:burnStats}=await sbClient.from('incentive_weekly_stats').select('week_start,tech_name,eligible_jcs,payout_amount').gte('week_start',TECH_SINCE).order('week_start',{ascending:false}).limit(200);
-    renderBurnTable(burnStats||[]);
+    // Burn overview — include is_frozen; also fetch payment status per week
+    const{data:burnStats}=await sbClient.from('incentive_weekly_stats').select('week_start,tech_name,eligible_jcs,payout_amount,is_frozen').gte('week_start',TECH_SINCE).order('week_start',{ascending:false}).limit(200);
+    const{data:weekCfgs}=await sbClient.from('incentive_week_config').select('week_start,payment_done,payment_done_by,payment_done_at');
+    const weekCfgMap={};(weekCfgs||[]).forEach(c=>weekCfgMap[c.week_start]=c);
+    renderBurnTable(burnStats||[],weekCfgMap);
 
     // HR employee directory + alias mapping status
     const{data:hrEmps}=await sbClient.from('hr_employees').select('employee_id,employee_name,designation,hub,city,email').order('employee_name');
@@ -1208,32 +1273,35 @@ async function saveTechMapping(techId){
 
 let _burnRawStats=[]; // kept for expand
 let _burnExpandState={}; // week → expanded
+let _weekCfgMap={}; // week_start → {payment_done, ...}
 
-function renderBurnTable(stats){
+function renderBurnTable(stats,weekCfgMap){
   _burnRawStats=stats||[];
+  if(weekCfgMap)_weekCfgMap=weekCfgMap;
   const grouped={};
   stats.forEach(s=>{
     const week=s.week_start;
-    if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[]};
+    if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],isFrozen:false};
     grouped[week].rows.push(s);
     grouped[week].techs.add(s.tech_name);
     grouped[week].jcs.push(s.eligible_jcs||0);
     grouped[week].payouts.push(s.payout_amount||0);
+    if(s.is_frozen)grouped[week].isFrozen=true;
   });
   rebuildBurnRows(grouped);
 }
 
 function rebuildBurnRows(grouped){
   if(!grouped){
-    // rebuild from raw
     grouped={};
     _burnRawStats.forEach(s=>{
       const week=s.week_start;
-      if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[]};
+      if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],isFrozen:false};
       grouped[week].rows.push(s);
       grouped[week].techs.add(s.tech_name);
       grouped[week].jcs.push(s.eligible_jcs||0);
       grouped[week].payouts.push(s.payout_amount||0);
+      if(s.is_frozen)grouped[week].isFrozen=true;
     });
   }
   const tbody=document.getElementById('burn-tbody');
@@ -1245,12 +1313,29 @@ function rebuildBurnRows(grouped){
     const earners=jcs.filter(j=>j>50).length;
     const total=g.payouts.reduce((s,p)=>s+p,0);
     const isOpen=!!_burnExpandState[week];
+    const cfg=_weekCfgMap[week]||{};
+    const isFrozen=g.isFrozen;
+    const isPaid=cfg.payment_done||false;
+    // Payment status chip + button (frozen weeks only)
+    let paymentCell='';
+    if(isFrozen){
+      const chip=isPaid
+        ?`<span style="background:#DCFCE7;color:#15803D;border-radius:6px;padding:2px 8px;font-size:.65rem;font-weight:700;">✅ Paid</span>`
+        :`<span style="background:#FEF3C7;color:#92400E;border-radius:6px;padding:2px 8px;font-size:.65rem;font-weight:700;">⏳ Pending</span>`;
+      const btn=isPaid
+        ?`<button onclick="event.stopPropagation();togglePaymentDone('${week}',false)" style="margin-left:6px;font-size:.62rem;padding:2px 6px;border:1px solid #CBD5E1;border-radius:5px;background:#fff;cursor:pointer;font-family:inherit;color:#6B7280;">Unmark</button>`
+        :`<button onclick="event.stopPropagation();togglePaymentDone('${week}',true)" style="margin-left:6px;font-size:.62rem;padding:2px 6px;border:1px solid #15803D;border-radius:5px;background:#F0FDF4;cursor:pointer;font-family:inherit;color:#15803D;font-weight:700;">Mark Paid</button>`;
+      paymentCell=chip+btn;
+    }else{
+      paymentCell=`<span style="color:var(--muted);font-size:.7rem;">Live</span>`;
+    }
     rows.push(`<tr onclick="toggleBurnRow('${week}')" style="cursor:pointer;">
       <td><span style="font-size:.8rem;margin-right:4px;">${isOpen?'▼':'▶'}</span>${formatDateRange(new Date(week))}</td>
       <td>${g.techs.size}</td>
       <td>${earners}</td>
       <td>${Math.round(median)}</td>
       <td>₹${Math.round(total).toLocaleString('en-IN')}</td>
+      <td>${paymentCell}</td>
     </tr>`);
     if(isOpen){
       const earnerRows=g.rows.filter(r=>(r.eligible_jcs||0)>50).sort((a,b)=>(b.eligible_jcs||0)-(a.eligible_jcs||0));
@@ -2007,6 +2092,68 @@ async function loadLastSyncTime(){
   }catch(e){}
 }
 
+/* ── Feedback Modal ─────────────────────────────────────────────────── */
+function openFeedbackModal(){
+  // Pre-fill subject hint using tech name if available
+  const fab=document.getElementById('help-fab');
+  if(fab&&window._currentTechName){
+    const enc=encodeURIComponent('Incentive Query — '+window._currentTechName);
+    fab.href='mailto:vamsee@bounceshare.com?subject='+enc;
+  }
+  document.getElementById('fm-text').value='';
+  document.getElementById('fm-status').textContent='';
+  document.getElementById('fm-submit-btn').disabled=false;
+  document.getElementById('feedback-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('fm-text').focus(),100);
+}
+function closeFeedbackModal(){
+  document.getElementById('feedback-modal').classList.remove('open');
+}
+async function submitFeedback(){
+  const msg=document.getElementById('fm-text').value.trim();
+  if(!msg)return;
+  const btn=document.getElementById('fm-submit-btn');
+  const status=document.getElementById('fm-status');
+  btn.disabled=true;btn.textContent='Sending…';
+  status.style.color='#6B7280';status.textContent='';
+  try{
+    const res=await fetch(SB_URL+'/functions/v1/send-feedback',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':ANON_KEY,'Authorization':'Bearer '+K},
+      body:JSON.stringify({
+        tech_name:window._currentTechName||null,
+        email:CURRENT_USER_EMAIL||null,
+        hub_name:window._currentHubName||null,
+        message:msg,
+      }),
+    });
+    if(res.ok){
+      status.style.color='#16A34A';status.textContent='✓ Sent! We’ll get back to you.';
+      btn.textContent='Sent ✓';
+      setTimeout(closeFeedbackModal,1800);
+    }else{
+      throw new Error('Server error '+res.status);
+    }
+  }catch(e){
+    status.style.color='#DC2626';status.textContent='Failed to send. Try emailing vamsee@bounceshare.com directly.';
+    btn.disabled=false;btn.textContent='Send ✉';
+  }
+}
+
+/* ── Admin: Toggle payment done ─────────────────────────────────────── */
+async function togglePaymentDone(weekStart,done){
+  try{
+    const{error}=await sbClient.rpc('set_week_payment_done',{p_week_start:weekStart,p_done:done});
+    if(error)throw error;
+    // Update local cache + re-render
+    if(!_weekCfgMap[weekStart])_weekCfgMap[weekStart]={};
+    _weekCfgMap[weekStart].payment_done=done;
+    rebuildBurnRows(null);
+  }catch(e){
+    alert('Failed to update payment status: '+e.message);
+  }
+}
+
 /* ── BOOT ── */
 (async function(){
   // Apply saved language immediately
@@ -2066,6 +2213,26 @@ async function loadLastSyncTime(){
   });
 })();
 </script>
+<!-- ── FABs: Help + Feedback ─────────────────────────────── -->
+<div id="fab-group">
+  <button class="fab-btn fab-feedback" onclick="openFeedbackModal()" title="Send feedback">💬</button>
+  <a class="fab-btn fab-help" id="help-fab" href="mailto:vamsee@bounceshare.com?subject=Incentive%20Query" title="Help — email us">❓</a>
+</div>
+
+<!-- ── Feedback Modal ─────────────────────────────────────── -->
+<div id="feedback-modal" onclick="if(event.target===this)closeFeedbackModal()">
+  <div class="fm-card">
+    <div class="fm-title">💬 Send Feedback</div>
+    <div class="fm-sub">Questions, issues, or suggestions about your incentive? We'll get back to you.</div>
+    <textarea id="fm-text" class="fm-textarea" placeholder="Type your message here…"></textarea>
+    <div class="fm-actions">
+      <button class="fm-cancel" onclick="closeFeedbackModal()">Cancel</button>
+      <button class="fm-submit" id="fm-submit-btn" onclick="submitFeedback()">Send ✉</button>
+    </div>
+    <div class="fm-status" id="fm-status"></div>
+  </div>
+</div>
+
 <script src="./sidebar.js"></script>
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/v8/incentive-sw.js');}</script>
 </body>
