@@ -1137,7 +1137,13 @@ async function renderLeaderboard(){
 
     if(city)q=q.eq('city',city);
 
-    const{data:stats}=await q.limit(200); // increased to cover all techs for hub grouping
+    // Fetch current + previous week in parallel for rank delta
+    const prevWeekStr=new Date(weekStart.getTime()-7*24*3600000).toISOString().slice(0,10);
+    let prevQ=sbClient.from('incentive_weekly_stats').select('tech_name,eligible_jcs').eq('week_start',prevWeekStr).order('eligible_jcs',{ascending:false});
+    if(city)prevQ=prevQ.eq('city',city);
+    const[{data:stats},{data:prevStats}]=await Promise.all([q.limit(200),prevQ.limit(200)]);
+    const prevRankMap={};
+    (prevStats||[]).forEach((s,i)=>{prevRankMap[s.tech_name]=i+1;});
     _lastLeaderboardStats=stats||[];
     renderHubLeaderboard(_lastLeaderboardStats);
     const tbody=document.getElementById('leaderboard-tbody');
@@ -1189,10 +1195,21 @@ async function renderLeaderboard(){
       const tierBadge=['🔒','T1','T2','T3','T4'][tier]||'—';
       const medal=i<3?medals[i]:'';
       const email=emailMap[s.tech_name]||'';
+      // Rank delta vs previous week
+      const prevRank=prevRankMap[s.tech_name];
+      const currRank=i+1;
+      let deltaHtml='';
+      if(prevRank){
+        const d=prevRank-currRank;
+        if(d>0)deltaHtml=`<span style="font-size:.62rem;font-weight:700;color:#16A34A;margin-left:5px;vertical-align:middle;">▲${d}</span>`;
+        else if(d<0)deltaHtml=`<span style="font-size:.62rem;font-weight:700;color:#DC2626;margin-left:5px;vertical-align:middle;">▼${Math.abs(d)}</span>`;
+      } else {
+        deltaHtml=`<span style="font-size:.58rem;font-weight:700;color:#7C3AED;margin-left:5px;vertical-align:middle;letter-spacing:.3px;">NEW</span>`;
+      }
       return`<tr class="${isUser?'user-row':''}">
         <td class="rank">${medal}${i+1}</td>
         <td>
-          <b>${s.tech_name}</b>
+          <b>${s.tech_name}</b>${deltaHtml}
           ${email?`<div style="font-size:.7rem;color:var(--muted);font-weight:400;">${email}</div>`:''}
         </td>
         <td>${s.hub_name||'—'}</td>
