@@ -1,5 +1,5 @@
 # Fleetpro — Productization Task Tracker
-*Last updated: 2026-06-22 (session 18 — Deployment Queue upgraded: blocked bikes, real scores, All Hubs, auto-refresh)*
+*Last updated: 2026-07-04 (session 23 — incentive sync v19 conflict-key fix, Jun 22 data restored, alias-merge rebuild fix, rank delta, send-feedback deployed, new superadmin)*
 
 Legend: ⬜ TODO · 🔄 IN PROGRESS · ✅ DONE · ⏸ BLOCKED
 
@@ -38,6 +38,8 @@ Legend: ⬜ TODO · 🔄 IN PROGRESS · ✅ DONE · ⏸ BLOCKED
 | # | Issue | Status | Notes |
 |---|-------|--------|-------|
 | H1 | rsa-ticket-sync cron (job 13) dead since June 9 — over-escaped headers | ✅ | Recreated as job 17 with clean escaping. First success 2026-06-12 20:10 UTC |
+| H2 | queue.html Est. Time showed 30m for every row | ✅ | 2026-06-19, commit `91d39e1` (live). `estMins` read unselected `labour_mins` + hardcoded `+30`; now renders `estimated_mins` as-is. See Fleetpro-context.md §2026-06-19 |
+| H3 | recovery-ticket-sync creating 0 tickets + T&H heartbeats never recorded | ✅ code · ⏸ deploy | 2026-07-01. Q1 numeric `user_id` inserted into a uuid column → every batch insert failed (0 new tickets); fixed via `uuidOrNull`→null. `sync_heartbeats.status` CHECK allows only success/failure — recovery-ticket-sync/zone-cluster/recovery-blocked-sync were writing ok/warn/error (0 heartbeats). recovery-ticket-sync deployed; zone-cluster + recovery-blocked-sync **pending MCP redeploy**. See Fleetpro-context.md §2026-07-01 |
 
 ---
 
@@ -49,7 +51,8 @@ sidebar's **Admin** section.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | A1 | Manual JC Approval Check (`jc-approval.html`) | ✅ | Search a vehicle → automated verdict (T0–T6) on whether to approve a manual draft-JC creation request. Replaces manual manager review. |
-| A2 | Technician Incentive Portal (`incentive.html`) | ✅ | Magic-link dashboard/leaderboard/admin. `sync-incentive-data` v16 (`/query/json`, ~20.7k rows / 9 weeks; frozen weeks + rebuild RPC; Thursday-noon-IST freeze). 2000-row cap CLOSED; Option A auth. Name mapping now ~89% resolved (ops backlog, not code). ⚠️ Freeze/rebuild crons not yet in `cron-jobs.sql`. See Fleetpro-context.md 2026-06-27. |
+| A2 | Technician Incentive Portal (`incentive.html`) | ✅ | Magic-link dashboard/leaderboard/admin. `sync-incentive-data` every 5 min. 68 techs invited + Incentive Tech group. Auth gate on all 5 pages. 4-lang i18n + lang_pref. **2026-07-02**: PWA; daily nudge emails; leaderboard Hub/Tech sub-tabs + Total JCs + earner threshold (>50). **2026-07-04**: `sync-incentive-data` v19 (conflict-key fix — reverted to `jc_billed_datetime,technician_name_raw,reg_number`); Jun 22 data restored manually; `rebuild_incentive_weekly_stats` alias-merge fix (`GROUP BY COALESCE(employee_id, technician_name)`) applied live; rank delta ▲/▼/NEW on leaderboard (commit `a74ed6d`); `send-feedback` edge fn deployed (v4, Resend + `incentive_feedback`); migration `20260702000004` confirmed live; new superadmin `ahsrahd@gmail.com`. ⚠️ `send-feedback` needs `verify_jwt: false` toggle in Supabase dashboard. ⚠️ `rebuild_incentive_weekly_stats` alias-merge fix needs migration `20260704000001`. ⚠️ `sync-incentive-data/index.ts` + `send-feedback/index.ts` need git push. ⚠️ Freeze/rebuild crons not yet in `cron-jobs.sql`. ⚠️ `set_week_payment_done` granted to authenticated (all techs) — confirm it has internal admin check, not just UI gate. |
+| A3 | Page Analytics (`admin-analytics.html`) | ✅ | Superadmin-gated; reads `page_events`; `logPageView()` on fw-map/incentive/trace-ho. **2026-07-02**: Sync Jobs panel fully wired — `admin-cron` edge fn ACTIVE (verify_jwt=true) + migration `20260702000001` applied (admin_cron_list/set_schedule/set_active RPCs). ⚠️ Confirm `page_events` INSERT RLS + extend logging to remaining pages. |
 
 ### A1 — Manual JC Approval Check
 

@@ -1,5 +1,138 @@
 # Fleetpro — Context File
-*Last updated: 2026-06-27 (session 19 — Technician Incentive Portal built + shipped; sync-incentive-data edge fn)*
+*Last updated: 2026-07-04 (session 23 — incentive sync v19 conflict-key fix, Jun 22 data restored, alias-merge fix in rebuild fn, rank delta, send-feedback deployed, new superadmin user)*
+
+## 🆕 2026-07-04 — session 23 (all live unless noted)
+
+Incentive data recovery + alias-merge bug fix + leaderboard rank delta + send-feedback deployment + new user.
+
+- **`sync-incentive-data` v19 deployed:** Root cause of Jun 22+ data loss: v18 used `onConflict: 'jcsl_id'` but `jcsl_id` is absent from the Metabase card output → always null → the partial unique index `incentive_jc_log_unique_jc` never fired → upsert fell through to insert → Jun 22+ rows weren't inserted at all. v19 reverts conflict key to `jc_billed_datetime,technician_name_raw,reg_number` (the actual index columns). Also uses `toIstTimestamptz()` to append `+05:30` before storing IST timestamps. Cron at 19:00 UTC daily. ⚠️ Source file `supabase/functions/sync-incentive-data/index.ts` updated locally; **needs git push via /tmp clone.**
+
+- **Jun 22 week data restored:** Could not trigger edge fn directly (pg_net call got 401 — SYNC_SECRET is edge fn env var, not in vault; no SQL path to retrieve it). Could not connect via psycopg2 (Supabase pooler DNS blocked in sandbox). Resolution: generated 3 SQL INSERT files (~1,623 rows total); user ran them manually in Supabase SQL editor. Then ran `SELECT rebuild_incentive_weekly_stats()` + re-froze Jun 22 via `SELECT freeze_completed_weeks()`. Jun 22 week now frozen with correct data.
+
+- **`rebuild_incentive_weekly_stats` alias-merge bug fixed:** Function was `GROUP BY l.technician_name` — so two raw names for the same employee (JATIN - HOODI → WRCT0164, JAUTIN SAHOO - HSR LAYOUT → WRCT0164) produced two separate rows. The 2-JC row (JAUTIN SAHOO) was below the ≥51 threshold and invisible; the 56-JC row (JATIN) was missing 2 JCs. Fix: `GROUP BY COALESCE(l.employee_id, l.technician_name)` + `MODE() WITHIN GROUP (ORDER BY l.technician_name) AS tech_name` for display name. Result: JATIN now shows 58 eligible JCs, ₹200 payout — matches reference sheet. Applied live via execute_sql MCP. ⚠️ **NOT captured in a migration file** — must create `20260704000001_rebuild_alias_merge.sql` and push.
+
+- **Leaderboard rank delta (▲/▼/NEW):** Week-over-week rank change shown next to each technician name in the incentive leaderboard. Previous week fetched in parallel (`Promise.all`); `prevRankMap` built by `tech_name`. Ranks up → green ▲N, ranks down → red ▼N, no prior week entry → purple NEW badge. Pushed as commit `a74ed6d` via Claude Code.
+
+- **`send-feedback` edge fn deployed (v4):** Saves feedback text + audio URL to `incentive_feedback` table; emails vamsee@bounceshare.com via Resend. Audio: frontend uploads to `feedback-audio` Storage bucket first, passes URL to edge fn. Migration `20260702000004` (tables already existed from prior session — `apply_migration` confirmed "policy already exists"). ⚠️ Edge fn deployed with `verify_jwt: true` but called with anon key from incentive.html — must toggle to `verify_jwt: false` in Supabase dashboard. ⚠️ Source `supabase/functions/send-feedback/index.ts` **needs git push.**
+
+- **New user `ahsrahd@gmail.com`:** Created directly in `auth.users` via execute_sql with `is_superadmin: true` in `raw_app_meta_data` and `email_confirmed_at: NOW()`. Magic link works immediately (no email confirmation step needed). No group assignment needed — superadmin flag grants all features.
+
+### ⚠️ Still needs action (2026-07-04)
+| Item | Action needed |
+|------|---------------|
+| `sync-incentive-data/index.ts` (v19) | Git push via /tmp clone |
+| `send-feedback/index.ts` | Git push via /tmp clone |
+| `send-feedback` edge fn | Toggle `verify_jwt: false` in Supabase dashboard (currently true — anon-key calls will 401) |
+| `rebuild_incentive_weekly_stats` alias-merge fix | Create migration `20260704000001_rebuild_alias_merge.sql` + git push |
+| `feedback-audio` Storage bucket | Confirm bucket exists with authenticated-write policy (audio uploads will fail if missing) |
+
+## 🆕 2026-07-02 — session 22 (all live)
+
+Incentive PWA + nudge emails + Sync Jobs panel + leaderboard polish + hub attribution fix.
+
+- **incentive.html PWA:** `incentive-manifest.json` + `incentive-sw.js` added; meta tags in `<head>` + SW registration. Android "Add to Home Screen" installs as standalone app.
+- **Daily nudge emails (`incentive-nudge` edge fn, ACTIVE):** Personalized email to every active tech at 08:00 + 20:00 IST (pg_cron job 37, `30 2,14 * * *`). Shows JC count, payout, tier badge, nudge to next tier. Sends via Resend API (`RESEND_API_KEY` + `NUDGE_FROM_EMAIL=incentive@bounceops.online` in Supabase secrets). `bounceops.online` DNS records added to BigRock — pending propagation (4-6 hrs). `get_nudge_targets` SECURITY DEFINER RPC (migration `20260702000002`) joins `incentive_weekly_stats → jc_name_aliases → hr_employees` for email. Tier calc is incremental/bracket-based (51-60→₹25, 61-80→₹50, 81-90→₹75, 91+→₹100, cap ₹5,000).
+- **Sync Jobs panel (`admin-cron` edge fn, ACTIVE, verify_jwt=true):** Superadmin can view + edit all pg_cron job schedules from `admin-analytics.html`. Three RPCs: `admin_cron_list()`, `admin_cron_set_schedule()`, `admin_cron_set_active()` (migration `20260702000001`, service_role-only SECURITY DEFINER).
+- **Hub attribution fix (`rebuild_incentive_weekly_stats`):** `MAX(hub_name)` → `MODE() WITHIN GROUP (ORDER BY hub_name)` so dominant hub wins when a tech worked across hubs. Applied live via MCP. Git reconciliation migration: `20260702000003_rebuild_incentive_mode_hub_fix.sql` (preserves SUM(jc_weight) v17, frozen-weeks DELETE, all prior patches).
+- **Leaderboard polish (Claude Code, committed):** Hub/Technician sub-tabs (Export CSV in the sub-tab row),
+  Technician tab default, column sub-header on hub expand (Technician / City / Tier / Eligible JCs / Est. Payout),
+  Total JCs column added to hub table. Hub-expand rows had medal icons removed + columns aligned 1:1 to headers.
+  - **Earner threshold made consistent (>50):** the KPI earner count used `>=50` while payout is `≤50 → ₹0`
+    (so a true earner is `>50`/≥51). Fixed count to `>50` and updated both labels "Earners (≥50)" → "Earners (>50)".
+  - **Week-over-week rank delta** (▲/▼/NEW) shown per technician in the leaderboard.
+- **Frozen-week banner + Help/Feedback FABs (incentive.html):** Feedback floating button captures text **and
+  audio** (MediaRecorder) → `send-feedback` edge fn (NEW; Resend email, env-var secrets, service-role) →
+  `incentive_feedback` table. Frozen-week banner reads/writes `incentive_week_config` (payment-done marker).
+  Both tables + the `set_week_payment_done` RPC are in migration `20260702000004_incentive_week_config.sql` (NEW).
+  Also added a PWA install prompt (`beforeinstallprompt`) to incentive.html.
+  ⚠️ **Not yet deployed:** Cowork must (a) deploy `send-feedback` edge fn and (b) run migration `20260702000004`
+  — the Feedback FAB + frozen banner error until then. ⚠️ `set_week_payment_done` is `GRANT`ed to **authenticated**
+  (all techs) — confirm it has an internal admin/superadmin check, not just UI gating.
+- **Sidebar sweep (Claude Code):** `v8/sidebar.js` shared component — ONE source of truth for sidebar
+  content *and* appearance across all 12 pages. Injects canonical markup (sections + `data-feature`
+  gates), `toggleSidebar/togglePin/closeSidebar` globals, and a `<style>` appended to `<head>`.
+  - Each page's static `#sb` emptied (dead markup removed); per-page gating still runs after injection.
+  - `admin-techs.html` had no FleetPro chrome — re-shelled additively (dark sidebar CSS + `#ov`/`#sb`/`#hbg`
+    shell + include; auth/data untouched; hamburger only shows post-unlock inside `#main-content`).
+  - **Theme unified:** colour-only `#sb …` overrides (dark `#1A1A2E`) flip the 4 previously-white sidebars
+    (rsa/trace-ho/admin-permissions/admin-analytics) to match the other 7. Layout/z-index left per-page.
+  - **Scroll fix:** injected `#sb{overflow-y:auto}` — pages with `overflow:hidden` were clipping bottom
+    items (Admin/Coming Soon/Settings) on short viewports.
+  - `sync-status.js` heartbeat badges removed from the sidebar footer (7 pages) — that info now lives in
+    the Analytics Sync Jobs panel. Feature keys in sidebar.js verified vs `admin-permissions` ALL_FEATURES.
+- **cron-jobs.sql:** Updated with job 37 (`incentive-nudge-daily`, `30 2,14 * * *`).
+
+⚠️ `bounceops.online` domain verification in Resend still pending DNS propagation — nudge emails will start firing automatically once green.
+
+## 🆕 2026-06-28 → 07-01 — session 21 (commits `de40efc`→`5f53f14`, all live)
+
+Incentive portal polish + new analytics + RSA GPS + admin/nav consolidation.
+
+- **Incentive UX (i18n & dashboard):** 4 languages (EN/HI/KN/TE) with `data-i18n` + `lang_pref` persisted
+  to `user_metadata`; leaderboard KPI summary strip; week-selection persist; eligible/payout KPI highlight;
+  per-week rank in trend; frozen-week "Payout" vs "Est. Payout" label; ₹5,000 cap reframed aspirationally;
+  admin dropdown deduped by base name + week-scoped; sidebar z-index/overlay fixes.
+- **Analytics (NEW):** `admin-analytics.html` (superadmin-gated, light theme) reads `page_events`;
+  `logPageView()` added to fw-map/incentive/trace-ho (writes email+page, fire-and-forget). Analytics
+  sidebar link + full admin section (techs/permissions/jc-approval/analytics) swept across ALL pages.
+  🟡 Confirm `page_events` has an INSERT RLS policy for authenticated users, else logging silently no-ops.
+- **admin-permissions redesign:** FleetPro theme + sidebar + Supabase magic-link auth → **superadmin gate**
+  (non-SA → denied) → admin-secret unlock. ⚠️ Secret now persisted in `localStorage('fp_admin_secret')`
+  (convenience 2nd-factor; primary superadmin gate unchanged — confirm the secret isn't reused elsewhere).
+- **RSA (`rsa.html`):** customer name + clickable phone in ticket popup (added `customer_name/phone` to the
+  `rsa_tickets_cache` SELECT — ⚠️ rider PII now shown to all `rsa-warroom` users); **Live GPS ↔ Ticket GPS
+  toggle** (commits `4f19ba5`, `5f53f14`): `_gpsMode` ('ticket'|'live'), `_liveGpsMap{}`, `fetchLiveGps()`
+  reads `bike_location_cache` incl. new Intellicar cols; renders tickets first, re-renders async when
+  live GPS arrives. Added Bhoja (KA05AR0387) to RSA team (rsa + fw-map).
+- **Intellicar dual-source GPS (`bike-location-sync` v9, deployed 2026-07-01):** Edge fn now reads both
+  BaaS and Intellicar GPS columns from Metabase card `18f2864d`. Picks fresher timestamp:
+  `useIntellicar = icarTs > baasTs && icarLat != null`. Writes resolved `lat`/`lng` (best source) plus
+  raw `baas_lat/lng`, `intellicar_lat/lng`, `intellicar_location_time`, `best_source` to
+  `bike_location_cache`. ⚠️ **New columns added via Supabase MCP SQL only — no migration file captured.**
+  User must add to a migration before any DB reset/branch.
+- **`rsa_tickets_live` view fix (2026-07-01):** View was missing `customer_name` and `customer_phone`
+  columns. PostgREST returned 400 silently — polling loop's try-catch swallowed it, causing RSA Warroom
+  to stick on "Syncing from Metabase (~60s)…" indefinitely. Fix: `DROP VIEW rsa_tickets_live` +
+  `CREATE VIEW` with both columns added. ⚠️ Applied via Supabase MCP SQL only — no migration file.
+  (`CREATE OR REPLACE VIEW` was rejected by Postgres — "cannot change name of view column" on column
+  reorder; had to DROP+CREATE.)
+
+## 🆕 2026-06-28 — Incentive Portal: Tech Onboarding, Auth & UX (session 20)
+
+### Tech Invites & Group Setup
+- **68 technicians** now invited to Supabase auth and added to `Incentive Tech` group (`eaa3b153`).
+- 52 existing users added via SQL INSERT to `user_groups`; 13 new users invited via `bulk-invite-techs` edge fn (`verify_jwt:false`); 3 bad-email techs (`gail.com`/`gamil.com`/`email.com`) fixed via `sync-hr-employees` v3 then re-invited.
+- All 76 techs who were in both `Default Users` + `Incentive Tech` groups had Default Users membership removed — they were seeing PM/OOS Queue/Deployment tiles incorrectly.
+- `admin-panel` feature added to Admin group in `group_features` (was missing — caused Admin sidebar section to hide on maintenance.html etc.).
+- `incentive-tech` and `incentive-admin` added to `ALL_FEATURES` list in `admin-permissions.html` (commit `2172051`) so they appear in the permissions matrix.
+
+### Auth Gate (all 5 pages)
+- `index.html`, `incentive.html`, `maintenance.html`, `queue.html`, `jc-approval.html` now allow magic links for **any email in `hr_employees` OR `incentive_technicians`** (not just `@bounceshare.com`). Badge updated to "Bounce technicians & staff".
+- RLS fixes: `incentive_technicians` anon SELECT policy added (pre-login email check was blocked); `hr_employees` authenticated SELECT policy added (zero policies = nobody could read it).
+- `no-access` fallback added to `index.html`: users with zero features see "🔒 No modules assigned yet" instead of blank page.
+
+### Session / Storage Key Fix
+- `incentive.html` was using `storageKey:'incentive_session'`; all other pages use `'fleetpro_session'`. Changed to `fleetpro_session` (commit `5156745`) — cross-page SSO now works (navigating from home → incentive carries the session).
+
+### Routing & Nav UX
+- `index.html`: after permissions load, shows only `incentive-tech` tile + sidebar item for techs; other tiles hidden by `data-feature`. No-access message if zero features.
+- `incentive.html` sidebar: `applyNavPermissions` hides ungated nav items (Home) for tech-only users; logo/topbar link now routes to `index.html` for admins and stays on `incentive.html` for tech-only users (commit `b9cca5a`).
+
+### Data Refresh
+- `sync-incentive-data` cron (job 34) changed from `30 2 * * *` (daily 2:30am) → `*/5 * * * *` (every 5 min). Job 35 (Thursday 6:30am IST, weekly reset) unchanged.
+
+### Commits this session (all live)
+`e33fa94` auth gate incentive.html → `5647881`+`2676374` auth gate 4 pages → `8292d71` no-access msg → `7a6f0e1` incentive-tech redirect (later reverted) → `23c5af4` logo links → `9a18823` revert redirect → `2172051` permissions matrix → `5156745` shared session key → `b9cca5a` role-aware logo
+
+### Groups & Features (current live state — 2026-06-28)
+| Group | Features |
+|-------|----------|
+| Admin | fw-map, rsa-warroom, tech-app, maintenance, oos-queue, deployment, trace-ho, trace-hunter, incentive-admin, incentive-tech, **admin-panel** (added this session) |
+| Incentive Tech | incentive-tech |
+| (dd57c013 — Incentive Admin?) | incentive-tech, incentive-admin |
+| Default Users | maintenance, oos-queue, deployment (techs removed from this group) |
+| FPI Hunter | trace-hunter |
+| FPI Admin | trace-ho, trace-hunter |
 
 ## 🆕 2026-06-23 → 27 — Technician Incentive Portal (`v8/incentive.html`)
 
@@ -120,6 +253,16 @@ Audited live DB + the real GitHub repo. Findings:
   No roster → no hunter assignment → no zones. Roster UI is an unbuilt Phase 2 item.
 - **`recovery-ticket-sync` DOES write heartbeats** (off-hours guard skips midnight–6am IST).
 
+### 2026-06-19 — queue.html "Est. Time = 30m for every row" fixed (commit `91d39e1`, live)
+- **Data-model gotcha (the durable fact):** in `oos_work_queue`, the edge fn writes
+  `labour_mins == estimated_mins` (both = Metabase `"Est. Time (mins)"`), and the source SQL's
+  `estimated_mins` already includes **+60 min when parts are involved** (`RRR_Sheet10_OOS_Work_Queue.sql`).
+  So the frontend must render `estimated_mins` **as-is** — do NOT add any per-row overhead, and do NOT
+  read a bare `labour_mins` (it isn't the display value). The old `estMins` did `(r.labour_mins||0)+30`
+  while never selecting `labour_mins`, so every row collapsed to a flat 30m. `estMins` now uses
+  `estimated_mins` (fallback `labour_mins`, then 30 only for no-work rows) and drives per-row, Cumul.,
+  the Est. Total hero stat, and CSV export. Cumul. is recomputed client-side so hub-filtered views stay correct.
+
 ### 2026-06-22 — Stale-clone trap (Cowork) + multi-window framework
 - **Incident:** Cowork computed "what's in sync" from a `/tmp/fleetpro-push` clone that was
   15 commits behind, falsely reporting 5 files as unpushed. Pushing from it would have
@@ -166,15 +309,19 @@ fixed, trigger `refresh-deployment-cache` to rebuild scores.
 
 ## 🔑 Source of Truth (verified 2026-06-16 from live DB)
 
-### Groups & Features (live from group_features table)
+### Groups & Features (live from group_features table — updated 2026-06-28)
 | Group | Features |
 |-------|----------|
-| Admin | all-cities, deployment, export-data, fw-map, maintenance, oos-queue, rsa-warroom, tech-app |
-| Default Users | all-cities, deployment, export-data, maintenance, oos-queue |
+| Admin | fw-map, rsa-warroom, tech-app, maintenance, oos-queue, deployment, trace-ho, trace-hunter, incentive-admin, incentive-tech, admin-panel |
+| Default Users | maintenance, oos-queue, deployment (techs removed from this group 2026-06-28) |
 | RSA Field Team | fw-map, tech-app |
 | RSA Warroom | fw-map, rsa-warroom |
+| FPI Hunter | trace-hunter |
+| FPI Admin | trace-ho, trace-hunter |
+| Incentive Tech | incentive-tech |
+| Incentive Admin (dd57c013) | incentive-tech, incentive-admin |
 
-**`admin-panel` is NOT in any group** — granted only to superadmins via `app_metadata.is_superadmin=true` (checked client-side in `loadUserPermissions`). Only `vamsee@bounceshare.com` has this flag.
+**`admin-panel`** now in Admin group (added 2026-06-28). Also granted to superadmins via `app_metadata.is_superadmin=true`. Only `vamsee@bounceshare.com` has the superadmin flag.
 
 ### Feature Key → Page/Capability
 | Feature key | Gates |
@@ -202,8 +349,8 @@ fixed, trigger `refresh-deployment-cache` to rebuild scores.
 ### Table Columns (live schema)
 | Table | Columns |
 |-------|---------|
-| `rsa_tickets_cache` | ticket_number (PK), status, category, reg_number, technician_name, fault_details, created_at_ist, inprogress_at_ist, resolved_at_ist, tat_minutes, synced_at, city, lat, lng, bass_location_time_ist, live_lat, live_lng |
-| `bike_location_cache` | id, chassis_number (unique), reg_number, lat, lng, baas_location_time, current_soc, vehicle_status, synced_at |
+| `rsa_tickets_cache` | ticket_number (PK), status, category, reg_number, technician_name, fault_details, created_at_ist, inprogress_at_ist, resolved_at_ist, tat_minutes, synced_at, city, lat, lng, bass_location_time_ist, live_lat, live_lng, **customer_name, customer_phone** (added 2026-06-30, commit `2d48ba5`) |
+| `bike_location_cache` | id, chassis_number (unique), reg_number, lat, lng (resolved best), baas_location_time, current_soc, vehicle_status, synced_at, **baas_lat, baas_lng, intellicar_lat, intellicar_lng, intellicar_location_time, best_source** (added 2026-07-01 via SQL — no migration yet) |
 | `bike_rider_cache` | chassis_number (PK), rider_name, rider_phone, synced_at |
 | `fw_pending_cache` | chassis_number (PK), hub, reg_number, synced_at |
 | `sync_heartbeats` | id, function_name, status, duration_ms, rows_affected, error_message, synced_at |
@@ -329,7 +476,7 @@ Live ops map for RSA (Roadside Assistance) tickets. Central team monitors open t
 
 ### Data pipeline
 ```
-Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_tickets_cache → rsa_tickets_live view → rsa.html
+Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v23) → rsa_tickets_cache → rsa_tickets_live view → rsa.html
 ```
 - **Today**: Polls every 30s (replaced Realtime subscription — session 14). `rsa_tickets_cache` and `rsa_team_locations` removed from `supabase_realtime` publication.
 - **Historical**: user picks date range → edge fn syncs → polls until fresh data appears
@@ -351,6 +498,7 @@ Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_
   - *RSA Team tab*: pick person + date range → polyline trail with start/end markers
   - *Ticket tab*: enter ticket number → dashed trail with grey pins, status-change labels
 - **Popup actions**: 📍 Directions (Google Maps link) · 📋 Copy loc (coords to clipboard) · 🛤 Track
+- **Popup fields (2026-06-30)**: ticket_number, status, reg+city, **customer_name + customer_phone** (tappable tel: link), category, fault_details, technician, timestamps, TAT. `customer_name`/`customer_phone` added to `rsa_tickets_cache` table + edge fn v23 + SELECT query in rsa.html (commit `2d48ba5`).
 - Zone shading: selecting North/South draws light indigo rectangle over that half
 - Hub icons: logo.jpg (same as fw-map)
 - Realtime: subscribed to `rsa_tickets_cache` (event:'*'); 3s debounce → clean re-fetch from view (not payload patch — avoids accumulation bug)
@@ -416,7 +564,7 @@ Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_
 | Table | Purpose | Notes |
 |-------|---------|-------|
 | `vehicles` | Dimension table: one row per chassis (reg, model, city) | ML training anchor. Empty — needs backfill from bike_location_cache |
-| `sync_heartbeats` | One row per edge fn run (status, duration_ms, rows_affected) | **✅ Session 14: all 7 sync edge fns now write here on every run** |
+| `sync_heartbeats` | One row per edge fn run (status, duration_ms, rows_affected). **`status` CHECK = only `'success'`/`'failure'`** — writing `ok`/`warn`/`error` makes the INSERT silently fail. | **✅ Session 14: original 7 fns wired. 2026-07-01: 3 T&H fns fixed (had been writing ok/warn/error → 0 rows).** |
 | `fw_pending_history` | Daily snapshot of fw_pending_cache (chassis, hub, reg) | Cron `fw-pending-daily-snapshot` runs 18:25 UTC (23:55 IST) daily |
 | `ticket_status_history` | Immutable log of every ticket status transition | Trigger `trg_ticket_status_history` on rsa_tickets_cache INSERT/UPDATE |
 
@@ -430,7 +578,7 @@ Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_
 | `fw_pending_cache` | ~1,318 | FW-pending bikes from Google Sheet (full refresh every 15 min) |
 | `bike_location_cache` | ~9,812 | All bike GPS locations (5-min cron) |
 | `bike_rider_cache` | ~9,795 | Rider name+phone (hourly cron) |
-| `rsa_tickets_cache` | ~58/day | RSA tickets; columns: ticket_number, status, category, reg_number, technician_name, fault_details, created_at_ist, inprogress_at_ist, resolved_at_ist, tat_minutes, city, synced_at, lat, lng, bass_location_time_ist, live_lat, live_lng |
+| `rsa_tickets_cache` | ~58/day | RSA tickets + customer_name + customer_phone (added 2026-06-30). Full cols: ticket_number, status, category, reg_number, technician_name, fault_details, created_at_ist, inprogress_at_ist, resolved_at_ist, tat_minutes, city, synced_at, lat, lng, bass_location_time_ist, live_lat, live_lng, customer_name, customer_phone |
 | `rsa_team_locations` | append-only, **partitioned by month on synced_at** | Nishanth/Pavan GPS trail. PK: (id, synced_at). Partitions: _2026_06, _2026_07, _default. Old table kept as rsa_team_locations_old. |
 | `rsa_ticket_locations` | append-only, **partitioned by month on synced_at** | Per-ticket bike movement trail for open tickets. PK: (id, synced_at). Same partition structure. Old table kept as rsa_ticket_locations_old. |
 | `partition_archive_log` | archive log | One row per archived partition: table_name, partition_name, row_count, file_bytes, storage_path, archived_at |
@@ -449,7 +597,7 @@ Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_
 ### Edge Functions
 | Function | Schedule | Purpose |
 |----------|----------|---------|
-| `bike-location-sync` | `*/5 * * * *` | Metabase → bike_location_cache (9,184 bikes incl. internal use) |
+| `bike-location-sync` | `*/5 * * * *` | **v9 (2026-07-01):** Metabase card `18f2864d` → bike_location_cache. Dual-source GPS: picks fresher of BaaS vs Intellicar timestamps; writes resolved lat/lng + raw baas_lat/lng + intellicar_lat/lng/ts + best_source. |
 | `fw-sheet-sync` | `*/15 * * * *` | Google Sheet → fw_pending_cache (full refresh, delete+insert) |
 | `fw-map-rider-sync` | `0 * * * *` | Metabase → bike_rider_cache (hourly) |
 | `rsa-ticket-sync` | `*/2 * * * *` | **v9** (verify_jwt=false, CORS headers). Per run: (1) fetch Metabase card f79c5050, (2) enrich open tickets with live GPS from bike_location_cache → live_lat/live_lng, (3) delete+reinsert rsa_tickets_cache, (4) append open ticket locations to rsa_ticket_locations, (5) append RSA team locations to rsa_team_locations. Accepts start_date/end_date for historical re-sync. Dedup: 100s. |
@@ -489,10 +637,11 @@ Metabase (card f79c5050, last 30 days) → rsa-ticket-sync edge fn (v9) → rsa_
 ---
 
 ## RSA Team Bikes (GPS tracked)
-| Name | Chassis | Reg | Status |
-|------|---------|-----|--------|
-| Nishanth | P6EBE1JYK25000288 | KA05AR5056 | internal use — in bike_location_cache |
-| Pavan | P6EBE1JYK25000072 | KA05AR3238 | internal use — in bike_location_cache |
+| Name | Chassis | Reg | Contact | Status |
+|------|---------|-----|---------|--------|
+| Nishanth | P6EBE1JYK25000288 | KA05AR5056 | — | internal use — in bike_location_cache |
+| Pavan | P6EBE1JYK25000072 | KA05AR3238 | — | internal use — in bike_location_cache |
+| Bhoja | P6EBE1JYH25000416 | KA05AR0387 | 8660362696 | added 2026-06-30 — in bike_location_cache |
 
 Both have 7-day session (no 12h reauth) in fw-map.html. RSA_EMAILS kept in fw-map.html as fallback only — primary auth is now DB-driven via user_groups → group_features. Both are assigned to RSA Field Team group in user_groups.
 
@@ -669,3 +818,8 @@ Before marking any auth bug as fixed: (1) grep for every `signOut()` call, (2) f
 - Call outcome tracking (busy, no answer, etc.)
 - OTP verification for user-reported location
 - Analytics dashboard (recovery rate, avg age, zone heatmaps)
+
+### 2026-07-01 — Edge-fn hotfixes (recovery-ticket-sync insert bug + heartbeat status)
+- **recovery-ticket-sync was creating 0 tickets** despite new source rows. It inserted the Q1 `user_id` — a *numeric* booking user id (e.g. 447673) — into `recovery_tickets.user_id`, which is a **uuid** column, so every batch insert failed with `invalid input syntax for type uuid`. Fix: `uuidOrNull()` coerces non-uuid → null (numeric ids are dropped). To actually persist the numeric id, the column type must change (uuid → bigint/text) — **not done**; `user_id` is null for now.
+- **`sync_heartbeats.status` CHECK allows only `success`/`failure`.** All three Trace & Hunter edge fns were writing `ok`/`warn`/`error`, so every heartbeat INSERT silently failed (0 heartbeats ever recorded for them — health-check was blind to them). Fixed in `recovery-ticket-sync`, `zone-cluster`, `recovery-blocked-sync`: `ok`→`success`, `warn`/`error`→`failure` (error_message retained). Caveat: blocked-sync's soft "Google Sheet unreachable → kept existing list" case now logs as `failure` (the CHECK leaves no `warn`).
+- **Deploy state:** `recovery-ticket-sync` live (deployed via Cowork MCP). `zone-cluster` + `recovery-blocked-sync` heartbeat fix committed to git but **pending MCP redeploy**.

@@ -7,6 +7,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | Page / Feature | Locked by | Since (UTC) | Note |
 |---|---|---|---|
 | jc-approval.html | (free) | — | — |
+| incentive.html | (free) | — | — |
 | index.html | (free) | — | — |
 | queue.html | (free) | — | — |
 | maintenance.html | (free) | — | — |
@@ -17,3 +18,5 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
 | admin-permissions.html | (free) | — | — |
+| supabase/functions (edge fn source) | (free) | — | — |
+| docs (context/checklists) | (free) | — | — |
