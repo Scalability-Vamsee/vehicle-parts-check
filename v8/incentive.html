@@ -1151,7 +1151,7 @@ async function renderLeaderboard(){
     // Populate leaderboard summary KPIs
     const isFrozenWeek=stats.some(s=>s.is_frozen);
     const payoutLabel=isFrozenWeek?'Payout':'Est. Payout';
-    const earners=stats.filter(s=>(s.eligible_jcs||0)>=50);
+    const earners=stats.filter(s=>(s.eligible_jcs||0)>50);
     const pool=stats.reduce((a,s)=>a+calcPayout(s.eligible_jcs||0),0);
     const avgJcs=earners.length?Math.round(earners.reduce((a,s)=>a+(s.eligible_jcs||0),0)/earners.length):0;
     const top=stats[0];
