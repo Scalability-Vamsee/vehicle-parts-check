@@ -1,6 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// v16 — dedup fix (timestamp(0)), freeze completed weeks (Thursday +10d), SQL rebuild, alias-priority name fix
+// v20 — added purge_stale_jc_log_rows step before rebuild to fix duplicate-group bug
+// (jcsl_id not yet in Metabase card output — will switch back once added)
+// IST datetime handling retained: +05:30 appended to IST timestamps from Metabase
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -20,6 +22,18 @@ function getWeekStart(dateStr: string): string {
   const day = dt.getUTCDay();
   dt.setUTCDate(dt.getUTCDate() - (day === 0 ? 6 : day - 1));
   return dt.toISOString().split('T')[0];
+}
+
+/**
+ * Metabase returns IST local timestamps as "YYYY-MM-DD HH:MM:SS" with no tz offset
+ * (result of AT TIME ZONE 'Asia/Kolkata' → timestamp without time zone).
+ * Appending +05:30 lets Postgres store them correctly in the timestamptz column.
+ * Idempotent: already-offset or UTC strings pass through unchanged.
+ */
+function toIstTimestamptz(s: string | null): string | null {
+  if (!s) return null;
+  if (s.includes('+') || s.endsWith('Z')) return s;   // already has offset
+  return s.replace(' ', 'T') + '+05:30';
 }
 
 /**
@@ -54,7 +68,7 @@ Deno.serve(async (req) => {
 
   try {
     // 1. Fetch from Metabase public API — /query/json has no 2000-row API cap
-    console.log(`[sync-incentive v16] Fetching from Metabase card ${CARD_UUID}`);
+    console.log(`[sync-incentive v19] Fetching from Metabase card ${CARD_UUID}`);
     const mbRes = await fetch(`${METABASE_BASE}/api/public/card/${CARD_UUID}/query/json`);
     if (!mbRes.ok) throw new Error(`Metabase fetch failed: ${mbRes.status}`);
     // /query/json returns a flat array of row objects: [{col: val, ...}, ...]
@@ -63,7 +77,7 @@ Deno.serve(async (req) => {
       throw new Error(`Metabase /query/json returned non-array: ${JSON.stringify(parsed).slice(0, 300)}`);
     }
     const rawRows: Record<string, unknown>[] = parsed;
-    console.log(`[sync-incentive v16] Metabase returned ${rawRows.length} rows`);
+    console.log(`[sync-incentive v19] Metabase returned ${rawRows.length} rows`);
 
     const col = (row: Record<string, unknown>, name: string) => row[name];
 
@@ -76,7 +90,7 @@ Deno.serve(async (req) => {
     for (const a of aliases ?? []) {
       aliasMap[a.technician_name] = a.employee_id;
     }
-    console.log(`[sync-incentive v16] Loaded ${Object.keys(aliasMap).length} aliases`);
+    console.log(`[sync-incentive v19] Loaded ${Object.keys(aliasMap).length} aliases`);
 
     // 3. Load legacy name mappings from incentive_technicians (raw → normalized display name)
     // This handles the old mapping system — will be phased out as aliases take over
@@ -92,17 +106,21 @@ Deno.serve(async (req) => {
         if (raw && t.name_normalized && raw !== t.name_normalized) legacyNameMap[raw] = t.name_normalized;
       }
     }
-    console.log(`[sync-incentive v16] Loaded ${Object.keys(legacyNameMap).length} legacy name mappings`);
+    console.log(`[sync-incentive v19] Loaded ${Object.keys(legacyNameMap).length} legacy name mappings`);
 
     // 4. Build jc_log rows
     const jcLogRows = rawRows.map((row) => {
       const billedDateRaw = col(row, 'jc_billed_date') as string;
       const billedDate = billedDateRaw?.slice(0, 10) ?? '';
 
-      // jc_billed_datetime column is timestamp(0) — DB truncates subseconds automatically.
-      // No need to truncate in JS; pass raw string and let Postgres handle precision.
-      const billedDt = (col(row, 'jc_billed_datetime') as string | null) ?? null;
-      const firstComeback = (col(row, 'first_comeback_datetime') as string | null) ?? null;
+      // jc_billed_datetime and first_comeback_datetime arrive from Metabase as IST local
+      // strings ("YYYY-MM-DD HH:MM:SS", no tz offset) after the AT TIME ZONE 'Asia/Kolkata'
+      // conversion. Append +05:30 so Postgres stores them correctly in timestamptz columns.
+      const billedDt = toIstTimestamptz((col(row, 'jc_billed_datetime') as string | null) ?? null);
+      const firstComeback = toIstTimestamptz((col(row, 'first_comeback_datetime') as string | null) ?? null);
+
+      // jcsl_id: stable source ID from job_card_status_log — used as conflict key (timezone-independent)
+      const jcslId = col(row, 'jcsl_id') as number | null;
 
       const rawName = (col(row, 'technician_name') as string) ?? '';
       const normalizedName = normalizeJcName(rawName);  // Layer 2
@@ -116,6 +134,7 @@ Deno.serve(async (req) => {
       const techName = employeeId ? normalizedName : (legacyNameMap[rawName] ?? normalizedName);
 
       return {
+        jcsl_id: jcslId,
         jc_billed_date: billedDate,
         jc_billed_datetime: billedDt,
         intrip: Number(col(row, 'intrip') ?? 0),
@@ -130,6 +149,8 @@ Deno.serve(async (req) => {
         is_void: isVoid,
         first_comeback_datetime: firstComeback,
         week_start: getWeekStart(billedDate),
+        jc_weight: Number(col(row, 'jc_weight') ?? 1),
+        effective_labour_minutes: Number(col(row, 'effective_labour_minutes') ?? 0),
       };
     }).filter(r => r.jc_billed_date && r.reg_number);
 
@@ -145,7 +166,19 @@ Deno.serve(async (req) => {
       upserted += Math.min(BATCH, jcLogRows.length - i);
     }
 
-    // 6. Freeze completed weeks, then rebuild open weeks only
+    // 6a. Purge stale phantom rows in open weeks.
+    // These are rows synced by old function versions (before technician_name_normalized was
+    // populated). They're no longer returned by Metabase but persist in the log.
+    // Cause: rebuild groups by COALESCE(employee_id, technician_name), producing two rows
+    // with the same tech_name → UNIQUE(tech_name, week_start) violation → rebuild silently
+    // rolls back → stats shows stale data. Fix: delete before rebuild each sync.
+    const { error: purgeErr } = await supabase.rpc('purge_stale_jc_log_rows');
+    if (purgeErr) {
+      // Non-fatal — log but continue (worst case: next rebuild may still fail for this week)
+      console.warn(`[sync-incentive v20] purge_stale_jc_log_rows warning: ${purgeErr.message}`);
+    }
+
+    // 6b. Freeze completed weeks, then rebuild open weeks only
     // Completed = week's Sunday has passed; those rows are locked and never overwritten
     const { error: freezeErr } = await supabase.rpc('freeze_completed_weeks');
     if (freezeErr) throw new Error(`freeze_completed_weeks: ${freezeErr.message}`);
@@ -157,7 +190,7 @@ Deno.serve(async (req) => {
     const { error: backfillErr } = await supabase.rpc('backfill_employee_ids');
     if (backfillErr) {
       // Non-fatal — log but don't fail the sync
-      console.warn(`[sync-incentive v16] backfill_employee_ids warning: ${backfillErr.message}`);
+      console.warn(`[sync-incentive v19] backfill_employee_ids warning: ${backfillErr.message}`);
     }
 
     const resolvedCount = jcLogRows.filter(r => r.employee_id).length;
@@ -173,7 +206,7 @@ Deno.serve(async (req) => {
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   } catch (err) {
-    console.error('[sync-incentive v16] ERROR:', err);
+    console.error('[sync-incentive v19] ERROR:', err);
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
