@@ -19,28 +19,43 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
   try {
-    const { tech_name, email, hub_name, message } = await req.json();
+    const { tech_name, email, hub_name, message, audio_url } = await req.json();
 
-    if (!message?.trim()) {
+    if (!message?.trim() && !audio_url) {
       return new Response(
-        JSON.stringify({ error: 'Message is required' }),
+        JSON.stringify({ error: 'Message or audio required' }),
         { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
       );
     }
 
     const sb = createClient(SB_URL, SB_SERVICE_KEY);
 
-    // 1. Persist to DB
+    // 1. Persist to DB (text + optional audio URL)
     const { error: dbErr } = await sb.from('incentive_feedback').insert({
       tech_name: tech_name || null,
       email:     email     || null,
       hub_name:  hub_name  || null,
-      message:   message.trim(),
+      message:   message?.trim() || null,
+      audio_url: audio_url || null,
     });
     if (dbErr) console.error('DB insert error:', dbErr.message);
 
     // 2. Email Vamsee via Resend
     const displayName = tech_name || email || 'Unknown';
+    const audioSection = audio_url
+      ? `<div style="margin-top:16px;padding:14px;background:#F0F9FF;border-left:4px solid #0891B2;border-radius:0 8px 8px 0;">
+           <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.5px;">🎙 Audio Recording</p>
+           <a href="${audio_url}" style="display:inline-block;background:#0891B2;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">▶ Play Recording</a>
+           <p style="margin:6px 0 0;font-size:11px;color:#6B7280;">Or copy link: ${audio_url}</p>
+         </div>`
+      : '';
+
+    const textSection = message?.trim()
+      ? `<div style="padding:16px;background:#FEF2F2;border-left:4px solid #E8191C;border-radius:0 8px 8px 0;margin-bottom:${audio_url ? '0' : '0'};">
+           <p style="margin:0;font-size:14px;color:#111827;line-height:1.7;">${message.trim().replace(/\n/g, '<br>')}</p>
+         </div>`
+      : `<p style="color:#6B7280;font-size:13px;font-style:italic;">(No text — audio only)</p>`;
+
     const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -50,7 +65,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: FROM_EMAIL,
         to:   FEEDBACK_TO,
-        subject: `💬 Incentive Feedback — ${displayName}`,
+        subject: `💬 Incentive Feedback — ${displayName}${audio_url ? ' 🎙' : ''}`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -60,21 +75,20 @@ Deno.serve(async (req) => {
 
   <tr><td style="background:#E8191C;padding:20px 24px;">
     <p style="margin:0;color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Bounce Fleet · Technician Feedback</p>
-    <h2 style="margin:6px 0 0;color:#fff;font-size:20px;">💬 New Feedback</h2>
+    <h2 style="margin:6px 0 0;color:#fff;font-size:20px;">💬 New Feedback${audio_url ? ' 🎙' : ''}</h2>
   </td></tr>
 
   <tr><td style="padding:24px;">
-    <table width="100%" style="font-size:13px;border-collapse:collapse;margin-bottom:20px;">
-      <tr><td style="padding:6px 0;color:#6B7280;font-weight:700;width:80px;">Name</td>
-          <td style="padding:6px 0;color:#111827;">${tech_name || '—'}</td></tr>
-      <tr><td style="padding:6px 0;color:#6B7280;font-weight:700;">Email</td>
-          <td style="padding:6px 0;color:#111827;">${email || '—'}</td></tr>
-      <tr><td style="padding:6px 0;color:#6B7280;font-weight:700;">Hub</td>
-          <td style="padding:6px 0;color:#111827;">${hub_name || '—'}</td></tr>
+    <table width="100%" style="font-size:13px;border-collapse:collapse;margin-bottom:16px;">
+      <tr><td style="padding:5px 0;color:#6B7280;font-weight:700;width:80px;">Name</td>
+          <td style="padding:5px 0;color:#111827;">${tech_name || '—'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6B7280;font-weight:700;">Email</td>
+          <td style="padding:5px 0;color:#111827;">${email || '—'}</td></tr>
+      <tr><td style="padding:5px 0;color:#6B7280;font-weight:700;">Hub</td>
+          <td style="padding:5px 0;color:#111827;">${hub_name || '—'}</td></tr>
     </table>
-    <div style="padding:16px;background:#FEF2F2;border-left:4px solid #E8191C;border-radius:0 8px 8px 0;">
-      <p style="margin:0;font-size:14px;color:#111827;line-height:1.7;">${message.trim().replace(/\n/g, '<br>')}</p>
-    </div>
+    ${textSection}
+    ${audioSection}
   </td></tr>
 
   <tr><td style="background:#F9FAFB;padding:12px 24px;border-top:1px solid #E5E7EB;text-align:center;">
@@ -90,10 +104,9 @@ Deno.serve(async (req) => {
     if (!emailRes.ok) {
       const errBody = await emailRes.text();
       console.error('Resend error:', errBody);
-      // Feedback is already saved to DB — still return ok to the tech
     }
 
-    console.log(`send-feedback: saved + emailed for ${displayName}`);
+    console.log(`send-feedback: saved + emailed for ${displayName}${audio_url ? ' (with audio)' : ''}`);
     return new Response(
       JSON.stringify({ ok: true }),
       { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } }
