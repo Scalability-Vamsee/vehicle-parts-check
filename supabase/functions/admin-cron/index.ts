@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
   try { body = await req.json() } catch { /* no body */ }
   const { action, jobid, schedule, active } = body
 
-  // ── list: cron jobs + latest sync heartbeats (frontend joins by fn name) ──
+  // ── list: cron jobs + latest sync heartbeats + pg_cron last runs ──
   if (action === 'list') {
     const { data: jobs, error } = await supabase.rpc('admin_cron_list')
     if (error) return json({ error: error.message }, 400)
@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
       .select('function_name, status, synced_at')
       .order('synced_at', { ascending: false })
       .limit(300)
-    return json({ jobs: jobs ?? [], heartbeats: heartbeats ?? [] })
+    const { data: lastRuns } = await supabase.rpc('admin_cron_last_runs')
+    return json({ jobs: jobs ?? [], heartbeats: heartbeats ?? [], lastRuns: lastRuns ?? [] })
   }
 
   // ── set_schedule: change a job's frequency (cron expression) ──

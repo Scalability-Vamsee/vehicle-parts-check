@@ -1,5 +1,27 @@
 # Fleetpro — Context File
-*Last updated: 2026-07-04 (session 23 — incentive sync v19 conflict-key fix, Jun 22 data restored, alias-merge fix in rebuild fn, rank delta, send-feedback deployed, new superadmin user)*
+*Last updated: 2026-07-08 (session 24 — sync v20 stale-row purge, git↔live reconcile, cron last-run history)*
+
+## 🆕 2026-07-05 → 07-08 — session 24 (incentive pipeline reconcile + Sync Jobs history)
+
+**2026-07-05 (pushed & live):**
+- **`sync-incentive-data` v20:** calls `purge_stale_jc_log_rows()` before each rebuild. v16-v18 had
+  synced phantom rows with NULL `technician_name_normalized`; those produced duplicate
+  `(tech_name, week_start)` on rebuild → UNIQUE violation → whole rebuild rolled back → stale stats.
+  Purge fn (migration `20260705000001`) deletes only NULL-normalized rows in **non-frozen** weeks
+  (frozen/paid weeks protected). Function was created live before v20 deploy, so DB + edge fn are in sync.
+- **git↔live reconcile (incentive rebuild RPC now fully in git):** `20260704000001_rebuild_alias_merge.sql`
+  is the verbatim `pg_get_functiondef()` dump of the live `rebuild_incentive_weekly_stats` —
+  MODE() dominant hub + `SUM(jc_weight)` weighted counts + frozen-safe DELETE + **`GROUP BY
+  COALESCE(employee_id, technician_name)`** (merges JC-name aliases into one technician). Any FUTURE
+  change to this RPC must be dumped from live, never reconstructed from git (payout-regression risk).
+- **`incentive-nudge`** captured in git for the first time (was deploy-only) + 550ms Resend rate-limit.
+
+**2026-07-08 (⚠️ LOCAL — not yet pushed/deployed):**
+- **admin-analytics Sync Jobs panel enhanced:** tabbed layout (Page Analytics / Sync Jobs), cron
+  group-header rows, status pills, and **per-job last-run history** via new RPC `admin_cron_last_runs`
+  (reads `cron.job_run_details`). Touches `v8/admin-analytics.html`, `supabase/functions/admin-cron/index.ts`,
+  and new migration `20260708000001_admin_cron_last_runs.sql`. **All three need a /tmp-clone push; the
+  migration + admin-cron redeploy must land or the "list" action errors on the missing RPC.**
 
 ## 🆕 2026-07-04 — session 23 (all live unless noted)
 

@@ -49,6 +49,13 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;min-height:
 /* Page */
 .container{max-width:1100px;margin:0 auto;padding:24px}
 
+/* Tabs */
+.tab-bar{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:10px 22px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
 /* KPI row */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
@@ -65,6 +72,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;padding:8px 12px;border-bottom:1.5px solid var(--border)}
 td{padding:10px 12px;border-bottom:1px solid rgba(229,231,235,.7);vertical-align:middle}
 tr:last-child td{border-bottom:none}
+
+/* Cron group rows */
+.cron-group-hdr td{background:#F1F5F9;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#64748B;padding:8px 12px;border-top:1.5px solid var(--border)}
 
 /* Bar */
 .bar-wrap{display:flex;align-items:center;gap:10px}
@@ -88,6 +98,12 @@ tr:last-child td{border-bottom:none}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+
+/* Status pill */
+.status-pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.status-ok{background:#DCFCE7;color:#15803D}
+.status-err{background:#FEE2E2;color:#B91C1C}
+.status-warn{background:#FEF9C3;color:#854D0E}
 </style>
 </head>
 <body>
@@ -139,77 +155,94 @@ tr:last-child td{border-bottom:none}
 <div id="main-content" style="display:none">
 <div class="container">
 
-  <!-- SYNC JOBS (pg_cron) -->
-  <div class="card">
-    <div class="card-title">
-      ⚙️ Sync Jobs &amp; Schedules
-      <button class="btn btn-ghost" onclick="loadCronJobs()" style="padding:5px 12px;font-size:12px">↻ Refresh</button>
-    </div>
-    <div id="cron-table"><div class="loading"><span class="spin"></span>Loading jobs…</div></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px">Changes apply to pg_cron immediately. Cron format: <code>min hour day month weekday</code> (UTC) — e.g. <code>*/15 * * * *</code> = every 15 min, <code>0 * * * *</code> = hourly.</div>
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-analytics" onclick="switchTab('analytics')">📊 Analytics</button>
+    <button class="tab-btn" id="tab-btn-sync" onclick="switchTab('sync')">⚙️ Sync Jobs</button>
   </div>
 
-  <div class="filter-row">
-    <label>Quick</label>
-    <select id="period-sel" onchange="onPeriodChange()">
-      <option value="7">Last 7 days</option>
-      <option value="30" selected>Last 30 days</option>
-      <option value="90">Last 90 days</option>
-    </select>
-    <label style="margin-left:8px">From</label>
-    <input type="date" id="date-from" onchange="loadAll()">
-    <label>To</label>
-    <input type="date" id="date-to" onchange="loadAll()">
-    <button class="btn btn-teal" onclick="loadAll()" style="padding:7px 16px">↻ Refresh</button>
-    <span id="last-loaded" style="font-size:12px;color:var(--muted)"></span>
-  </div>
+  <!-- ── ANALYTICS TAB ── -->
+  <div id="tab-analytics" class="tab-panel active">
 
-  <!-- KPIs -->
-  <div class="kpi-row">
-    <div class="kpi">
-      <div class="kpi-label">Total Views</div>
-      <div class="kpi-val" id="kpi-total">—</div>
-      <div class="kpi-sub">in period</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Unique Users</div>
-      <div class="kpi-val" id="kpi-users">—</div>
-      <div class="kpi-sub">distinct emails</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Most Visited</div>
-      <div class="kpi-val" id="kpi-top-page" style="font-size:16px;padding-top:4px">—</div>
-      <div class="kpi-sub" id="kpi-top-page-count"></div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Today's Views</div>
-      <div class="kpi-val" id="kpi-today">—</div>
-      <div class="kpi-sub" id="kpi-today-users"></div>
-    </div>
-  </div>
-
-  <!-- Page popularity -->
-  <div class="card">
-    <div class="card-title">Page Views by Page</div>
-    <div id="page-chart"><div class="loading"><span class="spin"></span>Loading…</div></div>
-  </div>
-
-  <!-- Daily trend -->
-  <div class="card">
-    <div class="card-title">Daily Activity</div>
-    <div id="daily-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
-  </div>
-
-  <!-- Recent activity -->
-  <div class="card">
-    <div class="card-title">
-      Recent Activity (last 200 events)
-      <select id="user-filter" onchange="renderRecent()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:#374151;font-family:'Inter',sans-serif">
-        <option value="">All users</option>
+    <div class="filter-row">
+      <label>Quick</label>
+      <select id="period-sel" onchange="onPeriodChange()">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
       </select>
+      <label style="margin-left:8px">From</label>
+      <input type="date" id="date-from" onchange="loadAll()">
+      <label>To</label>
+      <input type="date" id="date-to" onchange="loadAll()">
+      <button class="btn btn-teal" onclick="loadAll()" style="padding:7px 16px">↻ Refresh</button>
+      <span id="last-loaded" style="font-size:12px;color:var(--muted)"></span>
     </div>
-    <div id="recent-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
-  </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Total Views</div>
+        <div class="kpi-val" id="kpi-total">—</div>
+        <div class="kpi-sub">in period</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Unique Users</div>
+        <div class="kpi-val" id="kpi-users">—</div>
+        <div class="kpi-sub">distinct emails</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Most Visited</div>
+        <div class="kpi-val" id="kpi-top-page" style="font-size:16px;padding-top:4px">—</div>
+        <div class="kpi-sub" id="kpi-top-page-count"></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Today's Views</div>
+        <div class="kpi-val" id="kpi-today">—</div>
+        <div class="kpi-sub" id="kpi-today-users"></div>
+      </div>
+    </div>
+
+    <!-- Page popularity -->
+    <div class="card">
+      <div class="card-title">Page Views by Page</div>
+      <div id="page-chart"><div class="loading"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+    <!-- Daily trend -->
+    <div class="card">
+      <div class="card-title">Daily Activity</div>
+      <div id="daily-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="card">
+      <div class="card-title">
+        Recent Activity (last 200 events)
+        <select id="user-filter" onchange="renderRecent()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color:#374151;font-family:'Inter',sans-serif">
+          <option value="">All users</option>
+        </select>
+      </div>
+      <div id="recent-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+  </div><!-- /tab-analytics -->
+
+  <!-- ── SYNC JOBS TAB ── -->
+  <div id="tab-sync" class="tab-panel">
+
+    <div class="card">
+      <div class="card-title">
+        ⚙️ Sync Jobs &amp; Schedules
+        <button class="btn btn-ghost" onclick="loadCronJobs()" style="padding:5px 12px;font-size:12px">↻ Refresh</button>
+      </div>
+      <div id="cron-table"><div class="loading"><span class="spin"></span>Loading jobs…</div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px">
+        Cron format: <code>min hour day month weekday</code> (UTC) — e.g. <code>*/15 * * * *</code> = every 15 min · SQL jobs always show "no heartbeat" (they don't emit one); use Last Run column for their status.
+      </div>
+    </div>
+
+  </div><!-- /tab-sync -->
 
 </div>
 </div>
@@ -224,6 +257,15 @@ var _recentEvents=[];
 // ── Sidebar ──
 var sbOpen=false;
 function toggleSidebar(){sbOpen=!sbOpen;document.getElementById('sb').classList.toggle('open',sbOpen);document.getElementById('ov').classList.toggle('show',sbOpen);}
+
+// ── Tabs ──
+function switchTab(name){
+  ['analytics','sync'].forEach(function(t){
+    document.getElementById('tab-btn-'+t).classList.toggle('active',t===name);
+    document.getElementById('tab-'+t).classList.toggle('active',t===name);
+  });
+  if(name==='sync')loadCronJobs();
+}
 
 // ── Auth ──
 function show(id){
@@ -254,7 +296,6 @@ function activateSession(session){
   document.getElementById('topbar-user').textContent=session.user.email;
   show('main-content');
   loadAll();
-  loadCronJobs();
 }
 
 sb.auth.getSession().then(function(r){
@@ -272,7 +313,6 @@ function todayIST(){return new Date(Date.now()+5.5*3600000).toISOString().slice(
 function daysAgo(n){return new Date(Date.now()-n*86400000).toISOString().slice(0,10);}
 
 function getDateRange(){
-  // If date inputs are filled, use them; otherwise fall back to period selector
   var from=document.getElementById('date-from').value;
   var to=document.getElementById('date-to').value;
   if(from&&to)return{from:from,to:to};
@@ -281,14 +321,13 @@ function getDateRange(){
 }
 
 function onPeriodChange(){
-  // Quick preset: fill the date inputs to match
   var days=parseInt(document.getElementById('period-sel').value)||30;
   document.getElementById('date-from').value=daysAgo(days);
   document.getElementById('date-to').value=todayIST();
   loadAll();
 }
 
-// ── Data fetch — use Z (not +00:00) to avoid URL encoding issues ──
+// ── Data fetch ──
 async function fetchEvents(from,to){
   var url=SB_URL+'/rest/v1/page_events?select=user_email,page,created_at'
     +'&created_at=gte.'+from+'T00:00:00Z'
@@ -420,6 +459,7 @@ function renderRecent(){
 // ══════════════ SYNC JOBS (pg_cron via admin-cron edge fn) ══════════════
 const CRON_EDGE=SB_URL+'/functions/v1/admin-cron';
 var _cronJobs=[];
+var _lastRuns={};
 var CRON_PRESETS=[
   {label:'Every 2 min',v:'*/2 * * * *'},
   {label:'Every 5 min',v:'*/5 * * * *'},
@@ -430,20 +470,35 @@ var CRON_PRESETS=[
   {label:'Daily 08:00 IST',v:'30 2 * * *'}
 ];
 
-function cronToText(c){
-  if(!c)return'';
+function cronToHuman(c){
+  if(!c)return'—';
   var m;
-  if((m=c.match(/^\*\/(\d+) \* \* \* \*$/)))return'every '+m[1]+' min';
-  if(/^0 \* \* \* \*$/.test(c))return'hourly';
-  if((m=c.match(/^0 \*\/(\d+) \* \* \*$/)))return'every '+m[1]+'h';
-  if((m=c.match(/^(\d+) (\d+) \* \* \*$/))){var mi=+m[1]+30,h=(+m[2]+5)%24;if(mi>=60){mi-=60;h=(h+1)%24;}return'daily '+String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+' IST';}
-  if(/^(\d+) (\d+) \* \* (\d)$/.test(c))return'weekly';
+  if((m=c.match(/^\*\/(\d+) \* \* \* \*$/)))return'Every '+m[1]+' min';
+  if(/^0 \* \* \* \*$/.test(c))return'Hourly';
+  if((m=c.match(/^0 \*\/(\d+) \* \* \*$/)))return'Every '+m[1]+'h';
+  if((m=c.match(/^(\d+) (\d+) \* \* \*$/))){
+    var mi=+m[1]+30,h=(+m[2]+5)%24;
+    if(mi>=60){mi-=60;h=(h+1)%24;}
+    return'Daily '+String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')+' IST';
+  }
+  if((m=c.match(/^(\d+) (\d+) \* \* (\d)$/))){
+    var days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    var mi2=+m[1]+30,h2=(+m[2]+5)%24;
+    if(mi2>=60){mi2-=60;h2=(h2+1)%24;}
+    return'Weekly '+days[+m[3]]+' '+String(h2).padStart(2,'0')+':'+String(mi2).padStart(2,'0')+' IST';
+  }
+  if((m=c.match(/^(\d+) (\d+) (\d+) \* \*$/))){
+    var mi3=+m[1]+30,h3=(+m[2]+5)%24;
+    if(mi3>=60){mi3-=60;h3=(h3+1)%24;}
+    return'Monthly day '+m[3]+' '+String(h3).padStart(2,'0')+':'+String(mi3).padStart(2,'0')+' IST';
+  }
   return c;
 }
 function fnFromCommand(cmd){var m=(cmd||'').match(/functions\/v1\/([a-zA-Z0-9_-]+)/);return m?m[1]:null;}
 function cronAge(ts){
   if(!ts)return'—';
   var mins=Math.round((Date.now()-new Date(ts).getTime())/60000);
+  if(mins<1)return'just now';
   if(mins<60)return mins+'m ago';
   if(mins<1440)return Math.floor(mins/60)+'h '+(mins%60)+'m ago';
   return Math.floor(mins/1440)+'d ago';
@@ -457,6 +512,7 @@ async function loadCronJobs(){
     if(!r.ok||d.error)throw new Error(d.error||('HTTP '+r.status));
     _cronJobs=d.jobs||[];
     var beats={};(d.heartbeats||[]).forEach(function(b){if(!beats[b.function_name])beats[b.function_name]=b;});
+    _lastRuns={};(d.lastRuns||[]).forEach(function(lr){_lastRuns[lr.jobid]=lr;});
     renderCronTable(_cronJobs,beats);
   }catch(err){
     document.getElementById('cron-table').innerHTML='<div class="loading" style="color:var(--red)">Error: '+err.message
@@ -464,31 +520,78 @@ async function loadCronJobs(){
   }
 }
 
+function buildCronRow(j,beats,presetOpts){
+  var fn=fnFromCommand(j.command);
+  var b=fn?beats[fn]:null;
+  var lr=_lastRuns[j.jobid];
+
+  // Last run: heartbeat (edge fns) → pg_cron run details (SQL jobs) → —
+  var last=b?cronAge(b.synced_at):(lr?cronAge(lr.last_start):'—');
+
+  // Status
+  var statusTxt,statusCls;
+  if(b){
+    statusTxt=b.status==='error'?'error':'ok';
+    statusCls=b.status==='error'?'status-err':'status-ok';
+  } else if(lr){
+    statusTxt=lr.last_status; // 'succeeded'/'failed'
+    statusCls=lr.last_status==='succeeded'?'status-ok':'status-err';
+  } else {
+    statusTxt='no data';statusCls='status-warn';
+  }
+
+  var paused=j.active?'':' <span style="font-size:10px;background:#FEE2E2;color:#B91C1C;padding:1px 6px;border-radius:4px;margin-left:4px">PAUSED</span>';
+  var inId='cron-in-'+j.jobid;
+
+  return '<tr>'
+    +'<td style="font-weight:600">'+j.jobname+paused+'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(fn||'sql')+'</div></td>'
+    +'<td style="font-size:13px;font-weight:500">'+cronToHuman(j.schedule)+'</td>'
+    +'<td><code style="font-size:11px;color:#64748B">'+j.schedule+'</code></td>'
+    +'<td style="font-size:12px;color:var(--muted)">'+last+'</td>'
+    +'<td><span class="status-pill '+statusCls+'">'+statusTxt+'</span></td>'
+    +'<td><div style="display:flex;gap:6px;align-items:center">'
+      +'<input id="'+inId+'" value="'+j.schedule+'" style="width:110px;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:monospace">'
+      +'<select onchange="if(this.value){document.getElementById(\''+inId+'\').value=this.value;}this.selectedIndex=0;" style="width:70px;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px;font-size:11px"><option value="">preset</option>'+presetOpts+'</select>'
+    +'</div></td>'
+    +'<td style="white-space:nowrap">'
+      +'<button class="btn btn-teal" style="padding:5px 12px;font-size:12px" onclick="saveCron('+j.jobid+')">Save</button> '
+      +'<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="toggleCron('+j.jobid+','+(j.active?'false':'true')+')">'+(j.active?'Pause':'Resume')+'</button>'
+    +'</td>'
+    +'</tr>';
+}
+
 function renderCronTable(jobs,beats){
   if(!jobs.length){document.getElementById('cron-table').innerHTML='<div class="loading">No cron jobs found</div>';return;}
   var presetOpts=CRON_PRESETS.map(function(p){return'<option value="'+p.v+'">'+p.label+'</option>';}).join('');
-  var html='<table><thead><tr><th>Job</th><th>Runs</th><th>Last run</th><th>Status</th><th style="width:230px">Change frequency</th><th></th></tr></thead><tbody>';
-  jobs.forEach(function(j){
-    var fn=fnFromCommand(j.command);
-    var b=fn?beats[fn]:null;
-    var last=b?cronAge(b.synced_at):'—';
-    var statusTxt=b?(b.status||'ok'):'no heartbeat';
-    var statusColor=(b&&b.status!=='error')?'var(--green)':'var(--red)';
-    var paused=j.active?'':' <span style="font-size:10px;background:#FEE2E2;color:#B91C1C;padding:1px 6px;border-radius:4px">PAUSED</span>';
-    var inId='cron-in-'+j.jobid;
-    html+='<tr>'
-      +'<td style="font-weight:600">'+j.jobname+paused+'<div style="font-size:11px;color:var(--muted)">'+(fn||'sql')+'</div></td>'
-      +'<td><code style="font-size:12px">'+j.schedule+'</code><div style="font-size:11px;color:var(--muted)">'+cronToText(j.schedule)+'</div></td>'
-      +'<td style="font-size:12px">'+last+'</td>'
-      +'<td style="font-size:12px;color:'+statusColor+';font-weight:600">'+statusTxt+'</td>'
-      +'<td><div style="display:flex;gap:6px;align-items:center">'
-        +'<input id="'+inId+'" value="'+j.schedule+'" style="width:118px;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:monospace">'
-        +'<select onchange="if(this.value){document.getElementById(\''+inId+'\').value=this.value;}this.selectedIndex=0;" style="width:66px;background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px;font-size:11px"><option value="">preset</option>'+presetOpts+'</select>'
-      +'</div></td>'
-      +'<td style="white-space:nowrap"><button class="btn btn-teal" style="padding:5px 12px;font-size:12px" onclick="saveCron('+j.jobid+')">Save</button> '
-        +'<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="toggleCron('+j.jobid+','+(j.active?'false':'true')+')">'+(j.active?'Pause':'Resume')+'</button></td>'
-      +'</tr>';
-  });
+
+  // Split into edge-function jobs and SQL jobs
+  var edgeJobs=jobs.filter(function(j){return fnFromCommand(j.command);});
+  var sqlJobs=jobs.filter(function(j){return!fnFromCommand(j.command);});
+
+  // Sort each group: active first, then alphabetical
+  function sortJobs(list){return list.sort(function(a,b){if(a.active!==b.active)return a.active?-1:1;return a.jobname.localeCompare(b.jobname);});}
+  sortJobs(edgeJobs);sortJobs(sqlJobs);
+
+  var colHdr='<thead><tr>'
+    +'<th>Job</th>'
+    +'<th>Planned Frequency</th>'
+    +'<th>Cron</th>'
+    +'<th>Last Run</th>'
+    +'<th>Status</th>'
+    +'<th style="width:200px">Change Frequency</th>'
+    +'<th></th>'
+    +'</tr></thead>';
+
+  var html='<table>'+colHdr+'<tbody>';
+
+  // Edge functions group
+  html+='<tr class="cron-group-hdr"><td colspan="7">⚡ Edge Functions ('+edgeJobs.length+')</td></tr>';
+  edgeJobs.forEach(function(j){html+=buildCronRow(j,beats,presetOpts);});
+
+  // SQL jobs group
+  html+='<tr class="cron-group-hdr"><td colspan="7">🗄 SQL Jobs ('+sqlJobs.length+') — no heartbeat by design</td></tr>';
+  sqlJobs.forEach(function(j){html+=buildCronRow(j,beats,presetOpts);});
+
   html+='</tbody></table>';
   document.getElementById('cron-table').innerHTML=html;
 }
@@ -497,7 +600,7 @@ async function saveCron(jobid){
   var val=document.getElementById('cron-in-'+jobid).value.trim();
   if(!val){alert('Enter a cron schedule');return;}
   if(val.split(/\s+/).length<5){alert('Cron needs 5 fields: min hour day month weekday');return;}
-  if(!confirm('Change this job to:\n\n'+val+'   ('+cronToText(val)+')\n\nApplies immediately.'))return;
+  if(!confirm('Change this job to:\n\n'+val+'   ('+cronToHuman(val)+')\n\nApplies immediately.'))return;
   try{
     var r=await fetch(CRON_EDGE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+K},body:JSON.stringify({action:'set_schedule',jobid:jobid,schedule:val})});
     var d=await r.json();
