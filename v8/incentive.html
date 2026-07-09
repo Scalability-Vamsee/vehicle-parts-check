@@ -1062,6 +1062,7 @@ async function loadDashboard(){
     if(!weekStats){
       document.querySelectorAll('[id^="kpi-"]').forEach(e=>e.textContent='—');
       document.getElementById('dashboard-subtitle').textContent='No data for this week';
+      const _pn=document.getElementById('payout-nudge'); if(_pn)_pn.textContent='No data for this week yet.';
       return;
     }
 
@@ -2431,6 +2432,7 @@ async function togglePaymentDone(weekStart,done){
 }
 
 /* ── BOOT ── */
+let _dashBooted=false;  // guard: getSession path + onAuthStateChange can both fire on load → boot once
 (async function(){
   // Apply saved language immediately
   setLang(localStorage.getItem('fp_lang') || 'en');
@@ -2453,9 +2455,7 @@ async function togglePaymentDone(weekStart,done){
     window.FP_FEATURES=features;
     applyNavPermissions(features);
     applyRoleView();
-    await populateWeekSelector();
-    loadDashboard();
-    loadLastSyncTime();
+    if(!_dashBooted){_dashBooted=true; await populateWeekSelector(); await loadDashboard(); loadLastSyncTime();}
   }else{
     showAuthScreen();
   }
@@ -2474,10 +2474,9 @@ async function togglePaymentDone(weekStart,done){
       window.FP_FEATURES=features;
       applyNavPermissions(features);
       applyRoleView();
-      await populateWeekSelector();
-      loadDashboard();
-      loadLastSyncTime();
+      if(!_dashBooted){_dashBooted=true; await populateWeekSelector(); await loadDashboard(); loadLastSyncTime();}
     }else if(event==='SIGNED_OUT'){
+      _dashBooted=false;
       K=ANON_KEY;
       CURRENT_SESSION=null;
       window.FP_FEATURES={};
