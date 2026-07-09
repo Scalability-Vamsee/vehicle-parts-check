@@ -18,6 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 /* ── Auth Screen ── */
 #auth-screen{position:fixed;inset:0;z-index:1100;background:linear-gradient(135deg,#1A1A2E 0%,#0f2460 100%);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;}
@@ -345,6 +346,7 @@ body.pinned #hbg{display:none}
       <button class="tab-btn" data-tab="leaderboard" onclick="switchTab('leaderboard')" data-i18n="tabLeaderboard">Leaderboard</button>
       <button class="tab-btn" data-tab="scheme" onclick="switchTab('scheme')" data-i18n="tabHowItWorks">How It Works</button>
       <button class="tab-btn" data-tab="admin" onclick="switchTab('admin')" id="admin-tab" data-feature="incentive-admin" style="display:none" data-i18n="tabAdmin">Admin</button>
+      <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics')" id="analytics-tab" data-feature="incentive-admin" style="display:none">Analytics</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;padding-right:8px;">
       <!-- Week selector — shared by dashboard + leaderboard -->
@@ -756,6 +758,109 @@ body.pinned #hbg{display:none}
       </div>
     </div>
 
+    <!-- Analytics Tab (superadmin/incentive-admin) -->
+    <div id="analytics" class="content-pane">
+      <style>
+        .an-level{margin:18px 0 8px;font-size:.62rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#94a3b8;display:flex;align-items:center;gap:10px}
+        .an-level::after{content:'';flex:1;height:1px;background:var(--border)}
+        .an-level b{color:var(--brand)}
+        .an-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px}
+        .an-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+        .an-tile .v{font-size:1.35rem;font-weight:800;color:#0F172A;line-height:1}
+        .an-tile .l{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;font-weight:700}
+        .an-tile .d{font-size:.62rem;margin-top:3px;font-weight:600;color:var(--muted)}
+        .an-tile .d.up{color:#10B981}.an-tile .d.dn{color:#EF4444}
+        .an-insight{background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:.72rem;line-height:1.7;color:#3730A3;margin-bottom:12px}
+        .an-insight b{color:#0F172A}
+        .an-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:14px}
+        .an-card-title{font-size:.8rem;font-weight:800;color:#0F172A;margin-bottom:12px}
+        .an-wrap{position:relative;width:100%}
+        .an-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+        .an-note{font-size:.6rem;color:#94a3b8;margin-top:8px;font-style:italic;line-height:1.6}
+        .an-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+        @media(max-width:1000px){.an-grid2{grid-template-columns:1fr}.an-tiles{grid-template-columns:repeat(2,1fr)}}
+        .an-fbtn{font-size:.7rem;padding:5px 13px;border-radius:14px;border:1.5px solid var(--border);cursor:pointer;background:#fff;color:var(--muted);font-weight:600;font-family:inherit}
+        .an-fbtn.active{background:#0F172A;color:#fff;border-color:#0F172A}
+        .an-wbtn{font-size:.65rem;padding:4px 10px;border-radius:12px;border:1.5px solid var(--border);cursor:pointer;background:#fff;color:var(--muted);font-weight:500;font-family:inherit}
+        .an-wbtn.active{color:#fff;border-color:transparent;font-weight:600;background:var(--brand)}
+        .an-cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+        .an-cstat{border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center}
+        .an-cstat .v{font-size:1.05rem;font-weight:800}
+        .an-cstat .l{font-size:.58rem;color:var(--muted);margin-top:4px;line-height:1.5}
+      </style>
+
+      <div class="tab-header">
+        <div>
+          <div class="tab-title">Incentive Impact — Analytics</div>
+          <div class="tab-subtitle" id="an-sub">Live · announced Jun 23 (W3 retro-paid) · baseline = pre-announcement full weeks</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="an-city">
+          <button class="an-fbtn active" data-c="Overall" onclick="anSetCity(this)">Overall</button>
+          <button class="an-fbtn" data-c="Bangalore" onclick="anSetCity(this)">Bangalore</button>
+          <button class="an-fbtn" data-c="NCR" onclick="anSetCity(this)">NCR</button>
+          <button class="an-fbtn" data-c="Hyderabad" onclick="anSetCity(this)">Hyderabad</button>
+        </div>
+      </div>
+
+      <div id="an-loading" style="text-align:center;color:var(--muted);padding:40px 0;font-size:.8rem;">Loading analytics…</div>
+      <div id="an-body" style="display:none;">
+
+        <div class="an-level"><b>L0</b> Headline — is overall productivity moving?</div>
+        <div class="an-tiles">
+          <div class="an-tile"><div class="v" id="an-t-jpt">—</div><div class="l" id="an-t-jpt-l">JC / Tech / Day (pooled)</div><div class="d" id="an-t-jpt-d"></div></div>
+          <div class="an-tile"><div class="v" id="an-t-total">—</div><div class="l">Eligible JCs</div><div class="d" id="an-t-total-d"></div></div>
+          <div class="an-tile"><div class="v" id="an-t-earner">—</div><div class="l">Earner Rate (≥51)</div><div class="d" id="an-t-earner-d"></div></div>
+          <div class="an-tile"><div class="v" id="an-t-vr">—</div><div class="l">Void Rate (% billed)</div><div class="d" id="an-t-vr-d"></div></div>
+          <div class="an-tile"><div class="v" id="an-t-pay">—</div><div class="l">Payout</div><div class="d" id="an-t-pay-d"></div></div>
+        </div>
+        <div class="an-insight" id="an-insight"></div>
+
+        <div class="an-card">
+          <div class="an-card-title">JC per Tech per Day — pooled weekly trend (Intrip + EndTrip split · total JCs line)</div>
+          <div class="an-wrap" style="height:300px"><canvas id="an-c0"></canvas></div>
+          <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day. Grey = pre-announcement. Hub JC attribution = technician's dominant hub.</div>
+        </div>
+
+        <div class="an-level"><b>L1</b> Quality — are comebacks under control?</div>
+        <div class="an-card">
+          <div class="an-card-title">Void Rate — % of billed JCs, split by JC type</div>
+          <div class="an-wrap" style="height:260px"><canvas id="an-c1"></canvas></div>
+          <div class="an-note">Bars = voided ÷ all billed. Lines = void rate within type (solid red = Intrip, dashed amber = EndTrip). A week is final only Wednesday of the following week — recent weeks marked * are maturing. Weeks before Jun 8 excluded (void flags under-captured).</div>
+        </div>
+        <div class="an-grid2">
+          <div class="an-card">
+            <div class="an-card-title">Guardrail — void: earners vs non-earners</div>
+            <div class="an-wrap" style="height:220px"><canvas id="an-c2"></canvas></div>
+            <div class="an-note">If earners void more than non-earners, volume is being gamed.</div>
+          </div>
+          <div class="an-card">
+            <div class="an-card-title">Cohort — same techs, before vs after announcement (all cities)</div>
+            <div class="an-cgrid" id="an-cohort"></div>
+            <div class="an-note">Techs active pre-announcement tracked into live full weeks — removes new-joiner dilution.</div>
+          </div>
+        </div>
+
+        <div class="an-level"><b>L2</b> Where — city and hub</div>
+        <div class="an-card">
+          <div class="an-card-title">JC/tech/day by city</div>
+          <div class="an-wrap" style="height:230px"><canvas id="an-c3"></canvas></div>
+        </div>
+        <div class="an-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div class="an-card-title" style="margin:0">Hub breakdown — <span id="an-c4-label"></span> (3-week comparison)</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap" id="an-pills"></div>
+          </div>
+          <div class="an-wrap" style="height:250px"><canvas id="an-c4"></canvas></div>
+          <div class="an-note">Red dots (right axis) = selected-week void % of billed. Sorted by selected-week JC/tech desc. Follows city filter.</div>
+        </div>
+
+      </div>
+      <div id="an-att-warn" style="display:none;margin-top:8px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;font-size:.7rem;color:#92400E;">
+        ⚠️ Attendance table (<b>hub_productivity_daily</b>) is not readable with this login — JC/tech/day sections show volume only.
+        Fix: run in Supabase SQL editor: <code>CREATE POLICY "auth read" ON hub_productivity_daily FOR SELECT TO authenticated USING (true);</code>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -869,6 +974,7 @@ function switchTab(tab){
   document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
   if(tab==='leaderboard')renderLeaderboard();
   if(tab==='admin')loadAdminData();
+  if(tab==='analytics'&&typeof loadAnalytics==='function')loadAnalytics();
 }
 
 /* ── DATA LOADING ── */
@@ -1892,6 +1998,8 @@ function applyRoleView(){
   const isAdmin=fpCan('incentive-admin');
   const el=document.getElementById('admin-tab');
   if(el)el.style.display=isAdmin?'block':'none';
+  const anEl=document.getElementById('analytics-tab');
+  if(anEl)anEl.style.display=isAdmin?'block':'none';
   if(isAdmin){
     populateAdminTechDropdown();
   }
@@ -2407,6 +2515,405 @@ async function togglePaymentDone(weekStart,done){
   </div>
 </div>
 
+<script>
+/* ══════════ ANALYTICS TAB (live, incentive-admin gated) ══════════ */
+const AN_START='2026-06-01';          // analysis window start
+const AN_ANNOUNCE_WEEK='2026-06-22';  // incentive announced Jun 23 (W3 Jun 15–21 retro-paid)
+const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
+const AN_QUALITY_FROM='2026-06-08';   // void flags under-captured before this
+const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
+const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal'};
+
+let anLoaded=false, anCity='Overall', anSelWeek=null;
+let anRows=[], anAtt=null, anWeeks=[], anCohort=null;
+let anCh=[null,null,null,null,null];
+
+function anNormHub(s){
+  const k=String(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  return AN_HUB_ALIAS[k]||k;
+}
+async function anFetchAll(table, select, gteCol, gteVal){
+  const out=[];
+  for(let p=0;p<20;p++){
+    let q=sbClient.from(table).select(select).range(p*1000,p*1000+999);
+    if(gteCol)q=q.gte(gteCol,gteVal);
+    const{data,error}=await q;
+    if(error)throw error;
+    out.push(...(data||[]));
+    if(!data||data.length<1000)break;
+  }
+  return out;
+}
+
+async function loadAnalytics(){
+  if(anLoaded){return;}
+  try{
+    anRows=(await anFetchAll('incentive_weekly_stats',
+      'tech_name,week_start,total_jcs,intrip_jcs,submission_jcs,voided_jcs,eligible_jcs,payout_amount,intrip_void_rate,submission_void_rate,hub_name,city',
+      'week_start',AN_START)).filter(r=>!AN_EXCLUDE.has(r.tech_name));
+    anRows.forEach(r=>{
+      r.iv=Math.round((+r.intrip_void_rate||0)*r.intrip_jcs);
+      r.sv=Math.round((+r.submission_void_rate||0)*r.submission_jcs);
+      r.hubKey=anNormHub(r.hub_name);
+    });
+
+    // attendance — adaptive column detection, graceful fallback
+    anAtt=null;
+    try{
+      const att=await anFetchAll('hub_productivity_daily','*',null,null);
+      if(att.length){
+        const keys=Object.keys(att[0]);
+        const dk=keys.find(k=>/^date$|_date$|^day$|^work_date$/i.test(k))||keys.find(k=>/date/i.test(k));
+        const hk=keys.find(k=>/hub/i.test(k));
+        const tk=keys.find(k=>/tech/i.test(k)&&typeof att[0][k]!=='string')||keys.find(k=>/tech|present|attend/i.test(k));
+        if(dk&&hk&&tk){
+          anAtt={};
+          att.forEach(r=>{
+            const d=String(r[dk]).slice(0,10);
+            if(d<AN_START)return;
+            const w=formatDate(getWeekStart(new Date(d)));
+            const key=anNormHub(r[hk])+'|'+w;
+            const t=+r[tk]||0;
+            if(!anAtt[key])anAtt[key]={td:0,days:0};
+            anAtt[key].td+=t; anAtt[key].days++;
+          });
+        }else{console.warn('[AN] attendance columns not recognised',keys);}
+      }
+    }catch(e){console.warn('[AN] attendance not readable',e?.message||e);}
+    document.getElementById('an-att-warn').style.display=anAtt?'none':'block';
+
+    // dynamic week list
+    const today=new Date();
+    anWeeks=[...new Set(anRows.map(r=>r.week_start))].sort().map((w,i)=>{
+      const ws=new Date(w+'T00:00:00');
+      const elapsed=Math.floor((today-ws)/86400000)+1;
+      return {w, short:'W'+(i+1), label:formatDateRange(ws),
+        days:Math.max(1,Math.min(7,elapsed)),
+        post:w>=AN_ANNOUNCE_WEEK,
+        mature:elapsed>=10};
+    });
+    const fulls=anWeeks.filter(m=>m.days===7);
+    anSelWeek=(fulls.length?fulls[fulls.length-1]:anWeeks[anWeeks.length-1]).w;
+    anCohort=anComputeCohort();
+    anLoaded=true;
+    document.getElementById('an-loading').style.display='none';
+    document.getElementById('an-body').style.display='block';
+    anRenderAll();
+  }catch(e){
+    console.error('[AN] load failed',e);
+    document.getElementById('an-loading').textContent='Failed to load analytics: '+(e?.message||e);
+  }
+}
+
+/* ── aggregates ── */
+function anRowsFor(w){return anRows.filter(r=>r.week_start===w&&(anCity==='Overall'||r.city===anCity));}
+function anPct(sv,p){if(!sv.length)return null;const k=(sv.length-1)*p,f=Math.floor(k),c=Math.min(f+1,sv.length-1);return sv[f]+(sv[c]-sv[f])*(k-f);}
+function anDist(w){
+  const wr=anRowsFor(w);
+  const el=wr.map(r=>r.eligible_jcs).sort((a,b)=>a-b);
+  const earn=wr.filter(r=>r.eligible_jcs>=51), non=wr.filter(r=>r.eligible_jcs<51);
+  const sum=(g,k)=>g.reduce((s,r)=>s+(+r[k]||0),0);
+  const billed=sum(wr,'total_jcs'), voids=sum(wr,'voided_jcs');
+  const ti=sum(wr,'intrip_jcs'), ts=sum(wr,'submission_jcs');
+  return {techs:wr.length,
+    median:el.length?anPct(el,.5):null, p75:el.length?anPct(el,.75):null,
+    earners:earn.length, earnerRate:wr.length?+(100*earn.length/wr.length).toFixed(1):0,
+    totalEligible:sum(wr,'eligible_jcs'), payout:Math.round(sum(wr,'payout_amount')),
+    billed, voids,
+    vrAll:billed?+(100*voids/billed).toFixed(1):null,
+    vrIntrip:ti?+(100*sum(wr,'iv')/ti).toFixed(1):null,
+    vrEnd:ts?+(100*sum(wr,'sv')/ts).toFixed(1):null,
+    vrEarn:sum(earn,'total_jcs')?+(100*sum(earn,'voided_jcs')/sum(earn,'total_jcs')).toFixed(1):null,
+    vrNon:sum(non,'total_jcs')?+(100*sum(non,'voided_jcs')/sum(non,'total_jcs')).toFixed(1):null};
+}
+// pooled jpt: hub JC totals (dominant-hub attribution) ÷ attendance tech-days, matched hubs only
+function anPooled(w, cityF){
+  const f=cityF||(anCity==='Overall'?null:anCity);
+  if(!anAtt)return null;
+  const wr=anRows.filter(r=>r.week_start===w&&(!f||r.city===f));
+  const byHub={};
+  wr.forEach(r=>{
+    if(!byHub[r.hubKey])byHub[r.hubKey]={jcs:0,intrip:0};
+    byHub[r.hubKey].jcs+=r.total_jcs; byHub[r.hubKey].intrip+=r.intrip_jcs;
+  });
+  let jcs=0,intrip=0,td=0,days=0;
+  Object.keys(byHub).forEach(h=>{
+    const a=anAtt[h+'|'+w];
+    if(a&&a.td>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;td+=a.td;days=Math.max(days,a.days);}
+  });
+  if(!td)return null;
+  const jpt=jcs/td;
+  return {jpt:+jpt.toFixed(2), ji:+(jpt*intrip/jcs).toFixed(2), je:+(jpt*(1-intrip/jcs)).toFixed(2),
+    shi:Math.round(100*intrip/jcs), she:Math.round(100*(1-intrip/jcs)),
+    td, avgDay:td/Math.max(days,1), jcs, intrip,
+    total:wr.reduce((s,r)=>s+r.total_jcs,0)};
+}
+function anBaseWeeks(){return anWeeks.filter(m=>m.days===7&&m.w<AN_ANNOUNCE_WEEK);}
+function anBaseJpt(){
+  const v=anBaseWeeks().map(m=>anPooled(m.w)?.jpt).filter(x=>x!=null);
+  return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):null;
+}
+function anBaseDist(key){
+  const v=anBaseWeeks().map(m=>anDist(m.w)[key]).filter(x=>x!=null);
+  return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;
+}
+function anComputeCohort(){
+  const by={};
+  anRows.forEach(r=>{(by[r.tech_name]=by[r.tech_name]||{})[r.week_start]=r.eligible_jcs;});
+  const baseW=anWeeks.filter(m=>m.days===7&&m.w<AN_ANNOUNCE_WEEK).map(m=>m.w);
+  const postW=anWeeks.filter(m=>m.days===7&&m.w>=AN_ANNOUNCE_WEEK).map(m=>m.w);
+  if(!baseW.length||!postW.length)return null;
+  let bv=[],pv=[],g=0,l=0,fl=0,drop=0,baseEarn=0,sust=0;
+  const newT=[];
+  Object.keys(by).forEach(t=>{
+    const b=baseW.filter(w=>by[t][w]!=null).map(w=>by[t][w]);
+    const p=postW.filter(w=>by[t][w]!=null).map(w=>by[t][w]);
+    if(b.length){
+      const ba=b.reduce((a,x)=>a+x,0)/b.length;
+      if(!p.length){drop++;return;}
+      const pa=p.reduce((a,x)=>a+x,0)/p.length;
+      bv.push(ba);pv.push(pa);
+      if(pa>ba+2)g++;else if(pa<ba-2)l++;else fl++;
+      if(ba>=51){baseEarn++;if(pa>=51)sust++;}
+    }else if(p.length){newT.push(p.reduce((a,x)=>a+x,0)/p.length);}
+  });
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+  return {n:bv.length,drop,bAvg:avg(bv),pAvg:avg(pv),g,l,fl,baseEarn,sust,
+    newN:newT.length,newAvg:avg(newT),newEarn:newT.filter(v=>v>=51).length};
+}
+
+/* ── markers plugin (dynamic week positions) ── */
+function anMarkers(weeks){
+  return {id:'anMk',afterDatasetsDraw(c){
+    const x=c.scales.x;if(!x)return;
+    const ctx=c.ctx;ctx.save();
+    const draw=(px,color,fill,txt,dy)=>{
+      ctx.strokeStyle=color;ctx.setLineDash([4,4]);ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(px,c.chartArea.top);ctx.lineTo(px,c.chartArea.bottom);ctx.stroke();
+      ctx.setLineDash([]);ctx.font='bold 9px sans-serif';ctx.fillStyle=fill;ctx.textAlign='left';
+      ctx.fillText(txt,px+4,c.chartArea.top+dy);};
+    const iA=weeks.findIndex(m=>m.w===AN_ANNOUNCE_WEEK);
+    if(iA>0){const gap=x.getPixelForValue(iA)-x.getPixelForValue(iA-1);
+      draw(x.getPixelForValue(iA)-gap*0.29,'#f59e0b','#b45309','★ live Jun 23',11);}
+    const iP=weeks.findIndex(m=>m.w===AN_PAYOUT_WEEK);
+    if(iP>=0){const gap=(iP+1<weeks.length?x.getPixelForValue(iP+1)-x.getPixelForValue(iP):(iP>0?x.getPixelForValue(iP)-x.getPixelForValue(iP-1):40));
+      draw(x.getPixelForValue(iP)+gap*0.29,'#10b981','#047857','₹ 1st payout Jul 4',24);}
+    ctx.restore();
+  }};
+}
+
+/* ── render ── */
+function anSetCity(btn){
+  document.querySelectorAll('#an-city .an-fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');anCity=btn.dataset.c;anRenderAll();
+}
+function anSetWeek(w){anSelWeek=w;anRenderPills();anChart4();}
+function anRenderPills(){
+  document.getElementById('an-pills').innerHTML=anWeeks.map(m=>
+    `<button class="an-wbtn ${m.w===anSelWeek?'active':''}" onclick="anSetWeek('${m.w}')">${m.short}${m.days<7?'*':''}</button>`).join('');
+}
+function anRenderAll(){
+  anTiles();anRenderPills();anChart0();anChart1();anChart2();anCohortCard();anChart3();anChart4();
+}
+
+function anTiles(){
+  const fulls=anWeeks.filter(m=>m.days===7);
+  const cur=fulls.length?fulls[fulls.length-1]:anWeeks[anWeeks.length-1];
+  const d=anDist(cur.w), pj=anPooled(cur.w);
+  const bJ=anBaseJpt(), bTE=anBaseDist('totalEligible'), bER=anBaseDist('earnerRate');
+  const set=(id,v)=>document.getElementById(id).textContent=v;
+  const setD=(id,t,cls)=>{const e=document.getElementById(id);e.textContent=t;e.className='d '+(cls||'');};
+  set('an-t-jpt',pj?pj.jpt.toFixed(2):'—');
+  document.getElementById('an-t-jpt-l').textContent=`JC/Tech/Day (${cur.short} pooled)`;
+  if(pj&&bJ!=null){const dj=+(pj.jpt-bJ).toFixed(2);
+    setD('an-t-jpt-d',`${dj>0?'+':''}${dj} vs baseline ${bJ} (${dj>0?'+':''}${Math.round(100*dj/bJ)}%)`,dj>0?'up':'dn');}
+  else setD('an-t-jpt-d',anAtt?'no baseline attendance':'attendance not readable','');
+  set('an-t-total',d.totalEligible.toLocaleString());
+  if(bTE!=null){const p=Math.round(100*(d.totalEligible-bTE)/bTE);
+    setD('an-t-total-d',`${p>0?'+':''}${p}% vs baseline ${Math.round(bTE).toLocaleString()}`,p>=0?'up':'dn');}
+  set('an-t-earner',d.earnerRate+'%');
+  if(bER!=null)setD('an-t-earner-d',`${(d.earnerRate-bER).toFixed(1)}pp vs baseline ${bER}%`,d.earnerRate>=bER?'up':'dn');
+  set('an-t-vr',(d.vrAll??'—')+'%');
+  document.getElementById('an-t-vr').style.color=d.vrAll>8?'#EF4444':d.vrAll>5?'#F59E0B':'#10B981';
+  setD('an-t-vr-d',d.vrEarn!=null?`Earners ${d.vrEarn}% · Non ${d.vrNon}%`:'','');
+  set('an-t-pay','₹'+d.payout.toLocaleString());
+  const incJC=(pj&&bJ!=null)?(pj.jpt-bJ)*pj.td:null;
+  setD('an-t-pay-d',incJC>0?`₹${Math.round(d.payout/incJC)}/incremental JC (ΔJPT×${Math.round(pj.td)} tech-days≈${Math.round(incJC)})`:'no productivity lift vs baseline','');
+  // insight
+  let txt=`<b>Read — ${anCity} (${cur.short} vs pre-announcement baseline):</b> `;
+  if(pj&&bJ!=null)txt+=`JC/tech/day <b>${pj.jpt.toFixed(2)}</b> vs ${bJ}. `;
+  txt+=`Median <b>${d.median??'—'}</b> eligible JCs/tech, ${d.techs} active techs. `;
+  if(d.vrEarn!=null)txt+=`Quality: earners void <b>${d.vrEarn}%</b> vs non-earners ${d.vrNon}%. `;
+  if(!cur.mature)txt+=`${cur.short} voids still maturing (final Wed after week end). `;
+  document.getElementById('an-insight').innerHTML=txt;
+}
+
+function anChart0(){
+  const wk=anWeeks.map(m=>anPooled(m.w));
+  const totals=anWeeks.map((m,i)=>{
+    const wr=anRowsFor(m.w);return wr.reduce((s,r)=>s+r.total_jcs,0)||null;});
+  const bJ=anBaseJpt();
+  const last=anWeeks.length-1;
+  const proj=(anWeeks[last]&&anWeeks[last].days<7&&wk[last])?Math.round(wk[last].jpt*wk[last].avgDay*7):null;
+  const cI=anWeeks.map(m=>!m.post?'#64748b':(m.days<7?'#a5b4fc':'#6366f1'));
+  const cE=anWeeks.map(m=>!m.post?'#cbd5e1':(m.days<7?'#e0e7ff':'#c7d2fe'));
+  const lbl={id:'anL0',afterDatasetsDraw(c){
+    const ctx=c.ctx,y=c.scales.y;
+    if(bJ!=null){const yp=y.getPixelForValue(bJ);ctx.save();
+      ctx.strokeStyle='#64748b';ctx.setLineDash([6,4]);ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(c.chartArea.left,yp);ctx.lineTo(c.chartArea.right,yp);ctx.stroke();
+      ctx.setLineDash([]);ctx.font='bold 10px sans-serif';ctx.fillStyle='#475569';ctx.textAlign='left';
+      ctx.fillText('baseline: '+bJ,c.chartArea.left+5,yp-6);ctx.restore();}
+    ctx.save();
+    if(proj!=null){const y2=c.scales.y2;
+      ctx.font='italic bold 10px sans-serif';ctx.fillStyle='#64748b';ctx.textAlign='center';
+      ctx.fillText('~'+proj.toLocaleString()+' proj.',c.scales.x.getPixelForValue(last),y2.getPixelForValue(proj)-9);}
+    const m0=c.getDatasetMeta(0),m1=c.getDatasetMeta(1);
+    wk.forEach((d,i)=>{
+      if(!d)return;
+      const top=m1.data[i];
+      ctx.font='bold 12px sans-serif';ctx.fillStyle='#1e293b';ctx.textAlign='center';
+      ctx.fillText(d.jpt.toFixed(2)+(anWeeks[i].days<7?'*':''),top.x,top.y-7);
+      const b0=m0.data[i];if(Math.abs(b0.base-b0.y)>18){ctx.font='bold 10px sans-serif';ctx.fillStyle='#fff';
+        ctx.fillText(d.shi+'%',b0.x,(b0.base+b0.y)/2+3);}
+      const b1=m1.data[i];if(Math.abs(b1.base-b1.y)>18){ctx.fillStyle='#475569';
+        ctx.fillText(d.she+'%',b1.x,(b1.base+b1.y)/2+3);}
+    });
+    ctx.restore();
+  }};
+  if(anCh[0])anCh[0].destroy();
+  anCh[0]=new Chart(document.getElementById('an-c0'),{type:'bar',
+    data:{labels:anWeeks.map((m,i)=>[`${m.short}: ${m.label}${m.days<7?' *':''}`,
+        wk[i]?`${Math.round(wk[i].td)} td · ${wk[i].avgDay.toFixed(0)}/day`:'no attendance data']),
+      datasets:[
+      {label:'Intrip',data:wk.map(d=>d?d.ji:null),backgroundColor:cI,stack:'s',borderRadius:3,maxBarThickness:90,order:2},
+      {label:'EndTrip (OOS)',data:wk.map(d=>d?d.je:null),backgroundColor:cE,stack:'s',borderRadius:3,maxBarThickness:90,order:2},
+      {label:'Total JCs billed',data:totals,type:'line',yAxisID:'y2',borderColor:'#0f172a',borderWidth:2,pointRadius:3,pointBackgroundColor:'#0f172a',tension:.25,order:1},
+      {label:'Projected',data:anWeeks.map((m,i)=>i===last-1?totals[last-1]:i===last?proj:null),type:'line',yAxisID:'y2',
+       borderColor:'#64748b',borderDash:[4,4],borderWidth:2,pointRadius:3,pointStyle:'rectRot',pointBackgroundColor:'#64748b',tension:0,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>{
+          const d=wk[c.dataIndex];
+          if(c.datasetIndex===3)return c.dataIndex===last?` Projected full week: ~${c.raw?.toLocaleString()} JCs (jpt × avg techs/day × 7)`:null;
+          if(c.datasetIndex===2)return ` Total JCs billed: ${c.raw==null?'—':c.raw.toLocaleString()}${anWeeks[c.dataIndex].days<7?' ('+anWeeks[c.dataIndex].days+' days so far)':''}`;
+          if(!d)return ' no attendance data';
+          if(c.datasetIndex===0)return ` Intrip: ${d.ji} JC/tech/day · ${d.shi}% (${d.intrip.toLocaleString()} JCs)`;
+          return ` EndTrip: ${d.je} JC/tech/day · ${d.she}% (${(d.jcs-d.intrip).toLocaleString()} JCs)`;
+        }}}},
+      scales:{y:{stacked:true,title:{display:true,text:'JC / tech / day (pooled)',font:{size:10}},beginAtZero:true,suggestedMax:8.5},
+        y2:{position:'right',title:{display:true,text:'Total JCs billed',font:{size:10}},beginAtZero:true,grid:{drawOnChartArea:false},ticks:{font:{size:9.5}}},
+        x:{stacked:true,ticks:{font:{size:10}}}}},
+    plugins:[anMarkers(anWeeks),lbl]});
+}
+
+function anChart1(){
+  const QW=anWeeks.filter(m=>m.w>=AN_QUALITY_FROM);
+  const q=QW.map(m=>({...anDist(m.w),m}));
+  const lbl={id:'anLQ',afterDatasetsDraw(c){
+    const ctx=c.ctx;ctx.save();
+    c.getDatasetMeta(0).data.forEach((bar,i)=>{
+      if(q[i].vrAll==null)return;
+      ctx.font='bold 11px sans-serif';ctx.fillStyle='#991b1b';ctx.textAlign='center';
+      ctx.fillText(q[i].vrAll.toFixed(1)+'%'+(q[i].m.mature?'':'*'),bar.x,bar.y-7);});
+    ctx.restore();}};
+  if(anCh[1])anCh[1].destroy();
+  anCh[1]=new Chart(document.getElementById('an-c1'),{type:'bar',
+    data:{labels:QW.map(m=>m.short),datasets:[
+      {label:'Void % of billed',data:q.map(r=>r.vrAll),backgroundColor:QW.map(m=>m.mature?'#fca5a5':'#fecaca'),borderRadius:4,maxBarThickness:80,order:3},
+      {label:'Intrip void rate',data:q.map(r=>r.vrIntrip),type:'line',borderColor:'#dc2626',backgroundColor:'#dc2626',borderWidth:2.5,pointRadius:3,tension:.25,order:1},
+      {label:'EndTrip void rate',data:q.map(r=>r.vrEnd),type:'line',borderColor:'#f59e0b',backgroundColor:'#f59e0b',borderDash:[6,3],borderWidth:2.5,pointRadius:3,tension:.25,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>{
+          const r=q[c.dataIndex];
+          if(c.datasetIndex===0)return ` Void: ${r.vrAll}% (${r.voids} of ${r.billed.toLocaleString()} billed)`;
+          return ` ${c.dataset.label}: ${c.raw==null?'—':c.raw+'%'}`;}}}},
+      scales:{y:{title:{display:true,text:'Void % of billed JCs',font:{size:10}},beginAtZero:true,suggestedMax:12,ticks:{callback:v=>v+'%'}}}},
+    plugins:[anMarkers(QW),lbl]});
+}
+
+function anChart2(){
+  const QW=anWeeks.filter(m=>m.w>=AN_QUALITY_FROM);
+  const q=QW.map(m=>anDist(m.w));
+  if(anCh[2])anCh[2].destroy();
+  anCh[2]=new Chart(document.getElementById('an-c2'),{type:'bar',
+    data:{labels:QW.map(m=>m.short),datasets:[
+      {label:'Earners (≥51)',data:q.map(r=>r.vrEarn),backgroundColor:'#10b981',borderRadius:4},
+      {label:'Non-earners',data:q.map(r=>r.vrNon),backgroundColor:'#f87171',borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw==null?'—':c.raw+'%'}`}}},
+      scales:{y:{title:{display:true,text:'Void % of billed',font:{size:10}},beginAtZero:true,ticks:{callback:v=>v+'%'}}}},
+    plugins:[anMarkers(QW)]});
+}
+
+function anCohortCard(){
+  const el=document.getElementById('an-cohort');
+  if(!anCohort){el.innerHTML='<div class="an-note">Not enough full weeks yet.</div>';return;}
+  const c=anCohort, pc=Math.round(100*(c.pAvg-c.bAvg)/c.bAvg);
+  el.innerHTML=
+    `<div class="an-cstat"><div class="v" style="color:${pc<0?'#EF4444':'#10B981'}">${c.bAvg.toFixed(1)} → ${c.pAvg.toFixed(1)}</div><div class="l">Avg weekly eligible JCs (${pc>0?'+':''}${pc}%)</div></div>`+
+    `<div class="an-cstat"><div class="v"><span style="color:#EF4444">${c.l}</span> / <span style="color:#10B981">${c.g}</span></div><div class="l">Declined vs improved (${c.fl} flat, ${c.drop} dropped)</div></div>`+
+    `<div class="an-cstat"><div class="v" style="color:${c.sust<c.baseEarn?'#EF4444':'#10B981'}">${c.baseEarn} → ${c.sust}</div><div class="l">Baseline earners still ≥51</div></div>`+
+    `<div class="an-cstat"><div class="v" style="color:#F59E0B">${c.newN} · ${c.newEarn}</div><div class="l">New techs · earning (avg ${c.newAvg.toFixed(0)} JCs/wk)</div></div>`;
+}
+
+function anChart3(){
+  const cities=[['Bangalore','#6366f1'],['NCR','#f59e0b'],['Hyderabad','#10b981']];
+  if(anCh[3])anCh[3].destroy();
+  anCh[3]=new Chart(document.getElementById('an-c3'),{type:'line',
+    data:{labels:anWeeks.map(m=>m.short),datasets:cities.map(([cy,col])=>(
+      {label:cy,data:anWeeks.map(m=>anPooled(m.w,cy)?.jpt??null),borderColor:col,backgroundColor:col,borderWidth:2.5,pointRadius:3.5,tension:.25,spanGaps:false}))},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw??'no attendance data'}`}}},
+      scales:{y:{title:{display:true,text:'JC / tech / day (pooled)',font:{size:10}},beginAtZero:true}}},
+    plugins:[anMarkers(anWeeks)]});
+}
+
+function anChart4(){
+  const f=anCity==='Overall'?null:anCity;
+  const wi=anWeeks.findIndex(m=>m.w===anSelWeek);
+  const shown=anWeeks.slice(Math.max(0,wi-2),wi+1);
+  const hubAgg={};
+  shown.forEach(m=>{
+    anRows.filter(r=>r.week_start===m.w&&(!f||r.city===f)).forEach(r=>{
+      const k=r.hub_name;
+      if(!hubAgg[k])hubAgg[k]={};
+      if(!hubAgg[k][m.w])hubAgg[k][m.w]={jcs:0,voids:0,hubKey:r.hubKey};
+      hubAgg[k][m.w].jcs+=r.total_jcs;hubAgg[k][m.w].voids+=r.voided_jcs;});
+  });
+  const jptOf=(h,w)=>{
+    const a=hubAgg[h]?.[w];if(!a)return null;
+    const att=anAtt?.[a.hubKey+'|'+w];
+    return att&&att.td>0?+(a.jcs/att.td).toFixed(2):null;};
+  const hubs=Object.keys(hubAgg).sort((a,b)=>(jptOf(b,anSelWeek)||0)-(jptOf(a,anSelWeek)||0));
+  const COLS=['#6366f1','#0ea5e9','#f59e0b','#10b981','#ec4899','#8b5cf6'];
+  const datasets=shown.map((m,i)=>{
+    const isSel=m.w===anSelWeek;
+    return {label:m.short+(isSel?' (selected)':''),
+      data:hubs.map(h=>jptOf(h,m.w)),
+      backgroundColor:COLS[anWeeks.findIndex(x=>x.w===m.w)%6]+(isSel?'ff':i===shown.length-2?'99':'55'),borderRadius:3};});
+  datasets.push({label:'Void % (selected)',type:'line',showLine:false,yAxisID:'y2',
+    data:hubs.map(h=>{const a=hubAgg[h]?.[anSelWeek];return a&&a.jcs?+(100*a.voids/a.jcs).toFixed(1):null;}),
+    pointRadius:4,pointBackgroundColor:'#ef4444',borderColor:'#ef4444'});
+  if(anCh[4])anCh[4].destroy();
+  anCh[4]=new Chart(document.getElementById('an-c4'),{type:'bar',
+    data:{labels:hubs,datasets},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y2'?` Void: ${c.raw==null?'—':c.raw+'%'}`:` ${c.dataset.label}: ${c.raw??'no attendance data'}`}}},
+      scales:{x:{ticks:{font:{size:10}}},
+        y:{title:{display:true,text:'JC / tech / day',font:{size:10}},beginAtZero:true},
+        y2:{position:'right',title:{display:true,text:'Void %',color:'#ef4444',font:{size:10}},min:0,max:20,ticks:{color:'#ef4444',callback:v=>v+'%'},grid:{drawOnChartArea:false}}}}});
+  const selMeta=anWeeks[wi];
+  document.getElementById('an-c4-label').textContent=`${selMeta.short}: ${selMeta.label}`+(f?` · ${f}`:'');
+}
+</script>
 <script src="./sidebar.js"></script>
 <script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/v8/incentive-sw.js');}</script>
 </body>
