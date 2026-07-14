@@ -376,6 +376,10 @@ body.pinned #main{margin-left:var(--sb-width)}
       <div id="sync-time" style="text-align:center;color:rgba(255,255,255,.3);font-size:.68rem;margin-top:10px;display:none">
         Parts data as of: <span id="sync-time-val">—</span><span id="parts-next-run" style="display:none"> · Next run: <span id="parts-next-run-val">—</span></span>
       </div>
+      <div id="jc-sync-bar" style="text-align:center;color:rgba(255,255,255,.3);font-size:.68rem;margin-top:5px;display:none">
+        📋 JC History as of: <span id="jc-sync-time-val" style="color:rgba(255,255,255,.55);font-weight:500">—</span><span id="jc-next-run-wrap" style="display:none"> · Next run: <span id="jc-next-run-val" style="color:rgba(255,255,255,.55);font-weight:500">—</span></span>
+        <button id="jc-global-sync-btn" onclick="syncAllJC(this)" style="margin-left:8px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;padding:2px 9px;font-size:.64rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;vertical-align:middle">↺ Sync All</button>
+      </div>
     </div>
   </section>
 
@@ -405,14 +409,6 @@ body.pinned #main{margin-left:var(--sb-width)}
         </select>
         <button class="jc-filter-clear" onclick="clearResFilters()">✕ Clear</button>
         <span id="filter-count" style="font-size:.72rem;color:var(--muted);margin-left:auto;white-space:nowrap"></span>
-      </div>
-    </div>
-    <div id="jc-sync-bar" style="display:none;background:#fff;border-radius:12px;padding:9px 14px;margin-top:10px;border:1px solid var(--border);box-shadow:var(--shadow)">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.72rem;color:var(--muted)">
-        <span style="font-weight:600;color:#374151">📋 JC History</span>
-        <span>Data as of: <span id="jc-sync-time-val" style="font-weight:500;color:var(--text)">—</span></span>
-        <span id="jc-next-run-wrap" style="display:none">· Next run: <span id="jc-next-run-val" style="font-weight:500;color:var(--text)">—</span></span>
-        <button id="jc-global-sync-btn" onclick="syncAllJC(this)" style="margin-left:auto;background:#374151;color:#fff;border:none;border-radius:7px;padding:4px 11px;font-size:.7rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">↺ Sync All</button>
       </div>
     </div>
     <div id="res"></div>
