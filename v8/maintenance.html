@@ -866,7 +866,7 @@ function renderJCRows(section,rows){
   if(!filtered.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">No matching entries</td></tr>';return;}
   tbody.innerHTML=filtered.map(function(r){
     var tc=jcTagCls(r);
-    return '<tr>'+'<td class="jc-no">'+(r.jc_no||'--')+'</td>'+'<td>'+fd(r.jc_date)+'</td>'+'<td>'+(r.hub_name||'--')+'</td>'+'<td>'+(r.bike_odo!=null?fm(r.bike_odo):'--')+'</td>'+'<td>'+(r.service_type||'--')+'</td>'+'<td><span class="jc-tag '+tc+'">'+(r.line_type||'--')+'</span></td>'+'<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;cursor:default" title="'+(r.item_name||'')+'">'+(r.item_name||'--')+'</td>'+'<td>'+(r.qty!=null?r.qty:'--')+'</td>'+'<td class="jc-amt">'+(r.amount!=null?'₹'+fm(r.amount):'--')+'</td>'+'<td>'+(r.technician_name||'--')+'</td>'+'</tr>';
+    return '<tr>'+'<td class="jc-no">'+(r.jc_no||'--')+'</td>'+'<td>'+fd(r.jc_date)+'</td>'+'<td>'+(r.hub_name||'--')+'</td>'+'<td>'+(r.bike_odo!=null?fm(r.bike_odo):'--')+'</td>'+'<td>'+(r.service_type||'--')+'</td>'+'<td><span class="jc-tag '+tc+'">'+(r.line_type||'--')+'</span></td>'+'<td style="white-space:normal;min-width:150px;max-width:240px;line-height:1.35;cursor:default" title="'+(r.item_name||'')+'">'+(r.item_name||'--')+'</td>'+'<td>'+(r.qty!=null?r.qty:'--')+'</td>'+'<td class="jc-amt">'+(r.amount!=null?'₹'+fm(r.amount):'--')+'</td>'+'<td>'+(r.technician_name||'--')+'</td>'+'</tr>';
   }).join('');
 }
 function buildJCSection(section,rows,bikeId,reg){
