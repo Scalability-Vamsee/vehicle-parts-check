@@ -374,7 +374,7 @@ body.pinned #main{margin-left:var(--sb-width)}
         <span class="ex" data-reg="DL9EV7460">DL9EV7460</span>
       </div>
       <div id="sync-time" style="text-align:center;color:rgba(255,255,255,.3);font-size:.68rem;margin-top:10px;display:none">
-        Last synced: <span id="sync-time-val">—</span>
+        Parts data as of: <span id="sync-time-val">—</span><span id="parts-next-run" style="display:none"> · Next run: <span id="parts-next-run-val">—</span></span>
       </div>
     </div>
   </section>
@@ -405,6 +405,14 @@ body.pinned #main{margin-left:var(--sb-width)}
         </select>
         <button class="jc-filter-clear" onclick="clearResFilters()">✕ Clear</button>
         <span id="filter-count" style="font-size:.72rem;color:var(--muted);margin-left:auto;white-space:nowrap"></span>
+      </div>
+    </div>
+    <div id="jc-sync-bar" style="display:none;background:#fff;border-radius:12px;padding:9px 14px;margin-top:10px;border:1px solid var(--border);box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.72rem;color:var(--muted)">
+        <span style="font-weight:600;color:#374151">📋 JC History</span>
+        <span>Data as of: <span id="jc-sync-time-val" style="font-weight:500;color:var(--text)">—</span></span>
+        <span id="jc-next-run-wrap" style="display:none">· Next run: <span id="jc-next-run-val" style="font-weight:500;color:var(--text)">—</span></span>
+        <button id="jc-global-sync-btn" onclick="syncAllJC(this)" style="margin-left:auto;background:#374151;color:#fff;border:none;border-radius:7px;padding:4px 11px;font-size:.7rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">↺ Sync All</button>
       </div>
     </div>
     <div id="res"></div>
@@ -501,8 +509,15 @@ function fmtSyncTime(ts){
   return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'})+' · '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 }
 
+function calcNextRun(tsStr,intervalMs){
+  var d=new Date(tsStr);if(isNaN(d))return '—';
+  var next=new Date(d.getTime()+intervalMs);
+  if(next<new Date())next=new Date(Date.now()+intervalMs);
+  return next.toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' · '+next.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
 function loadPostAuthData(){
-  // Last sync time
+  // Parts data sync time (hourly Metabase cron)
   fetch(SB+'/rest/v1/vehicle_parts_check_flag?select=created_at&order=created_at.desc&limit=1',
     {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
   .then(function(r){return r.json();})
@@ -510,6 +525,20 @@ function loadPostAuthData(){
     if(d&&d.length){
       var el=document.getElementById('sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].created_at);
       var st=document.getElementById('sync-time');if(st)st.style.display='block';
+      var nr=document.getElementById('parts-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].created_at,3600000);
+      var nrw=document.getElementById('parts-next-run');if(nrw)nrw.style.display='';
+    }
+  }).catch(function(){});
+  // JC History sync time (3-hour cron)
+  fetch(SB+'/rest/v1/jc_history?select=synced_at&order=synced_at.desc&limit=1',
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var bar=document.getElementById('jc-sync-bar');if(bar)bar.style.display='block';
+    if(d&&d.length){
+      var el=document.getElementById('jc-sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].synced_at);
+      var nr=document.getElementById('jc-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
+      var nrw=document.getElementById('jc-next-run-wrap');if(nrw)nrw.style.display='';
     }
   }).catch(function(){});
   // Random critical bikes for Try hints
@@ -927,6 +956,37 @@ function forceRefreshJC(bikeId,reg,btn){
     if(elapsed>=90000){clearInterval(poll);btn=document.getElementById('jc-sync-btn-'+bikeId);if(btn){btn.disabled=false;btn.innerHTML='↺ Sync Now';}}
   },8000);
 }
+function syncAllJC(btn){
+  btn.disabled=true;btn.innerHTML='↺ Syncing…';
+  fetch(SB+'/functions/v1/jc-history-sync',{
+    method:'POST',
+    headers:{apikey:ANON_KEY,'Authorization':'Bearer '+K,'Content-Type':'application/json'},
+    body:'{}'
+  }).then(function(r){if(!r.ok)r.text().then(function(t){console.warn('jc-history-sync',r.status,t);});})
+  .catch(function(){});
+  // Poll max synced_at every 10s for up to 120s; update bar when timestamp changes
+  var prev=document.getElementById('jc-sync-time-val')?document.getElementById('jc-sync-time-val').textContent:'';
+  var elapsed=0,poll=setInterval(function(){
+    elapsed+=10000;
+    fetch(SB+'/rest/v1/jc_history?select=synced_at&order=synced_at.desc&limit=1',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.length){
+        var next=fmtSyncTime(d[0].synced_at);
+        if(next!==prev){
+          clearInterval(poll);
+          var el=document.getElementById('jc-sync-time-val');if(el)el.textContent=next;
+          var nr=document.getElementById('jc-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
+          var nrw=document.getElementById('jc-next-run-wrap');if(nrw)nrw.style.display='';
+          btn.disabled=false;btn.innerHTML='↺ Sync All';
+        }
+      }
+    }).catch(function(){});
+    if(elapsed>=120000){clearInterval(poll);btn.disabled=false;btn.innerHTML='↺ Sync All';}
+  },10000);
+}
+
 function csvCell(v){if(v==null||v===undefined)return '';var s=String(v);return(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)?'"'+s.replace(/"/g,'""')+'"':s;}
 function csvRow(arr){return arr.map(csvCell).join(',');}
 function dlCSV(bikeId,reg){
