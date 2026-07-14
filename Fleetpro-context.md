@@ -1,5 +1,92 @@
 # Fleetpro — Context File
-*Last updated: 2026-07-08 (session 24 — sync v20 stale-row purge, git↔live reconcile, cron last-run history)*
+*Last updated: 2026-07-09 (session 26 — analytics tab LIVE + freeze fix + SSOT name-mapping sync)*
+
+## 🆕 2026-07-09 — UI fixes (Claude Code): favicon + dashboard first-load (all pushed & live)
+
+- **Favicon on all 14 v8 pages:** tabs showed the default globe (only `apple-touch-icon`/manifest existed).
+  Added `<link rel="icon" type="image/png" href="/v8/icon-192.png">` after `<title>` on every page.
+  (`trace-hunter.html` also carried a previously-unpushed `logPageView()` analytics call — now reconciled.)
+- **incentive.html "My Dashboard" blank on first load — fixed:** the boot ran twice concurrently
+  (`getSession()` path + `onAuthStateChange` SIGNED_IN both called `populateWeekSelector()`+`loadDashboard()`);
+  the overlap reset the week `<select>` mid-read → `getSelectedWeek()` fell back to a week with no data →
+  "No data for this week" + stuck payout "Loading…" until a manual week re-select. Fix: **boot guard**
+  (`_dashBooted` — run once, reset on sign-out) + await the initial load + clear the stuck "Loading…" on the
+  genuine no-data path. Guard is a no-op if the page only booted once, so it can't regress.
+
+## 🆕 2026-07-09 — session 26b (analytics tab pushed, freeze structural fix, SSOT mapping sync)
+
+**Analytics tab — ✅ LIVE (commit 5b16277):** the `v8/incentive.html` Analytics tab (built earlier this session) was pushed to GitHub Pages. Superadmin/incentive-admin gated, live data from `incentive_weekly_stats` + `hub_productivity_daily`. ⚠️ If the in-tab yellow banner shows, `hub_productivity_daily` needs `CREATE POLICY "auth read" ON hub_productivity_daily FOR SELECT TO authenticated USING (true);` (anon read confirmed blocked; authenticated read still unverified — check on the live tab).
+
+**Freeze structural fix — ✅ LIVE (via Supabase Management API, needs migration capture):** root cause of payout/sheet gaps = `freeze_completed_weeks()` only flipped `is_frozen` on whatever the last rebuild left, then locked it (frozen weeks are skipped by later rebuilds → stale numbers protected). Rewrote it to **rebuild-from-live-jc_log FIRST, then freeze**, so a week can never freeze on stale data. Cron `incentive-freeze-thursday-noon` (job 35, `30 6 * * 4` = Thu 12:00 IST) + guard `week_start + 10 days + 6:30h < NOW()` were already correct. ⚠️ Change applied live — **NOT yet captured as a migration** (`…_freeze_rebuild_first.sql` needed + git push).
+
+**W3/W4/W5 data corrected + re-frozen:** unfroze → `rebuild_incentive_weekly_stats()` (matured voids now included) → re-froze via the new freeze fn. W5 voids 150→153 (matches payout sheet), W3 185→188. Frozen totals now: W3 ₹17,600 (13 earners), W4 ₹15,600 (14), W5 ₹10,300 (18).
+
+**SSOT name-mapping — ✅ established + synced:** the Google master sheet **"Technician Nomenclature Map" (gid 572681529** in sheet `17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs`) is now the single source of truth (HR list `hr_employees`, 102 rows, is reference only). One-time reconciliation done: 92 sheet mappings upserted into `jc_name_aliases` (was 73); `incentive_jc_log.employee_id` re-stamped via **whitespace-normalized match** (`upper(regexp_replace(name,'\s+','','g'))`) so sheet spacing-variants (`SOUMEN BAR-BELLANDUR` vs ` - `, tab chars, `PRITAM -OKHLA`) all resolve; rebuild ran. Stamped JCs 12,856→13,147. Frozen weeks preserved. **Venkatesh cross-wiring fixed** (K VENKATESH→WRC2232, T VENKATESH→WRCT0142; re-stamp corrected the Apr–May mis-stamped rows). ⚠️ This was a **one-time** sync — recurring sheet→DB auto-sync still needs a scheduled edge fn / pg_cron job (NOT built).
+- **Hub column:** computed most-frequent hub per raw name over each tech's last-2-weeks activity; **cross-city check clean** (no raw name / emp_id spans >1 city → no mis-mappings; within-city hub moves = shortage cover, expected). Hub-update paste-list handed to user; user updating sheet. Hub reflects recent deployment (drifts weekly) — dashboard already computes it live, so sheet Hub is reference only.
+- **Still unmapped (need emp_ids from hub/service managers):** BANASWADI SOREI (107 JCs, paid earner, top priority), MANIKANTAN BANASWADI (53), ABHISHEK-GURUGAON+GURUGRAM (merge, 49), SANTH BANASWADI (34), IMRAN BILEKAHALLI (19), RAVI CHANDRAN BILEKAHALLI (14), LASKAR-HSR LAYOUT (2), MOHAMMED SAIF-BANASWADI (1, inactive since Jun 11).
+
+**Invites (#2) — PARKED:** 23 real technicians (25 never-logged-in in auth.users minus superadmin `ahsrahd@gmail.com` + internal `rohit.mishra@bounceshare.com`) invited Jun 27 but never logged in. Approved plan: rich English invite via Resend (benefit-first copy drafted). ⚠️ Blocked on Resend API key (edge-fn secret, not readable from Management API) — user will handle later.
+
+**Last-2-week incentive calc (#3) — NOT run** (user paused). Scope agreed: W4 + W5 (last two completed/matured weeks).
+
+## 🆕 2026-07-09 — session 26 (incentive impact analytics — dashboard lives in Bounce repo, not fleetpro)
+
+**Artifact: `Bounce/RRR/Incentive_Metric1_JCperTech.html`** — snapshot analytics dashboard (data through 2026-07-08), L0→L2 structure, two tabs (JC Count live / JC Labour Time placeholder), city filter Overall/Bangalore/NCR/Hyderabad, sticky filter bar. NOT deployed anywhere — local HTML opened directly in browser.
+
+**Key corrections established this session (affect any future incentive analytics):**
+- **Timeline corrected:** incentive ANNOUNCED 2026-06-23 (start of W4 Jun 22–28); W3 (Jun 15–21) was paid retroactively in the first payout Sat 2026-07-04. Pre-announcement baseline = W1–W3.
+- **Void% definition:** voided ÷ ALL billed JCs (NOT ÷ intrip JCs — earlier tile double-counted). W5 Overall = 5.6%. Void window: JC voidable up to 3 days after billing → a week is final only Wednesday of following week.
+- **W1 (Jun 1–7) void flags are under-captured** (near-zero Jun 1–4, before comeback detection live) — W1 excluded from quality charts; quality baseline = W2–W3 (~7%).
+- **Fathe nagar + Miyapur are Hyderabad** (weekly_stats city column); Fathe nagar had NO ops-sheet attendance until W5 (Jun 29+); Miyapur has none ever — both invisible in JC/tech/day until ops backfills `hub_productivity_daily`.
+- **Cohort finding (announcement-corrected):** same-tech avg weekly eligible 41.6 → 38.6 (−7%) W1–W3 vs W4–W5; 30 declined/20 improved; 13→9 sustained earners; 22 new techs, 0 earning. Headcount grew ~50→61 techs/day; pooled JC/tech/day 5.85 baseline → 6.35 W5 (+8.5%, first real lift, coincides with portal+payout proof).
+- **ROI metric:** ₹/incremental JC = payout ÷ (ΔJPT × tech-days), NOT ÷ raw volume growth (headcount pollutes). W5: ₹10,300 ÷ ~199 incremental JCs ≈ ₹52/JC.
+- **EndTrip (OOS) voids ~1.5–2× intrip** every week — quality problem is OOS→RFD work; NCR worst (EndTrip 10.3% W5).
+
+**Analytics tab BUILT 2026-07-09 (local, ⚠️ needs /tmp-clone push):** `v8/incentive.html` now has an Analytics tab (gated `incentive-admin`, shown via `applyRoleView`). Live data: `incentive_weekly_stats` paginated fetch (all metrics incl. hub intrip split via dominant-hub attribution); `hub_productivity_daily` fetched with adaptive column detection (date/hub/tech columns auto-found) + hub-name normalization (yeshwantpura→yeshwanthpur, hebbala→hebbal); if unreadable, JC/tech/day sections degrade gracefully + banner shows the one-line RLS fix (`CREATE POLICY "auth read" ON hub_productivity_daily FOR SELECT TO authenticated USING (true);` — anon read confirmed blocked 2026-07-09, authenticated read untested). Dynamic week list (current week partial + projection jpt×avg techs×7; voids final Wednesday); constants: announce 2026-06-22 week, payout 2026-06-29 week, quality from 2026-06-08. Chart.js 4.4.1 CDN added to head. RRR snapshot dashboard unchanged.
+
+## 🆕 2026-07-08 — session 25 (technician incentive portal deployment + directory integration)
+
+**Technician Incentive Portal (✅ LIVE — commit 40c1318):**
+- **`v8/incentive.html`** (46 KB): Complete standalone web app for technician incentive tracking
+  - **Features:** Magic link auth (email OTP), 4 KPI dashboard cards, payout progress bar with tier visualization, 8-week trend table, public leaderboard (city-filterable, top-3 medals), admin tab (XLSX upload, burn overview, tech directory)
+  - **Auth:** Allowlist vamsee@bounceshare.com + vamsee@scalability.club (can be expanded)
+  - **Data:** Connected to Supabase (clkfvmmlgwcvntxnolsv) tables: incentive_technicians, incentive_jc_log, incentive_weekly_stats, incentive_upload_batches, incentive_nudge_log
+  - **XLSX parsing:** Flexible — accepts both snake_case (Metabase export) and Title Case columns; computes week_start from jc_billed_date; detects void from rr_count_3d_comeback
+  - **Name normalization:** 45 technician name corrections baked in (ABHISHEK KUMAR → ABHISHEK - SAKET, DEEPAK M → DEEPAK M - BILEKAHALLI, etc.)
+  - **Payout tiers (v6, threshold=50):** Base 1-50 (₹0), Tier 1 (51-60 @ ₹25), T2 (61-80 @ ₹50), T3 (81-90 @ ₹75), T4 (91+ @ ₹100), cap ₹5,000/week
+  - **RLS:** Leaderboard public (anon read), dashboard/admin require auth + superadmin check
+  - **Deployed:** 2026-07-08 23:45 UTC via GitHub Pages (commit 40c1318)
+
+**Supabase Schema (✅ LIVE via Supabase MCP):**
+- All 5 tables + RLS policies created 2026-07-08 05:00 UTC
+- RLS: incentive_weekly_stats = public read-all (anon), incentive_technicians/jc_log/nudge_log = authenticated read-all, all writes = service_role only
+- Schema SQL: `/RRR/Incentive_Scheme/INCENTIVE_SCHEMA.sql` (188 lines, 5 tables, dedup index on jc_log)
+
+**Technician Directory Loader (🔄 READY, WAITING FOR CREDENTIALS):**
+- Python script `/tmp/load_technicians.py` written and ready to run
+  - Fetches CSV from public Google Sheet (1BQLXsYQS2KfFS9MRkQWQMBgUH9kr5TizmhyB4r2hbRU)
+  - Maps columns: Candidate Name → name_normalized, Working Location → hub_name, City → city, Email ID → email, Designation → role, active=true (hardcoded)
+  - Upserts to incentive_technicians with on_conflict="email" (safe re-run)
+  - Skips rows with blank name or email
+- **BLOCKED:** Waiting for Supabase service role key to execute
+
+**Documentation (✅ COMPLETE):**
+- `HUB_MANAGER_ONBOARDING_MESSAGE.txt` — plain-text, copy-paste ready for hub managers to send to technicians
+- `DEPLOYMENT_STATUS.md` — 5-phase deployment checklist (Supabase setup ✅, GitHub push ✅, seed data ⏳, testing ⏳, runbook ⏳)
+- `INCENTIVE_README.md` — feature guide (414 lines)
+- `INCENTIVE_QUICKSTART.txt` — 5-step deployment guide
+- Updated `incentive_context.md` with portal reference + current dates
+
+**Pending Actions (next steps for live rollout):**
+1. ⏳ Provide Supabase service role key → run technician directory loader → populate incentive_technicians table
+2. ⏳ Upload seed XLSX (query_result_2026-06-22T17_52_38.376606446Z.xlsx) via Admin tab → populate incentive_jc_log + rebuild weekly_stats
+3. ⏳ Test magic link auth (vamsee@scalability.club) → confirm dashboard shows current week data + 8-week trend
+4. ⏳ Admin name mapping editor (commit message ready, implementation status TBD)
+
+**Notes:**
+- Portal is production-ready for pilot (2-week manual payout test Jun 23 – Jul 7)
+- Leaderboard already live and public (reads weekly_stats)
+- Name map in HTML is authoritative (overrides any upstream corrections)
 
 ## 🆕 2026-07-05 → 07-08 — session 24 (incentive pipeline reconcile + Sync Jobs history)
 
@@ -232,6 +319,35 @@ reconcile after — as happened with the v2→v3 CORS source).
   heavy iteration, expect a ~10-min "some users on old version" window per push. This is the concrete
   argument for **D1 → Vercel** (custom `Cache-Control: no-cache` on HTML = instant propagation).
   See PRODUCTIZATION-TASKS Phase 5.5.
+
+## 🆕 2026-06-23 — JC Approval Check: context buckets + split sync fns
+
+Extends Manual JC Approval Check (A1) from 5 → 8 lookup sections. Canonical detail in
+`docs/jc-approval-context.md`; tracker `PRODUCTIZATION-TASKS.md` A1.
+
+- **3 new context buckets** on `jc-approval.html` (superadmin lookup): Booking History
+  (last 8), Ops Log (`bike_operations_log`, last 10), JC Status Log (`job_card_status_log`
+  incl. DMS JC #, last 10). Plus an **In-Trip (RR) flag** + **JC Hub** on the Job Card
+  section, and an **amber hub-mismatch warning** in the Bike section (JC hub ≠ bike's
+  current hub).
+- **Migration `20260623000001_jc_context_tables.sql`** (APPLIED via MCP): tables
+  `jc_booking_history`, `jc_ops_log`, `jc_jc_status_log` (all PK `id bigint`, RLS
+  auth-read/service-write); `jc_approval_status` += `intrip`, `jc_hub_name`.
+- **RRR SQL** (`sql/rrr/RRR_Manual_JC_Approval_Check.sql`, outer Bounce repo) now emits
+  `Intrip` + `JC Hub Name`; hub name resolves via `rental_locations.location_name`
+  (there is no `public.hub` table — `hubs` is a VIEW over it). `jc-approval-sync` maps
+  the two new columns.
+- **Context sync split (timeout fix):** the combined `jc-context-sync` timed out
+  (HTTP 546, ~26.5s) processing 3 large cards sequentially — died before the JC-status
+  table. Replaced by **three single-table fns** — `jc-booking-sync`, `jc-ops-sync`,
+  `jc-status-log-sync` (each = the `jc-history-sync` pattern, one hardcoded card UUID:
+  c1efbecd / 98f2dc7c / b1470077, which already exist).
+
+**⚠️ Pending deploy (Supabase MCP + Metabase UI):** deploy the 3 split fns; register 3
+staggered crons (`:00` / `:05` / `:10`, every 15 min); **drop the old `jc-context-sync`
+cron (job 28) + fn**; trigger the 3 fns once to populate; redeploy `jc-approval-sync`
+and re-publish the jc-approval Metabase card so `Intrip` + `JC Hub Name` flow through.
+Until then the 3 new sections show empty states and In-Trip / JC Hub show "—".
 
 ## 🆕 2026-06-22 — Deployment Queue Upgrade
 

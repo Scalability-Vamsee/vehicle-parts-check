@@ -1,7 +1,21 @@
 # Fleetpro — Productization Task Tracker
-*Last updated: 2026-07-08 (session 24 — incentive sync v20 stale-row purge, git↔live reconcile, admin-analytics Sync Jobs + per-job cron last-run history [⚠️ unpushed])*
+*Last updated: 2026-07-09 (session 26b — analytics tab LIVE, freeze fix, SSOT mapping sync)*
 
 Legend: ⬜ TODO · 🔄 IN PROGRESS · ✅ DONE · ⏸ BLOCKED
+
+## Incentive Analytics (session 26 — 2026-07-09)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| IA1 | Metric-1 impact dashboard (JC count level) | ✅ | `Bounce/RRR/Incentive_Metric1_JCperTech.html` — snapshot (data thru Jul 8), L0 pooled JC/tech/day w/ intrip-EndTrip split + total-JC line + W6 projection, L1 void-quality (W1 excluded — flags under-captured) + cohort, L2 city/hub. Corrected: launch=Jun 23, W3 retro-paid, Void%=voids÷billed, ROI=₹/(ΔJPT×tech-days). Local file, no deploy. |
+| IA2 | Analytics tab in v8/incentive.html (LIVE data) | ✅ LIVE | Built + **pushed 2026-07-09 (commit 5b16277)**. Superadmin/incentive-admin gated; live fetch from `incentive_weekly_stats` + `hub_productivity_daily`. ⚠️ Verify on live tab: if yellow banner shows, run `CREATE POLICY "auth read" ON hub_productivity_daily FOR SELECT TO authenticated USING (true);` |
+| IA5 | Freeze structural fix (rebuild-before-freeze) | ✅ LIVE · ⏸ migration | 2026-07-09. `freeze_completed_weeks()` rewritten to `rebuild_incentive_weekly_stats()` FIRST then lock — a week can't freeze on stale data (was the root cause of payout/sheet void gaps). Applied live via Management API. **Needs migration `…_freeze_rebuild_first.sql` + git push.** W3/W4/W5 re-corrected & re-frozen (W5 voids 150→153). |
+| IA6 | SSOT name-mapping (sheet → DB) | ✅ one-time · ⬜ recurring | 2026-07-09. Master sheet gid 572681529 = single source of truth (HR list = reference). 92 mappings upserted to `jc_name_aliases`; jc_log re-stamped via whitespace-normalized match; rebuild ran; Venkatesh cross-wiring fixed. Coverage 12,856→13,147 stamped. ⬜ **Recurring auto-sync (scheduled sheet pull) NOT built.** ~10 techs still need emp_ids from hub managers (BANASWADI SOREI top priority). |
+| IA7 | Invites to non-logged-in techs | ⏸ PARKED | 23 real techs (excl. superadmin + 1 internal) invited Jun 27, never logged in. Rich English Resend invite drafted + approved. Blocked on Resend API key — user handling later. |
+| IA3 | Metric 2 — JC Labour Time tab | ⏸ | BLOCKED: needs per-JC labour minutes from DMS + attendance hours (ops sheet logs headcount only). |
+| IA4 | Hyderabad attendance backfill | ⬜ | Ops to fill Fathe nagar (Jun 1–28) + add Miyapur to `hub_productivity_daily` — both hubs invisible in JC/tech/day denominator. |
+
+---
 
 ---
 
@@ -50,8 +64,8 @@ sidebar's **Admin** section.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| A1 | Manual JC Approval Check (`jc-approval.html`) | ✅ | Search a vehicle → automated verdict (T0–T6) on whether to approve a manual draft-JC creation request. Replaces manual manager review. |
-| A2 | Technician Incentive Portal (`incentive.html`) | ✅ | Magic-link dashboard/leaderboard/admin. `sync-incentive-data` every 5 min. 68 techs invited + Incentive Tech group. Auth gate on all 5 pages. 4-lang i18n + lang_pref. **2026-07-02**: PWA; daily nudge emails; leaderboard Hub/Tech sub-tabs + Total JCs + earner threshold (>50). **2026-07-04**: `sync-incentive-data` v19 (conflict-key fix — reverted to `jc_billed_datetime,technician_name_raw,reg_number`); Jun 22 data restored manually; `rebuild_incentive_weekly_stats` alias-merge fix (`GROUP BY COALESCE(employee_id, technician_name)`) applied live; rank delta ▲/▼/NEW on leaderboard (commit `a74ed6d`); `send-feedback` edge fn deployed (v4, Resend + `incentive_feedback`); migration `20260702000004` confirmed live; new superadmin `ahsrahd@gmail.com`. ⚠️ `send-feedback` needs `verify_jwt: false` toggle in Supabase dashboard. **2026-07-05**: `sync-incentive-data` v20 (purges stale NULL-normalized rows before rebuild via `purge_stale_jc_log_rows`, migration `20260705000001`) — fixes dup-key rollback that left stats stale; ✅ all incentive edge fns + migrations now reconciled to git (v20, send-feedback v4, alias-merge `20260704000001`, incentive-nudge — prior "need git push" items done). ⚠️ Freeze/rebuild crons not yet in `cron-jobs.sql`. ⚠️ `set_week_payment_done` granted to authenticated (all techs) — confirm it has internal admin check, not just UI gate. |
+| A1 | Manual JC Approval Check (`jc-approval.html`) | ✅ live · ⚠️ context buckets pending deploy | Search a vehicle → automated verdict (T0–T6) on whether to approve a manual draft-JC creation request. Replaces manual manager review. **2026-06-23**: extended 5 → 8 lookup sections — added Booking History / Ops Log / JC Status Log context buckets + In-Trip (RR) flag + JC Hub + amber hub-mismatch warning. Migration `20260623000001` applied (3 tables + `intrip`/`jc_hub_name`). Context sync split into 3 single-table fns (`jc-booking-sync`/`jc-ops-sync`/`jc-status-log-sync`) after the combined `jc-context-sync` timed out. ⚠️ 3 fns pushed to git, **pending MCP deploy + staggered crons + drop of old `jc-context-sync` cron (job 28)**; `jc-approval-sync` redeploy + jc-approval card re-publish needed for `Intrip`/`JC Hub Name` to populate. |
+| A2 | Technician Incentive Portal (`incentive.html`) | ✅ | Magic-link dashboard/leaderboard/admin. `sync-incentive-data` every 5 min. 68 techs invited + Incentive Tech group. Auth gate on all 5 pages. 4-lang i18n + lang_pref. **2026-07-02**: PWA; daily nudge emails; leaderboard Hub/Tech sub-tabs + Total JCs + earner threshold (>50). **2026-07-04**: `sync-incentive-data` v19 (conflict-key fix — reverted to `jc_billed_datetime,technician_name_raw,reg_number`); Jun 22 data restored manually; `rebuild_incentive_weekly_stats` alias-merge fix (`GROUP BY COALESCE(employee_id, technician_name)`) applied live; rank delta ▲/▼/NEW on leaderboard (commit `a74ed6d`); `send-feedback` edge fn deployed (v4, Resend + `incentive_feedback`); migration `20260702000004` confirmed live; new superadmin `ahsrahd@gmail.com`. ⚠️ `send-feedback` needs `verify_jwt: false` toggle in Supabase dashboard. **2026-07-05**: `sync-incentive-data` v20 (purges stale NULL-normalized rows before rebuild via `purge_stale_jc_log_rows`, migration `20260705000001`) — fixes dup-key rollback that left stats stale; ✅ all incentive edge fns + migrations now reconciled to git (v20, send-feedback v4, alias-merge `20260704000001`, incentive-nudge — prior "need git push" items done). ⚠️ Freeze/rebuild crons not yet in `cron-jobs.sql`. ⚠️ `set_week_payment_done` granted to authenticated (all techs) — confirm it has internal admin check, not just UI gate. **2026-07-08** (✅ LIVE commit 40c1318): Standalone technician incentive portal deployed at bounceops.online/v8/incentive.html — 46 KB self-contained HTML, no build step. Features: magic link auth (vamsee@bounceshare.com + vamsee@scalability.club allowlist), 4 KPI cards (eligible JCs, est. payout, voided JCs, rank), payout progress bar with tier visualization, 8-week trend table, public leaderboard (city filters, top-3 medals), admin tab (XLSX upload for seed data, burn overview, tech directory). XLSX parser accepts both snake_case (Metabase export) and Title Case columns; computes week_start from jc_billed_date. Name normalization: 45 technician mappings baked in (ABHISHEK KUMAR → ABHISHEK - SAKET, etc.). Payout tiers: threshold=50, Tier 1 (51–60 @ ₹25), T2 (61–80 @ ₹50), T3 (81–90 @ ₹75), T4 (91+ @ ₹100), cap ₹5,000/week. **2026-07-09** (🔄 IN PROGRESS): Technician directory loader — Python script `/tmp/load_technicians.py` ready (fetches public Google Sheet CSV, maps columns, upserts to incentive_technicians with on_conflict="email"). ⏳ BLOCKED waiting for Supabase service role key. Also pending: seed XLSX upload test, magic link auth test, admin name mapping editor implementation. **2026-07-09** (✅ pushed, Claude Code): fixed My Dashboard blank-on-first-load — double-boot race (`getSession()` + `onAuthStateChange` both ran `populateWeekSelector`+`loadDashboard`, overlap reset the week select → fell back to an empty week); added a boot guard (`_dashBooted`). Favicon (`icon-192.png`) added to all 14 v8 pages (tabs were showing the default globe). |
 | A3 | Page Analytics (`admin-analytics.html`) | ✅ | Superadmin-gated; reads `page_events`; `logPageView()` on fw-map/incentive/trace-ho. **2026-07-02**: Sync Jobs panel fully wired — `admin-cron` edge fn ACTIVE (verify_jwt=true) + migration `20260702000001` applied (admin_cron_list/set_schedule/set_active RPCs). **2026-07-08 (⚠️ UNPUSHED):** tabbed layout (Page Analytics / Sync Jobs), cron group headers, status pills, per-job last-run history via new RPC `admin_cron_last_runs` (migration `20260708000001`). Needs push of `admin-analytics.html` + `admin-cron/index.ts` + migration, and admin-cron redeploy. ⚠️ Confirm `page_events` INSERT RLS + extend logging to remaining pages. |
 
 ### A1 — Manual JC Approval Check
@@ -83,7 +97,24 @@ tier verdict instead of manually checking booking/payment/DMS state. Tiers:
 **Migration**: `supabase/migrations/20260619000001_jc_approval.sql`
 (`jc_approval_status` + `jc_approval_alerts`, RLS + indexes).
 
+**2026-06-23 — context buckets + split sync fns.** Grew the lookup from 5 → 8 sections:
+Booking History (last 8), Ops Log (`bike_operations_log`, last 10), JC Status Log
+(`job_card_status_log` incl. DMS JC #, last 10); plus In-Trip (RR) flag + JC Hub on the
+Job Card section and an amber hub-mismatch warning on the Bike section.
+- Migration `20260623000001_jc_context_tables.sql` (APPLIED): `jc_booking_history`,
+  `jc_ops_log`, `jc_jc_status_log` (PK `id bigint`, RLS auth-read/service-write);
+  `jc_approval_status` += `intrip`, `jc_hub_name`.
+- RRR SQL emits `Intrip` + `JC Hub Name` (hub via `rental_locations.location_name` — no
+  `public.hub`); `jc-approval-sync` maps them.
+- Combined `jc-context-sync` timed out (HTTP 546, ~26.5s, 3 cards sequentially) → split
+  into **`jc-booking-sync` / `jc-ops-sync` / `jc-status-log-sync`** (one card each,
+  `jc-history-sync` pattern). Cards c1efbecd / 98f2dc7c / b1470077 exist.
+
 **Pending**
+- ⬜ **Deploy the 3 split fns via MCP** + register 3 staggered crons (`:00`/`:05`/`:10`,
+  every 15 min) + **drop the old `jc-context-sync` cron (job 28) & fn** + trigger once to
+  populate. Redeploy `jc-approval-sync` and re-publish the jc-approval Metabase card so
+  `Intrip` + `JC Hub Name` populate. (Code pushed to git; nothing live until this runs.)
 - ⬜ Email notification on new T4/T5b/T6 alerts (`TODO(email)` in edge fn — transport
   not yet wired; the append-only log works without it).
 - ⬜ Alert Centre page (reads `jc_approval_alerts`, lists actionable situations).
