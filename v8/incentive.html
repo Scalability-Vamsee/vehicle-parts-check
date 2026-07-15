@@ -1284,15 +1284,19 @@ async function renderLeaderboard(){
     const topNameEl=document.getElementById('lb-kpi-top-name');
     if(topNameEl)topNameEl.textContent=top?top.tech_name:'—';
 
-    // Fetch email map: tech_name → email via jc_name_aliases → hr_employees
+    // Fetch email + normalized name map: tech_name → email/name via jc_name_aliases → hr_employees
     const techNames=stats.map(s=>s.tech_name);
     const{data:aliases}=await sbClient.from('jc_name_aliases').select('technician_name,employee_id').in('technician_name',techNames);
     const empIds=(aliases||[]).map(a=>a.employee_id).filter(Boolean);
     const empIdToTech={};
     (aliases||[]).forEach(a=>{if(a.employee_id)empIdToTech[a.employee_id]=a.technician_name;});
-    const{data:emps}=empIds.length?await sbClient.from('hr_employees').select('employee_id,email').in('employee_id',empIds):{data:[]};
+    const{data:emps}=empIds.length?await sbClient.from('hr_employees').select('employee_id,email,employee_name').in('employee_id',empIds):{data:[]};
     const emailMap={};
-    (emps||[]).forEach(e=>{const tName=empIdToTech[e.employee_id];if(tName&&e.email)emailMap[tName]=e.email;});
+    const nameMap={}; // tech_name (raw JC name) → normalized display name from Nomenclature Map
+    (emps||[]).forEach(e=>{const tName=empIdToTech[e.employee_id];if(tName&&e.email)emailMap[tName]=e.email;if(tName&&e.employee_name)nameMap[tName]=e.employee_name;});
+    // Update top-earner KPI name with normalized version now that nameMap is ready
+    const topNameEl2=document.getElementById('lb-kpi-top-name');
+    if(topNameEl2&&top)topNameEl2.textContent=nameMap[top.tech_name]||top.tech_name;
 
     const medals=['🥇','🥈','🥉'];
     const userEmail=CURRENT_SESSION?.user.email;
@@ -1317,7 +1321,7 @@ async function renderLeaderboard(){
       return`<tr class="${isUser?'user-row':''}">
         <td class="rank">${medal}${i+1}</td>
         <td>
-          <b>${s.tech_name}</b>${deltaHtml}
+          <b>${nameMap[s.tech_name]||s.tech_name}</b>${deltaHtml}
           ${email?`<div style="font-size:.7rem;color:var(--muted);font-weight:400;">${email}</div>`:''}
         </td>
         <td>${s.hub_name||'—'}</td>

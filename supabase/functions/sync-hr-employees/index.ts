@@ -1,19 +1,21 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// Spreadsheet 1: 1BQLXsYQS2KfFS9MRkQWQMBgUH9kr5TizmhyB4r2hbRU
-// Sheet1 → hr_employees (Employee ID, Candidate Name, Designation, City, Working Location, Contact, Email)
+// Master: Technician Nomenclature Map (gid=572681529)
+// Spreadsheet: 17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs
+// Columns: Employee ID, JC Name (Raw), Normalized Name, Hub, City, Status, Email id, Contact Number, Remarks
 //
-// Spreadsheet 2: 17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs (Incentive Dashboard)
-// gid=572681529 (Technician Nomenclature Map) → incentive_technicians + jc_name_aliases
-//   Columns: Employee ID, JC Name (Raw), Normalized Name, Hub, City, Status, Email id, Contact Number, Remarks
-const HR_SHEET_URL    = `https://docs.google.com/spreadsheets/d/1BQLXsYQS2KfFS9MRkQWQMBgUH9kr5TizmhyB4r2hbRU/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+// Syncs two tables from this single sheet:
+//   1. incentive_technicians — full tech profile (one row per employee_id)
+//   2. jc_name_aliases       — JC name → employee_id lookup (one row per normalized JC name)
+//
+// Cron: job 36 — 30 18 * * * (18:30 UTC = 00:00 IST daily)
 const NOMEN_SHEET_URL = `https://docs.google.com/spreadsheets/d/17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs/export?format=csv&gid=572681529`;
 
 const NOT_A_PERSON = new Set(['FREELANCER', 'VECNOCOM', 'VECMOCON', 'READY ASSET', 'VAMSEE - HEBBALA']);
 
 /**
  * Normalize a JC name (Layer 1 → Layer 2) — mirrors sync-incentive-data logic.
- * - Trim, collapse spaces, standardize "PRITAM -   OKHLA" → "PRITAM - OKHLA"
+ * Trim, collapse spaces, standardize "PRITAM -   OKHLA" → "PRITAM - OKHLA"
  */
 function normalizeJcName(raw: string): string {
   return raw.trim().replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').trim();
@@ -31,111 +33,92 @@ Deno.serve(async (req: Request) => {
 
   const results: Record<string, unknown> = {};
 
-  // Shared state: populated in blocks 1+2, consumed in block 3
-  let validEmpIdSet = new Set<string>();
-  let aliasSourceRows: Array<{ empId: string; jcNames: string[] }> = [];
-
-  // ── 1. HR Sheet → hr_employees ──────────────────────────────────────────────
-  try {
-    const res = await fetch(HR_SHEET_URL);
-    if (!res.ok) throw new Error(`HR sheet fetch failed: ${res.status}`);
-    const rows = parseCSV(await res.text());
-    if (rows.length < 2) throw new Error('HR sheet: no data rows');
-
-    const header = rows[0].map((h: string) => h.trim().toLowerCase());
-    const col = (name: string) => header.findIndex((h: string) => h.includes(name));
-    const iEmpId = col('employee id'), iName = col('candidate name');
-    const iDesg = col('designation'), iCity = col('city');
-    const iHub = col('working location'), iContact = col('contact'), iEmail = col('email');
-
-    if (iEmpId === -1 || iName === -1) throw new Error(`HR sheet: missing columns. Header: ${JSON.stringify(header)}`);
-
-    const employees = rows.slice(1)
-      .filter((r: string[]) => r[iEmpId]?.trim() && r[iName]?.trim())
-      .map((r: string[]) => ({
-        employee_id:   r[iEmpId]?.trim(),
-        employee_name: r[iName]?.trim(),
-        designation:   r[iDesg]    !== undefined ? r[iDesg]?.trim()    || null : null,
-        city:          r[iCity]    !== undefined ? r[iCity]?.trim()    || null : null,
-        hub:           r[iHub]     !== undefined ? r[iHub]?.trim()     || null : null,
-        contact:       r[iContact] !== undefined ? r[iContact]?.trim() || null : null,
-        email:         r[iEmail]   !== undefined ? r[iEmail]?.trim()   || null : null,
-        synced_at:     new Date().toISOString(),
-      }));
-
-    if (employees.length === 0) throw new Error('HR sheet: no valid rows after filtering');
-    const { error } = await supabase.from('hr_employees').upsert(employees, { onConflict: 'employee_id' });
-    if (error) throw error;
-    // Expose to block 3 for FK safety check before alias upsert
-    validEmpIdSet = new Set(employees.map((e) => e.employee_id));
-    results.hr_employees = { success: true, upserted: employees.length };
-  } catch (err: unknown) {
-    results.hr_employees = { success: false, error: err instanceof Error ? err.message : String(err) };
-  }
-
-  // ── 2. Nomenclature Map → incentive_technicians ──────────────────────────────
+  // ── Fetch Nomenclature Map ───────────────────────────────────────────────────
+  let rows: string[][];
   try {
     const res = await fetch(NOMEN_SHEET_URL);
-    if (!res.ok) throw new Error(`Nomenclature sheet fetch failed: ${res.status}`);
-    const rows = parseCSV(await res.text());
-    if (rows.length < 2) throw new Error('Nomenclature sheet: no data rows');
+    if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
+    rows = parseCSV(await res.text());
+    if (rows.length < 2) throw new Error('Sheet: no data rows');
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return new Response(
+      JSON.stringify({ error: msg, synced_at: new Date().toISOString() }),
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } },
+    );
+  }
 
-    const header = rows[0].map((h: string) => h.trim().toLowerCase());
-    const col = (name: string) => header.findIndex((h: string) => h.includes(name));
-    const iEmpId   = col('employee id');
-    const iJcName  = col('jc name');
-    const iNorm    = col('normalized');
-    const iHub     = col('hub');
-    const iCity    = col('city');
-    const iStatus  = col('status');
-    const iEmail   = col('email');
-    const iContact = col('contact');
+  const header = rows[0].map((h: string) => h.trim().toLowerCase());
+  const col = (name: string) => header.findIndex((h: string) => h.includes(name));
+  const iEmpId   = col('employee id');
+  const iJcName  = col('jc name');
+  const iNorm    = col('normalized');
+  const iHub     = col('hub');
+  const iCity    = col('city');
+  const iStatus  = col('status');
+  const iEmail   = col('email');
+  const iContact = col('contact');
 
-    if (iJcName === -1) throw new Error(`Nomenclature sheet: missing columns. Header: ${JSON.stringify(header)}`);
+  if (iJcName === -1) {
+    return new Response(
+      JSON.stringify({ error: `Missing columns. Header: ${JSON.stringify(header)}`, synced_at: new Date().toISOString() }),
+      { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } },
+    );
+  }
 
-    // Filter out "Not a person" rows and empty rows
-    const validRows = rows.slice(1).filter((r: string[]) => {
-      const jcName = r[iJcName]?.trim();
-      const status = r[iStatus]?.trim();
-      if (!jcName) return false;
-      if (status === 'Not a person') return false;
-      if (NOT_A_PERSON.has(jcName.toUpperCase())) return false;
-      return true;
-    });
+  // Filter junk rows: empty JC name, "Not a person" status, known placeholders
+  const validRows = rows.slice(1).filter((r: string[]) => {
+    const jcName = r[iJcName]?.trim();
+    const status = r[iStatus]?.trim();
+    if (!jcName) return false;
+    if (status === 'Not a person') return false;
+    if (NOT_A_PERSON.has(jcName.toUpperCase())) return false;
+    return true;
+  });
 
-    // Group by employee_id — collect all JC raw names per employee
-    const byEmpId: Record<string, { jcNames: string[]; norm: string; hub: string; city: string; email: string; contact: string }> = {};
-    const noEmpId: Array<{ jcName: string; norm: string; hub: string; city: string; email: string; contact: string }> = [];
+  // Group by employee_id — collect all JC raw names and metadata per employee
+  // empId must match real ID format (e.g. WRCT0099, WRC2011) — rejects emoji/label summary rows
+  const byEmpId: Record<string, { jcNames: string[]; norm: string; hub: string; city: string; email: string; contact: string }> = {};
+  const noEmpId: Array<{ jcName: string; norm: string; hub: string; city: string; email: string; contact: string }> = [];
+  let skippedSummaryRows = 0;
 
-    for (const r of validRows) {
-      const empId    = iEmpId   !== -1 ? r[iEmpId]?.trim()    : '';
-      const jcName   = r[iJcName]?.trim() || '';
-      const norm     = iNorm    !== -1 ? r[iNorm]?.trim()     || '' : '';
-      const hub      = iHub     !== -1 ? r[iHub]?.trim()      || '' : '';
-      const city     = iCity    !== -1 ? r[iCity]?.trim()     || '' : '';
-      const rawEmail = iEmail   !== -1 ? (r[iEmail]?.trim()   || '') : '';
-      const contact  = iContact !== -1 ? (r[iContact]?.trim() || '') : '';
-      // Validate email — ignore placeholder dashes and malformed
-      const emailValid = rawEmail.length > 0 && rawEmail !== '-' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail);
-      const email = emailValid ? rawEmail.toLowerCase() : '';
+  for (const r of validRows) {
+    const empId    = iEmpId !== -1 ? r[iEmpId]?.trim() : '';
+    const jcName   = r[iJcName]?.trim() || '';
+    const norm     = iNorm    !== -1 ? r[iNorm]?.trim()     || '' : '';
+    const hub      = iHub     !== -1 ? r[iHub]?.trim()      || '' : '';
+    const city     = iCity    !== -1 ? r[iCity]?.trim()     || '' : '';
+    const rawEmail = iEmail   !== -1 ? r[iEmail]?.trim()    || '' : '';
+    const contact  = iContact !== -1 ? r[iContact]?.trim()  || '' : '';
 
-      if (empId) {
-        if (!byEmpId[empId]) byEmpId[empId] = { jcNames: [], norm, hub, city, email, contact };
-        byEmpId[empId].jcNames.push(jcName);
-        // Keep the most complete values (first non-empty wins)
-        if (norm    && !byEmpId[empId].norm)    byEmpId[empId].norm    = norm;
-        if (hub     && !byEmpId[empId].hub)     byEmpId[empId].hub     = hub;
-        if (city    && !byEmpId[empId].city)    byEmpId[empId].city    = city;
-        if (email   && !byEmpId[empId].email)   byEmpId[empId].email   = email;
-        if (contact && !byEmpId[empId].contact) byEmpId[empId].contact = contact;
-      } else {
-        noEmpId.push({ jcName, norm, hub, city, email, contact });
-      }
+    // Validate email — reject placeholders and malformed addresses
+    const emailOk = rawEmail.length > 0 && rawEmail !== '-' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail);
+    const email = emailOk ? rawEmail.toLowerCase() : '';
+
+    // Validate empId — must be letters + digits only (e.g. WRCT0099)
+    const empIdOk = empId && /^[A-Z]+[0-9]+$/.test(empId);
+
+    if (empIdOk) {
+      if (!byEmpId[empId]) byEmpId[empId] = { jcNames: [], norm, hub, city, email, contact };
+      byEmpId[empId].jcNames.push(jcName);
+      // First non-empty value wins for metadata fields
+      if (norm    && !byEmpId[empId].norm)    byEmpId[empId].norm    = norm;
+      if (hub     && !byEmpId[empId].hub)     byEmpId[empId].hub     = hub;
+      if (city    && !byEmpId[empId].city)    byEmpId[empId].city    = city;
+      if (email   && !byEmpId[empId].email)   byEmpId[empId].email   = email;
+      if (contact && !byEmpId[empId].contact) byEmpId[empId].contact = contact;
+    } else if (!empId) {
+      noEmpId.push({ jcName, norm, hub, city, email, contact });
+    } else {
+      skippedSummaryRows++; // empId present but not a real ID format
     }
+  }
 
+  // ── 1. incentive_technicians ─────────────────────────────────────────────────
+  try {
     let upsertedMapped = 0, upsertedUnmatched = 0;
 
-    // Upsert mapped rows (have employee_id) — conflict on employee_id
+    // Mapped rows (have employee_id) — conflict on employee_id
     const mappedRows = Object.entries(byEmpId).map(([empId, d]) => ({
       employee_id:     empId,
       name_in_system:  d.jcNames,
@@ -152,13 +135,12 @@ Deno.serve(async (req: Request) => {
       const { error } = await supabase
         .from('incentive_technicians')
         .upsert(mappedRows, { onConflict: 'employee_id' });
-      if (error) throw new Error(`Mapped upsert failed: ${error.message}`);
+      if (error) throw new Error(`Mapped upsert: ${error.message}`);
       upsertedMapped = mappedRows.length;
     }
 
-    // Unmatched rows (no employee_id) — upsert by checking name_in_system[0]
+    // Unmatched rows (no employee_id) — match by jc_name in name_in_system array
     for (const row of noEmpId) {
-      // Check if already exists by jc_name match in name_in_system
       const { data: existing } = await supabase
         .from('incentive_technicians')
         .select('id')
@@ -166,7 +148,6 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (existing) {
-        // Update existing
         await supabase.from('incentive_technicians').update({
           name_normalized: row.norm    || null,
           hub_name:        row.hub     || null,
@@ -176,7 +157,6 @@ Deno.serve(async (req: Request) => {
           updated_at:      new Date().toISOString(),
         }).eq('id', existing.id);
       } else {
-        // Insert new
         await supabase.from('incentive_technicians').insert({
           employee_id:     null,
           name_in_system:  [row.jcName],
@@ -197,55 +177,73 @@ Deno.serve(async (req: Request) => {
       upserted_mapped: upsertedMapped,
       upserted_unmatched: upsertedUnmatched,
       skipped_not_a_person: rows.length - 1 - validRows.length,
+      skipped_summary_rows: skippedSummaryRows,
     };
-    // Expose to block 3: one entry per employee with all their raw JC names
-    aliasSourceRows = Object.entries(byEmpId).map(([empId, d]) => ({ empId, jcNames: d.jcNames }));
   } catch (err: unknown) {
     results.incentive_technicians = { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 
-  // ── 3. Nomenclature Map → jc_name_aliases ────────────────────────────────────
-  // Uses parsed data from block 2 (aliasSourceRows) + valid emp IDs from block 1.
-  // Key: normalizeJcName(jcRaw) → employee_id  (same Layer 2 normalization as sync-incentive-data)
-  // Conflict on technician_name (UNIQUE) → overwrites employee_id if mapping changed.
-  // FK safety: skips any empId not present in hr_employees (just upserted in block 1).
+  // ── 2. jc_name_aliases ───────────────────────────────────────────────────────
+  // normalizeJcName(jc_name_raw) → employee_id
+  // Dedup by normalized name (Map) to avoid Postgres "ON CONFLICT affects row twice" error.
+  // No FK on employee_id — Nomenclature Map is the authority.
   try {
-    if (aliasSourceRows.length === 0) {
-      results.jc_name_aliases = { success: true, upserted: 0, note: 'no source rows (block 2 may have failed)' };
-    } else {
-      // Use a Map to deduplicate by technician_name — two employees can share a
-      // normalized name in the sheet; last writer wins. Without this, Postgres throws
-      // "ON CONFLICT DO UPDATE command cannot affect row a second time".
-      const aliasMap = new Map<string, string>(); // technician_name → employee_id
-      let skippedNoEmpId = 0;
+    const validEmpIds = new Set(Object.keys(byEmpId));
+    const aliasMap = new Map<string, string>(); // technician_name → employee_id
+    let skippedNoEmpId = 0;
 
-      for (const { empId, jcNames } of aliasSourceRows) {
-        if (!validEmpIdSet.has(empId)) { skippedNoEmpId++; continue; }
-        for (const jcName of jcNames) {
-          const normalized = normalizeJcName(jcName);
-          if (!normalized) continue;
-          aliasMap.set(normalized, empId);
-        }
+    for (const [empId, d] of Object.entries(byEmpId)) {
+      if (!validEmpIds.has(empId)) { skippedNoEmpId++; continue; }
+      for (const jcName of d.jcNames) {
+        const normalized = normalizeJcName(jcName);
+        if (!normalized) continue;
+        aliasMap.set(normalized, empId);
       }
-
-      const aliasRows = Array.from(aliasMap.entries()).map(([technician_name, employee_id]) => ({
-        technician_name, employee_id, created_by: 'sync',
-      }));
-
-      let upsertedAliases = 0;
-      const BATCH = 200;
-      for (let i = 0; i < aliasRows.length; i += BATCH) {
-        const { error } = await supabase
-          .from('jc_name_aliases')
-          .upsert(aliasRows.slice(i, i + BATCH), { onConflict: 'technician_name' });
-        if (error) throw new Error(`jc_name_aliases upsert: ${error.message}`);
-        upsertedAliases += Math.min(BATCH, aliasRows.length - i);
-      }
-
-      results.jc_name_aliases = { success: true, upserted: upsertedAliases, skipped_no_emp_id: skippedNoEmpId };
     }
+
+    const aliasRows = Array.from(aliasMap.entries()).map(([technician_name, employee_id]) => ({
+      technician_name, employee_id, created_by: 'sync',
+    }));
+
+    let upsertedAliases = 0;
+    const BATCH = 200;
+    for (let i = 0; i < aliasRows.length; i += BATCH) {
+      const { error } = await supabase
+        .from('jc_name_aliases')
+        .upsert(aliasRows.slice(i, i + BATCH), { onConflict: 'technician_name' });
+      if (error) throw new Error(`jc_name_aliases upsert: ${error.message}`);
+      upsertedAliases += Math.min(BATCH, aliasRows.length - i);
+    }
+
+    results.jc_name_aliases = { success: true, upserted: upsertedAliases, skipped_no_emp_id: skippedNoEmpId };
   } catch (err: unknown) {
     results.jc_name_aliases = { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  // ── 3. hr_employees (from Nomenclature Map — keeps auth + frontend working) ───
+  // Populates employee_id, employee_name (= normalized name), hub, city, email, contact.
+  // designation is not in the Nomenclature Map — will be NULL.
+  // This keeps email→employee_id auth lookups working across all pages.
+  try {
+    const hrRows = Object.entries(byEmpId).map(([empId, d]) => ({
+      employee_id:   empId,
+      employee_name: d.norm    || null,
+      designation:   null,
+      city:          d.city    || null,
+      hub:           d.hub     || null,
+      contact:       d.contact || null,
+      email:         d.email   || null,
+      synced_at:     new Date().toISOString(),
+    }));
+    if (hrRows.length > 0) {
+      const { error } = await supabase
+        .from('hr_employees')
+        .upsert(hrRows, { onConflict: 'employee_id' });
+      if (error) throw new Error(`hr_employees upsert: ${error.message}`);
+    }
+    results.hr_employees = { success: true, upserted: hrRows.length };
+  } catch (err: unknown) {
+    results.hr_employees = { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 
   return new Response(
