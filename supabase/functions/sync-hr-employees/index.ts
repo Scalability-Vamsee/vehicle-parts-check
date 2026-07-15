@@ -213,7 +213,10 @@ Deno.serve(async (req: Request) => {
     if (aliasSourceRows.length === 0) {
       results.jc_name_aliases = { success: true, upserted: 0, note: 'no source rows (block 2 may have failed)' };
     } else {
-      const aliasRows: Array<{ technician_name: string; employee_id: string; created_by: string }> = [];
+      // Use a Map to deduplicate by technician_name — two employees can share a
+      // normalized name in the sheet; last writer wins. Without this, Postgres throws
+      // "ON CONFLICT DO UPDATE command cannot affect row a second time".
+      const aliasMap = new Map<string, string>(); // technician_name → employee_id
       let skippedNoEmpId = 0;
 
       for (const { empId, jcNames } of aliasSourceRows) {
@@ -221,9 +224,13 @@ Deno.serve(async (req: Request) => {
         for (const jcName of jcNames) {
           const normalized = normalizeJcName(jcName);
           if (!normalized) continue;
-          aliasRows.push({ technician_name: normalized, employee_id: empId, created_by: 'sync' });
+          aliasMap.set(normalized, empId);
         }
       }
+
+      const aliasRows = Array.from(aliasMap.entries()).map(([technician_name, employee_id]) => ({
+        technician_name, employee_id, created_by: 'sync',
+      }));
 
       let upsertedAliases = 0;
       const BATCH = 200;
