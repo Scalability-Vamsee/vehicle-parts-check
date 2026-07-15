@@ -181,6 +181,7 @@ SELECT cron.schedule(
 --  17   | rsa-ticket-sync-2min (recreated) | */2 * * * *  | replaced job 13 (header fix)
 --  18   | create_monthly_location_partitions | 0 0 25 * * | pre-creates next month's location partitions
 --  19   | archive-old-location-partitions  | 0 2 1 * *    | archives + drops partitions >90 days
+--  37   | incentive-nudge-daily            | 30 2,14 * * *| personalized email nudge to techs (08:00 + 20:00 IST)
 
 -- ============================================================
 -- Task 5.6: Daily health + egress check (08:30 IST = 03:00 UTC)
@@ -198,6 +199,30 @@ SELECT cron.schedule(
 );
 -- Simpler alternative if vault not set up — paste your project URL directly:
 -- url := 'https://clkfvmmlgwcvntxnolsv.supabase.co/functions/v1/health-check'
+
+-- ============================================================
+-- JOB 37: incentive-nudge-daily (08:00 IST = 02:30 UTC)
+-- Daily personalized email to active technicians showing their
+-- JC count, earnings, tier, and nudge to next tier.
+-- Fires twice: 08:00 IST (02:30 UTC) + 20:00 IST (14:30 UTC).
+-- verify_jwt=false — uses anon key only.
+-- Requires: RESEND_API_KEY + NUDGE_FROM_EMAIL in edge fn secrets.
+-- bounceops.online domain must be verified in Resend.
+-- ============================================================
+SELECT cron.schedule(
+  'incentive-nudge-daily',
+  '30 2,14 * * *',
+  $$
+  SELECT net.http_post(
+    url    := 'https://clkfvmmlgwcvntxnolsv.supabase.co/functions/v1/incentive-nudge',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '<ANON_KEY>'
+    ),
+    body   := '{}'::jsonb
+  );
+  $$
+);
 --  15  | health-egress-daily       | 0 3 * * *    | DB + egress alert (03:00 UTC / 08:30 IST)
 
 -- ============================================================
@@ -366,8 +391,10 @@ SELECT cron.schedule(
 
 -- ============================================================
 -- JOB 36: sync-hr-employees-daily (18:30 UTC = 00:00 IST daily)
--- Reads Nomenclature Map tab → upserts incentive_technicians
--- Also reads Sheet1 → upserts hr_employees
+-- Reads Sheet1 → upserts hr_employees
+-- Reads Nomenclature Map (gid 572681529) → upserts incentive_technicians + jc_name_aliases
+--   jc_name_aliases: normalizeJcName(jc_raw) → employee_id (SSOT for Layer 3 resolution)
+--   Added jc_name_aliases block 2026-07-15.
 -- Sheet: 1BQLXsYQS2KfFS9MRkQWQMBgUH9kr5TizmhyB4r2hbRU (public, anyone with link)
 -- Skips rows where Status = "Not a person"
 -- ============================================================
@@ -383,4 +410,4 @@ SELECT cron.schedule(
     );
   $$
 );
---  36  | sync-hr-employees-daily | 30 18 * * * | hr_employees + incentive_technicians (00:00 IST)
+--  36  | sync-hr-employees-daily | 30 18 * * * | hr_employees + incentive_technicians + jc_name_aliases (00:00 IST)

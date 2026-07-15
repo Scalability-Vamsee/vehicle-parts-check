@@ -4,12 +4,20 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 // Sheet1 → hr_employees (Employee ID, Candidate Name, Designation, City, Working Location, Contact, Email)
 //
 // Spreadsheet 2: 17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs (Incentive Dashboard)
-// gid=572681529 (Technician Nomenclature Map) → incentive_technicians
+// gid=572681529 (Technician Nomenclature Map) → incentive_technicians + jc_name_aliases
 //   Columns: Employee ID, JC Name (Raw), Normalized Name, Hub, City, Status, Email id, Contact Number, Remarks
 const HR_SHEET_URL    = `https://docs.google.com/spreadsheets/d/1BQLXsYQS2KfFS9MRkQWQMBgUH9kr5TizmhyB4r2hbRU/gviz/tq?tqx=out:csv&sheet=Sheet1`;
 const NOMEN_SHEET_URL = `https://docs.google.com/spreadsheets/d/17-Ix-tVo2ekew5dogOFm9K8XsuMsdCb0MjQcnQGdxFs/export?format=csv&gid=572681529`;
 
 const NOT_A_PERSON = new Set(['FREELANCER', 'VECNOCOM', 'VECMOCON', 'READY ASSET', 'VAMSEE - HEBBALA']);
+
+/**
+ * Normalize a JC name (Layer 1 → Layer 2) — mirrors sync-incentive-data logic.
+ * - Trim, collapse spaces, standardize "PRITAM -   OKHLA" → "PRITAM - OKHLA"
+ */
+function normalizeJcName(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').trim();
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -22,6 +30,10 @@ Deno.serve(async (req: Request) => {
   );
 
   const results: Record<string, unknown> = {};
+
+  // Shared state: populated in blocks 1+2, consumed in block 3
+  let validEmpIdSet = new Set<string>();
+  let aliasSourceRows: Array<{ empId: string; jcNames: string[] }> = [];
 
   // ── 1. HR Sheet → hr_employees ──────────────────────────────────────────────
   try {
@@ -54,6 +66,8 @@ Deno.serve(async (req: Request) => {
     if (employees.length === 0) throw new Error('HR sheet: no valid rows after filtering');
     const { error } = await supabase.from('hr_employees').upsert(employees, { onConflict: 'employee_id' });
     if (error) throw error;
+    // Expose to block 3 for FK safety check before alias upsert
+    validEmpIdSet = new Set(employees.map((e) => e.employee_id));
     results.hr_employees = { success: true, upserted: employees.length };
   } catch (err: unknown) {
     results.hr_employees = { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -184,8 +198,47 @@ Deno.serve(async (req: Request) => {
       upserted_unmatched: upsertedUnmatched,
       skipped_not_a_person: rows.length - 1 - validRows.length,
     };
+    // Expose to block 3: one entry per employee with all their raw JC names
+    aliasSourceRows = Object.entries(byEmpId).map(([empId, d]) => ({ empId, jcNames: d.jcNames }));
   } catch (err: unknown) {
     results.incentive_technicians = { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  // ── 3. Nomenclature Map → jc_name_aliases ────────────────────────────────────
+  // Uses parsed data from block 2 (aliasSourceRows) + valid emp IDs from block 1.
+  // Key: normalizeJcName(jcRaw) → employee_id  (same Layer 2 normalization as sync-incentive-data)
+  // Conflict on technician_name (UNIQUE) → overwrites employee_id if mapping changed.
+  // FK safety: skips any empId not present in hr_employees (just upserted in block 1).
+  try {
+    if (aliasSourceRows.length === 0) {
+      results.jc_name_aliases = { success: true, upserted: 0, note: 'no source rows (block 2 may have failed)' };
+    } else {
+      const aliasRows: Array<{ technician_name: string; employee_id: string; created_by: string }> = [];
+      let skippedNoEmpId = 0;
+
+      for (const { empId, jcNames } of aliasSourceRows) {
+        if (!validEmpIdSet.has(empId)) { skippedNoEmpId++; continue; }
+        for (const jcName of jcNames) {
+          const normalized = normalizeJcName(jcName);
+          if (!normalized) continue;
+          aliasRows.push({ technician_name: normalized, employee_id: empId, created_by: 'sync' });
+        }
+      }
+
+      let upsertedAliases = 0;
+      const BATCH = 200;
+      for (let i = 0; i < aliasRows.length; i += BATCH) {
+        const { error } = await supabase
+          .from('jc_name_aliases')
+          .upsert(aliasRows.slice(i, i + BATCH), { onConflict: 'technician_name' });
+        if (error) throw new Error(`jc_name_aliases upsert: ${error.message}`);
+        upsertedAliases += Math.min(BATCH, aliasRows.length - i);
+      }
+
+      results.jc_name_aliases = { success: true, upserted: upsertedAliases, skipped_no_emp_id: skippedNoEmpId };
+    }
+  } catch (err: unknown) {
+    results.jc_name_aliases = { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 
   return new Response(
