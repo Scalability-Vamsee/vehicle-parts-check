@@ -565,6 +565,8 @@ body.pinned #hbg{display:none}
               <th style="width:50px" data-i18n="thRank">Rank</th>
               <th data-i18n="thTechnician">Technician</th>
               <th data-i18n="thHub">Hub</th>
+              <th data-i18n="thTotalJCs">Total JCs</th>
+              <th data-i18n="thVoidJCs">Void</th>
               <th data-i18n="thEligibleJCs">Eligible JCs</th>
               <th data-i18n="thTier">Tier</th>
               <th data-i18n="thEstPayout">Est. Payout</th>
@@ -819,7 +821,7 @@ body.pinned #hbg{display:none}
         <div class="an-card">
           <div class="an-card-title">JC per Tech per Day — pooled weekly trend (Intrip + EndTrip split · total JCs line)</div>
           <div class="an-wrap" style="height:300px"><canvas id="an-c0"></canvas></div>
-          <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day. Grey = pre-announcement. Hub JC attribution = technician's dominant hub.</div>
+          <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day · N/7 att when incomplete (tech-days = avg techs/day × days-in-week, so a week with few synced attendance days is projected from the rate, not divided by a partial denominator). Grey = pre-announcement. Hub JC attribution = technician's dominant hub.</div>
         </div>
 
         <div class="an-level"><b>L1</b> Quality — are comebacks under control?</div>
@@ -1215,8 +1217,8 @@ function renderTrendTable(stats,currentWeek,rankByWeek){
     const isCurrent=s.week_start===currentWeek;
     const range=formatDateRange(new Date(s.week_start));
     const rank=rankByWeek&&rankByWeek[s.week_start]?`#${rankByWeek[s.week_start]}`:'—';
-    return`<tr class="${isCurrent?'current':''}">
-      <td><span class="${isCurrent?'good':'dim'}">${range}</span></td>
+    return`<tr class="${isCurrent?'current':''}" style="cursor:pointer;" onclick="openJcDrilldown('${s.tech_name}','${s.week_start}','${range}')">
+      <td><span class="${isCurrent?'good':'dim'}">${range} <span style="font-size:.6rem;color:var(--muted);">🔍</span></span></td>
       <td>${s.intrip_jcs||0}</td>
       <td>${s.submission_jcs||0}</td>
       <td>${s.voided_jcs||0}</td>
@@ -1225,6 +1227,98 @@ function renderTrendTable(stats,currentWeek,rankByWeek){
       <td>${rank}</td>
     </tr>`;
   }).join('');
+}
+
+async function openJcDrilldown(techName,weekStart,rangeLabel){
+  // Show modal
+  let modal=document.getElementById('jc-drilldown-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='jc-drilldown-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.2);">
+    <div style="padding:18px 20px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:.95rem;font-weight:800;color:#0F172A;">JC Detail — ${rangeLabel}</div>
+        <div style="font-size:.72rem;color:#64748B;margin-top:2px;">${techName}</div>
+      </div>
+      <button onclick="document.getElementById('jc-drilldown-modal').remove()" style="border:none;background:none;font-size:1.2rem;cursor:pointer;color:#64748B;padding:4px 8px;">✕</button>
+    </div>
+    <div id="jc-drilldown-body" style="overflow-y:auto;padding:16px;">
+      <div style="text-align:center;color:#64748B;padding:20px;">Loading…</div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+
+  try{
+    const nextWeek=new Date(new Date(weekStart).getTime()+7*24*3600000).toISOString().slice(0,10);
+    const{data:jcs,error}=await sbClient
+      .from('incentive_jc_log')
+      .select('jc_billed_date,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime')
+      .eq('week_start',weekStart)
+      .eq('technician_name_raw',techName)
+      .order('jc_billed_date',{ascending:true})
+      .order('reg_number',{ascending:true})
+      .limit(500);
+    if(error)throw error;
+    const body=document.getElementById('jc-drilldown-body');
+    if(!jcs||jcs.length===0){body.innerHTML='<div style="text-align:center;color:#64748B;padding:20px;">No JC records found for this week.</div>';return;}
+    const totalW=jcs.reduce((a,j)=>a+(j.jc_weight||1),0);
+    const voidW=jcs.filter(j=>j.is_void).reduce((a,j)=>a+(j.jc_weight||1),0);
+    const eligW=totalW-voidW;
+    body.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+        <div style="background:#F8FAFC;border-radius:10px;padding:10px 14px;">
+          <div style="font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Total JCs</div>
+          <div style="font-size:1.3rem;font-weight:900;color:#0F172A;">${totalW}</div>
+        </div>
+        <div style="background:#FEF2F2;border-radius:10px;padding:10px 14px;">
+          <div style="font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Voided</div>
+          <div style="font-size:1.3rem;font-weight:900;color:#DC2626;">${voidW}</div>
+        </div>
+        <div style="background:#F0FDF4;border-radius:10px;padding:10px 14px;">
+          <div style="font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Eligible</div>
+          <div style="font-size:1.3rem;font-weight:900;color:#15803D;">${eligW}</div>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem;">
+        <thead>
+          <tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Date</th>
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Reg No.</th>
+            <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Type</th>
+            <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Weight</th>
+            <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Status</th>
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Comeback</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${jcs.map(j=>{
+            const d=j.jc_billed_date?j.jc_billed_date.slice(5).replace('-','/'):'—';
+            const type=j.intrip?'<span style="background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Intrip</span>':'<span style="background:#F0FDF4;color:#15803D;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Sub</span>';
+            const status=j.is_void
+              ?'<span style="background:#FEF2F2;color:#DC2626;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Void</span>'
+              :'<span style="background:#F0FDF4;color:#15803D;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">✓</span>';
+            const comeback=j.first_comeback_datetime?j.first_comeback_datetime.slice(5,16).replace('T',' '):'—';
+            const rowBg=j.is_void?'background:#FFFBFB;':'';
+            return`<tr style="border-bottom:1px solid #F1F5F9;${rowBg}">
+              <td style="padding:6px 8px;color:#0F172A;">${d}</td>
+              <td style="padding:6px 8px;font-weight:600;font-family:monospace;font-size:.78rem;">${j.reg_number||'—'}</td>
+              <td style="padding:6px 8px;text-align:center;">${type}</td>
+              <td style="padding:6px 8px;text-align:center;font-weight:700;">${j.jc_weight||1}</td>
+              <td style="padding:6px 8px;text-align:center;">${status}</td>
+              <td style="padding:6px 8px;color:#64748B;font-size:.7rem;">${comeback}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }catch(e){
+    const body=document.getElementById('jc-drilldown-body');
+    if(body)body.innerHTML=`<div style="text-align:center;color:#DC2626;padding:20px;">Error: ${e.message}</div>`;
+  }
 }
 
 async function renderLeaderboard(){
@@ -1257,7 +1351,7 @@ async function renderLeaderboard(){
     const tbody=document.getElementById('leaderboard-tbody');
 
     if(!stats||stats.length===0){
-      tbody.innerHTML='<tr><td colspan="6">No data</td></tr>';
+      tbody.innerHTML='<tr><td colspan="8">No data</td></tr>';
       ['lb-kpi-total','lb-kpi-earners','lb-kpi-pool','lb-kpi-avg','lb-kpi-top'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
       return;
     }
@@ -1325,6 +1419,8 @@ async function renderLeaderboard(){
           ${email?`<div style="font-size:.7rem;color:var(--muted);font-weight:400;">${email}</div>`:''}
         </td>
         <td>${s.hub_name||'—'}</td>
+        <td style="color:var(--muted);">${s.total_jcs||0}</td>
+        <td style="color:${(s.voided_jcs||0)>0?'#DC2626':'var(--muted)'};">${s.voided_jcs||0}</td>
         <td><b>${s.eligible_jcs||0}</b></td>
         <td><span class="badge">${tierBadge}</span></td>
         <td>₹${Math.round(calcPayout(s.eligible_jcs||0))}</td>
@@ -2064,7 +2160,7 @@ const TRANSLATIONS = {
     trendTitle:'Weekly Trend (from 15 Jun)',
     thWeek:'Week', thIntrip:'Intrip', thRfd:'OOS→RFD', thVoided:'Voided', thEligible:'Eligible', thPayout:'Payout',
     leaderboardSubtitle:'Current week — live rankings',
-    thRank:'Rank', thTechnician:'Technician', thHub:'Hub', thEligibleJCs:'Eligible JCs', thTier:'Tier', thEstPayout:'Est. Payout',
+    thRank:'Rank', thTechnician:'Technician', thHub:'Hub', thTotalJCs:'Total JCs', thVoidJCs:'Void', thEligibleJCs:'Eligible JCs', thTier:'Tier', thEstPayout:'Est. Payout',
     howSubtitle:'Incentive scheme — visible to all technicians',
     overviewTitle:'📋 Overview',
     overviewBody:'Every week, the number of <b>eligible job cards</b> you complete determines your payout tier. You must cross a <b>threshold of 50 JCs</b> before any incentive starts. After that, each additional JC earns you a fixed amount per JC based on which tier you\'re in — higher tiers pay more per JC.',
@@ -2099,7 +2195,7 @@ const TRANSLATIONS = {
     trendTitle:'वीकली ट्रेंड (15 Jun से)',
     thWeek:'हफ्ता', thIntrip:'Intrip', thRfd:'OOS→RFD', thVoided:'रद्द', thEligible:'गिने गए', thPayout:'पेमेंट',
     leaderboardSubtitle:'इस हफ्ते — लाइव रैंकिंग',
-    thRank:'रैंक', thTechnician:'टेक्नीशियन', thHub:'Hub', thEligibleJCs:'गिने गए JC', thTier:'टियर', thEstPayout:'अनुमानित पेमेंट',
+    thRank:'रैंक', thTechnician:'टेक्नीशियन', thHub:'Hub', thTotalJCs:'कुल JC', thVoidJCs:'रद्द', thEligibleJCs:'गिने गए JC', thTier:'टियर', thEstPayout:'अनुमानित पेमेंट',
     howSubtitle:'इनसेंटिव का तरीका — सभी टेक्नीशियन देख सकते हैं',
     overviewTitle:'📋 जानकारी',
     overviewBody:'हर हफ्ते आपके <b>गिने गए job cards</b> से पता चलता है कि आप किस टियर में हैं। पहले <b>50 JC</b> पूरे करने होंगे — उसके बाद हर JC पर पैसा मिलता है।',
@@ -2134,7 +2230,7 @@ const TRANSLATIONS = {
     trendTitle:'ವಾರದ ಟ್ರೆಂಡ್ (15 Jun ನಿಂದ)',
     thWeek:'ವಾರ', thIntrip:'Intrip', thRfd:'OOS→RFD', thVoided:'ರದ್ದು', thEligible:'ಲೆಕ್ಕ', thPayout:'ಹಣ',
     leaderboardSubtitle:'ಈ ವಾರ — ಲೈವ್ ರ್ಯಾಂಕಿಂಗ್',
-    thRank:'ರ್ಯಾಂಕ್', thTechnician:'ಟೆಕ್ನಿಶಿಯನ್', thHub:'Hub', thEligibleJCs:'ಲೆಕ್ಕದ JC', thTier:'ಟಿಯರ್', thEstPayout:'ಅಂದಾಜು ಹಣ',
+    thRank:'ರ್ಯಾಂಕ್', thTechnician:'ಟೆಕ್ನಿಶಿಯನ್', thHub:'Hub', thTotalJCs:'ಒಟ್ಟು JC', thVoidJCs:'ರದ್ದು', thEligibleJCs:'ಲೆಕ್ಕದ JC', thTier:'ಟಿಯರ್', thEstPayout:'ಅಂದಾಜು ಹಣ',
     howSubtitle:'ಇನ್ಸೆಂಟಿವ್ ಯೋಜನೆ — ಎಲ್ಲ ಟೆಕ್ನಿಶಿಯನ್‌ಗಳಿಗೆ',
     overviewTitle:'📋 ಮಾಹಿತಿ',
     overviewBody:'ಪ್ರತಿ ವಾರ ನೀವು ಮಾಡಿದ <b>ಲೆಕ್ಕದ job cards</b> ಯಿಂದ ನಿಮ್ಮ ಟಿಯರ್ ಗೊತ್ತಾಗುತ್ತದೆ. ಮೊದಲು <b>50 JC</b> ಮಾಡಬೇಕು — ನಂತರ ಪ್ರತಿ JC ಗೆ ಹಣ ಸಿಗುತ್ತದೆ.',
@@ -2169,7 +2265,7 @@ const TRANSLATIONS = {
     trendTitle:'వారపు ట్రెండ్ (15 Jun నుండి)',
     thWeek:'వారం', thIntrip:'Intrip', thRfd:'OOS→RFD', thVoided:'రద్దు', thEligible:'లెక్క', thPayout:'చెల్లింపు',
     leaderboardSubtitle:'ఈ వారం — లైవ్ ర్యాంకింగ్',
-    thRank:'ర్యాంక్', thTechnician:'టెక్నీషియన్', thHub:'Hub', thEligibleJCs:'లెక్కించిన JC', thTier:'టయర్', thEstPayout:'అంచనా చెల్లింపు',
+    thRank:'ర్యాంక్', thTechnician:'టెక్నీషియన్', thHub:'Hub', thTotalJCs:'మొత్తం JC', thVoidJCs:'రద్దు', thEligibleJCs:'లెక్కించిన JC', thTier:'టయర్', thEstPayout:'అంచనా చెల్లింపు',
     howSubtitle:'ప్రోత్సాహక పథకం — అందరికీ',
     overviewTitle:'📋 సమాచారం',
     overviewBody:'ప్రతి వారం మీరు చేసిన <b>లెక్కించిన job cards</b> మీ టయర్‌ను నిర్ణయిస్తాయి. ముందు <b>50 JC</b> పూర్తి చేయాలి — తర్వాత ప్రతి JC కి డబ్బు వస్తుంది.',
@@ -2640,16 +2736,24 @@ function anPooled(w, cityF){
     if(!byHub[r.hubKey])byHub[r.hubKey]={jcs:0,intrip:0};
     byHub[r.hubKey].jcs+=r.total_jcs; byHub[r.hubKey].intrip+=r.intrip_jcs;
   });
-  let jcs=0,intrip=0,td=0,days=0;
+  // Tech-days must span the SAME days as the JC numerator. The numerator (total_jcs from
+  // incentive_weekly_stats) is the WHOLE week, but hub_productivity_daily lags — a completed
+  // week can have only a few of its 7 days synced (e.g. W6 = 2/7). Summing raw daily tech-days
+  // then dividing full-week JCs by it inflates jpt (W6 showed 23 instead of ~6.5). So project
+  // each hub's attendance RATE (avg techs/day) across the week's day count — identical to the
+  // reference dashboard's formula: td = (Σ per-hub avg techs/day) × days-in-week.
+  const wm=anWeeks.find(m=>m.w===w); const wdays=wm?wm.days:7;
+  let jcs=0,intrip=0,avgDaySum=0,attDays=0;
   Object.keys(byHub).forEach(h=>{
     const a=anAtt[h+'|'+w];
-    if(a&&a.td>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;td+=a.td;days=Math.max(days,a.days);}
+    if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
   });
-  if(!td)return null;
+  if(!avgDaySum)return null;
+  const td=avgDaySum*wdays;
   const jpt=jcs/td;
   return {jpt:+jpt.toFixed(2), ji:+(jpt*intrip/jcs).toFixed(2), je:+(jpt*(1-intrip/jcs)).toFixed(2),
     shi:Math.round(100*intrip/jcs), she:Math.round(100*(1-intrip/jcs)),
-    td, avgDay:td/Math.max(days,1), jcs, intrip,
+    td, avgDay:avgDaySum, jcs, intrip, attDays, wdays,
     total:wr.reduce((s,r)=>s+r.total_jcs,0)};
 }
 function anBaseWeeks(){return anWeeks.filter(m=>m.days===7&&m.w<AN_ANNOUNCE_WEEK);}
@@ -2788,8 +2892,10 @@ function anChart0(){
   if(anCh[0])anCh[0].destroy();
   anCh[0]=new Chart(document.getElementById('an-c0'),{type:'bar',
     data:{labels:anWeeks.map((m,i)=>[`${m.short}: ${m.label}${m.days<7?' *':''}`,
-        wk[i]?`${Math.round(wk[i].td)} td · ${wk[i].avgDay.toFixed(0)}/day`:'no attendance data']),
+        wk[i]?`${Math.round(wk[i].td)} td · ${wk[i].avgDay.toFixed(0)}/day${wk[i].attDays<wk[i].wdays?' · '+wk[i].attDays+'/'+wk[i].wdays+' att':''}`:'no attendance data']),
       datasets:[
+      // (label built below reflects attendance coverage: "N/7 att" when a week is under-synced,
+      //  so a projected jpt like W6 reads as an estimate rather than a measured value)
       {label:'Intrip',data:wk.map(d=>d?d.ji:null),backgroundColor:cI,stack:'s',borderRadius:3,maxBarThickness:90,order:2},
       {label:'EndTrip (OOS)',data:wk.map(d=>d?d.je:null),backgroundColor:cE,stack:'s',borderRadius:3,maxBarThickness:90,order:2},
       {label:'Total JCs billed',data:totals,type:'line',yAxisID:'y2',borderColor:'#0f172a',borderWidth:2,pointRadius:3,pointBackgroundColor:'#0f172a',tension:.25,order:1},
