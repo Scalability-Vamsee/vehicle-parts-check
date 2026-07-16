@@ -824,6 +824,12 @@ body.pinned #hbg{display:none}
           <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day · N/7 att when incomplete (tech-days = avg techs/day × days-in-week, so a week with few synced attendance days is projected from the rate, not divided by a partial denominator). Grey = pre-announcement. Hub JC attribution = technician's dominant hub.</div>
         </div>
 
+        <div class="an-card" id="an-techs-card">
+          <div class="an-card-title">Active technicians — day on day (attendance sheet)</div>
+          <div class="an-wrap" style="height:230px"><canvas id="an-techs"></canvas></div>
+          <div class="an-note">Thin line = `technician_available` summed across hubs per day (city-filtered); bold line = 7-day trailing average. Source = ops attendance (`hub_productivity_daily`). Days with no attendance synced show as gaps (line breaks), not zeros. Read against the pooled JC/tech/day above: headcount rising while per-tech is flat = dilution; flat headcount with per-tech rising = real productivity gain.</div>
+        </div>
+
         <div class="an-level"><b>L1</b> Quality — are comebacks under control?</div>
         <div class="an-card">
           <div class="an-card-title">Void Rate — % of billed JCs, split by JC type</div>
@@ -2651,8 +2657,8 @@ const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - 
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal'};
 
 let anLoaded=false, anCity='Overall', anSelWeek=null;
-let anRows=[], anAtt=null, anWeeks=[], anCohort=null;
-let anCh=[null,null,null,null,null];
+let anRows=[], anAtt=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
+let anCh=[null,null,null,null,null,null];
 
 function anNormHub(s){
   const k=String(s||'').toLowerCase().replace(/[^a-z]/g,'');
@@ -2684,7 +2690,9 @@ async function loadAnalytics(){
     });
 
     // attendance — adaptive column detection, graceful fallback
-    anAtt=null;
+    anAtt=null; anAttRows=[]; anHubCity={};
+    // hub → city map from weekly_stats (each hub belongs to one city) — for city-filtering attendance
+    anRows.forEach(r=>{if(r.hubKey&&r.city&&!anHubCity[r.hubKey])anHubCity[r.hubKey]=r.city;});
     try{
       const att=await anFetchAll('hub_productivity_daily','*',null,null);
       if(att.length){
@@ -2697,11 +2705,13 @@ async function loadAnalytics(){
           att.forEach(r=>{
             const d=String(r[dk]).slice(0,10);
             if(d<AN_START)return;
-            const w=formatDate(getWeekStart(new Date(d)));
-            const key=anNormHub(r[hk])+'|'+w;
+            const hubKey=anNormHub(r[hk]);
             const t=+r[tk]||0;
+            const w=formatDate(getWeekStart(new Date(d)));
+            const key=hubKey+'|'+w;
             if(!anAtt[key])anAtt[key]={td:0,days:0};
             anAtt[key].td+=t; anAtt[key].days++;
+            anAttRows.push({date:d,hubKey,tech:t}); // raw daily — for the day-on-day active-techs chart
           });
         }else{console.warn('[AN] attendance columns not recognised',keys);}
       }
@@ -2847,7 +2857,7 @@ function anRenderPills(){
     `<button class="an-wbtn ${m.w===anSelWeek?'active':''}" onclick="anSetWeek('${m.w}')">${m.short}${m.days<7?'*':''}</button>`).join('');
 }
 function anRenderAll(){
-  anTiles();anRenderPills();anChart0();anChart1();anChart2();anCohortCard();anChart3();anChart4();
+  anTiles();anRenderPills();anChart0();anChartTechs();anChart1();anChart2();anCohortCard();anChart3();anChart4();
 }
 
 function anTiles(){
@@ -3009,6 +3019,50 @@ function anChart3(){
         tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw??'no attendance data'}`}}},
       scales:{y:{title:{display:true,text:'JC / tech / day (pooled)',font:{size:10}},beginAtZero:true}}},
     plugins:[anMarkers(anWeeks)]});
+}
+
+function anChartTechs(){
+  const card=document.getElementById('an-techs-card');
+  if(!card)return;
+  const f=(anCity==='Overall')?null:anCity;
+  // sum technician_available across hubs per day, city-filtered
+  const byDate={};
+  (anAttRows||[]).forEach(r=>{
+    if(f&&anHubCity[r.hubKey]!==f)return;
+    byDate[r.date]=(byDate[r.date]||0)+r.tech;
+  });
+  const keys=Object.keys(byDate).sort();
+  // no attendance readable → hide card (an-att-warn already explains why)
+  if(!anAtt||!keys.length){card.style.display='none';if(anCh[5]){anCh[5].destroy();anCh[5]=null;}return;}
+  card.style.display='block';
+  // continuous UTC date axis min..max so missing days become real gaps (not compressed away)
+  const start=new Date(keys[0]+'T00:00:00Z').getTime();
+  const end=new Date(keys[keys.length-1]+'T00:00:00Z').getTime();
+  const labels=[],daily=[];
+  for(let ms=start;ms<=end;ms+=86400000){
+    const ds=new Date(ms).toISOString().slice(0,10);
+    labels.push(ds);
+    daily.push(byDate[ds]!=null?+byDate[ds].toFixed(1):null); // null → line breaks (gap)
+  }
+  // 7-day trailing average over available (non-null) days in the window
+  const avg=labels.map((ds,i)=>{
+    let sum=0,n=0;
+    for(let k=i;k>i-7&&k>=0;k--){if(daily[k]!=null){sum+=daily[k];n++;}}
+    return n?+(sum/n).toFixed(1):null;
+  });
+  const fmt=ds=>{const p=ds.split('-');return p[1]+'/'+p[2];}; // MM/DD tick labels
+  if(anCh[5])anCh[5].destroy();
+  anCh[5]=new Chart(document.getElementById('an-techs'),{type:'line',
+    data:{labels:labels.map(fmt),datasets:[
+      {label:'Active techs/day',data:daily,borderColor:'#c7d2fe',backgroundColor:'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,order:2},
+      {label:'7-day avg',data:avg,borderColor:'#4f46e5',backgroundColor:'#4f46e5',borderWidth:2.5,pointRadius:0,tension:.3,spanGaps:false,order:1},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{title:items=>items.length?labels[items[0].dataIndex]:'',
+          label:c=>c.raw==null?` ${c.dataset.label}: no attendance synced`:` ${c.dataset.label}: ${c.raw}`}}},
+      scales:{x:{ticks:{font:{size:9},maxTicksLimit:14,autoSkip:true}},
+        y:{title:{display:true,text:'technicians available / day',font:{size:10}},beginAtZero:true}}}});
 }
 
 function anChart4(){
