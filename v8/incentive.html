@@ -1257,7 +1257,7 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
     const nextWeek=new Date(new Date(weekStart).getTime()+7*24*3600000).toISOString().slice(0,10);
     const{data:jcs,error}=await sbClient
       .from('incentive_jc_log')
-      .select('jc_billed_date,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime')
+      .select('jc_billed_date,jc_billed_datetime,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime')
       .eq('week_start',weekStart)
       .eq('technician_name',techName)
       .order('jc_billed_date',{ascending:true})
@@ -1297,18 +1297,44 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
         </thead>
         <tbody>
           ${jcs.map(j=>{
-            const d=j.jc_billed_date?j.jc_billed_date.slice(5).replace('-','/'):'—';
+            // Date + time in IST (UTC+5:30)
+            let dateCell='—';
+            if(j.jc_billed_datetime){
+              const dt=new Date(j.jc_billed_datetime);
+              const ist=new Date(dt.getTime()+5.5*3600000);
+              const mm=String(ist.getUTCMonth()+1).padStart(2,'0');
+              const dd=String(ist.getUTCDate()).padStart(2,'0');
+              const hh=String(ist.getUTCHours()).padStart(2,'0');
+              const min=String(ist.getUTCMinutes()).padStart(2,'0');
+              dateCell=`${mm}/${dd} <span style="color:#64748B;font-size:.68rem;">${hh}:${min}</span>`;
+            } else if(j.jc_billed_date){
+              dateCell=j.jc_billed_date.slice(5).replace('-','/');
+            }
+            // Comeback in IST
+            let comeback='—';
+            if(j.first_comeback_datetime){
+              const ct=new Date(j.first_comeback_datetime);
+              const cist=new Date(ct.getTime()+5.5*3600000);
+              const cmm=String(cist.getUTCMonth()+1).padStart(2,'0');
+              const cdd=String(cist.getUTCDate()).padStart(2,'0');
+              const chh=String(cist.getUTCHours()).padStart(2,'0');
+              const cmin=String(cist.getUTCMinutes()).padStart(2,'0');
+              comeback=`${cmm}/${cdd} ${chh}:${cmin}`;
+            }
+            const isChron=(j.jc_weight||1)>=2;
             const type=j.intrip?'<span style="background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Intrip</span>':'<span style="background:#F0FDF4;color:#15803D;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Sub</span>';
             const status=j.is_void
               ?'<span style="background:#FEF2F2;color:#DC2626;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Void</span>'
               :'<span style="background:#F0FDF4;color:#15803D;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">✓</span>';
-            const comeback=j.first_comeback_datetime?j.first_comeback_datetime.slice(5,16).replace('T',' '):'—';
-            const rowBg=j.is_void?'background:#FFFBFB;':'';
+            const weightCell=isChron
+              ?`<span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">×${j.jc_weight} chronic</span>`
+              :`1`;
+            const rowBg=j.is_void?'background:#FFFBFB;':isChron?'background:#FFFBEB;':'';
             return`<tr style="border-bottom:1px solid #F1F5F9;${rowBg}">
-              <td style="padding:6px 8px;color:#0F172A;">${d}</td>
+              <td style="padding:6px 8px;color:#0F172A;">${dateCell}</td>
               <td style="padding:6px 8px;font-weight:600;font-family:monospace;font-size:.78rem;">${j.reg_number||'—'}</td>
               <td style="padding:6px 8px;text-align:center;">${type}</td>
-              <td style="padding:6px 8px;text-align:center;font-weight:700;">${j.jc_weight||1}</td>
+              <td style="padding:6px 8px;text-align:center;">${weightCell}</td>
               <td style="padding:6px 8px;text-align:center;">${status}</td>
               <td style="padding:6px 8px;color:#64748B;font-size:.7rem;">${comeback}</td>
             </tr>`;
