@@ -820,6 +820,21 @@ function card(v){
       +partCard('Tyre',v.tyre_status,v.tyre_km_since,v.tyre_km_remaining,v.last_tyre_replaced_date,v.last_tyre_replaced_hub,THRESH.tyre)
       +'</div>';
   }
+  // Firmware / IoT status tags
+  function fwTag(label,pending){
+    if(pending===null||pending===undefined)return '';
+    if(pending)return '<span style="font-size:.7rem;font-weight:600;color:#D97706;background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:3px 9px">⚠ '+label+': Pending</span>';
+    return '<span style="font-size:.7rem;font-weight:600;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px">✓ '+label+': Done</span>';
+  }
+  var hasFw=(v.diu_check_status!==null&&v.diu_check_status!==undefined)||(v.iot_glue_status!==null&&v.iot_glue_status!==undefined)||(v.mcu_fw_60a_status!==null&&v.mcu_fw_60a_status!==undefined);
+  var fwHtml=hasFw
+    ?'<div class="sec-hd" style="margin-top:12px"><div class="sec-title">Firmware / IoT</div></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 8px">'
+      +fwTag('DIU Check',v.diu_check_status)
+      +fwTag('IoT Glue',v.iot_glue_status)
+      +fwTag('MCU FW (60A)',v.mcu_fw_60a_status)
+      +'</div>'
+    :'';
   var flags='<div class="flags">';
   if(v.days_since_last_jc>30)flags+='<div class="chk pms">⚠ PMS Required — '+v.days_since_last_jc+' days since JC</div>';
   flags+='</div>';
@@ -837,7 +852,7 @@ function card(v){
     +'<div class="odo-stat"><div class="odo-lbl">Last JC Odo</div><div class="odo-val">'+fm(v.last_jc_odo)+'</div><div class="odo-sub">km</div></div>'
     +'<div class="odo-stat"><div class="odo-lbl">Days Since JC</div><div class="odo-val">'+(v.days_since_last_jc!=null?v.days_since_last_jc:'--')+'</div><div class="odo-sub">days</div></div>'
     +'</div>'
-    +'<div class="cb">'+partsHtml+flags
+    +'<div class="cb">'+partsHtml+fwHtml+flags
     +'<button class="dl-btn" onclick="showJCHistory('+v.bike_id+',\''+v.reg_number+'\',this)">📋 View JC History</button>'
     +'<div class="jc-section"></div>'
     +'</div></div>';
