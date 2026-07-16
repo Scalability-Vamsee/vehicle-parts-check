@@ -1,8 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// v20 — added purge_stale_jc_log_rows step before rebuild to fix duplicate-group bug
-// (jcsl_id not yet in Metabase card output — will switch back once added)
-// IST datetime handling retained: +05:30 appended to IST timestamps from Metabase
+// v21 — restored from v20 after incorrect session edits (v17/v18 were based on stale v16 fork)
+// v20 features retained: purge_stale_jc_log_rows, toIstTimestamptz, jcsl_id, jc_weight
+// isVoid logic unchanged: trusts Metabase rr_count_3d_comeback directly (no datetime filter)
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
