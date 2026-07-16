@@ -824,7 +824,7 @@ function card(v){
   function fwTag(label,pending){
     if(pending===null||pending===undefined)return '';
     if(pending)return '<span style="font-size:.7rem;font-weight:600;color:#D97706;background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:3px 9px">⚠ '+label+': Pending</span>';
-    return '<span style="font-size:.7rem;font-weight:600;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px">✓ '+label+': Done</span>';
+    return '<span style="font-size:.7rem;font-weight:600;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px">✓ '+label+': Done / N/A</span>';
   }
   var hasFw=(v.diu_check_status!==null&&v.diu_check_status!==undefined)||(v.iot_glue_status!==null&&v.iot_glue_status!==undefined)||(v.mcu_fw_60a_status!==null&&v.mcu_fw_60a_status!==undefined);
   var fwHtml=hasFw
