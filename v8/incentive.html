@@ -1259,7 +1259,7 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
       .from('incentive_jc_log')
       .select('jc_billed_date,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime')
       .eq('week_start',weekStart)
-      .eq('technician_name_raw',techName)
+      .eq('technician_name',techName)
       .order('jc_billed_date',{ascending:true})
       .order('reg_number',{ascending:true})
       .limit(500);
