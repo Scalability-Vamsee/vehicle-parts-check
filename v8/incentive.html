@@ -1222,7 +1222,7 @@ function renderTrendTable(stats,currentWeek,rankByWeek){
       <td>${s.submission_jcs||0}</td>
       <td>${s.voided_jcs||0}</td>
       <td><b>${s.eligible_jcs||0}</b></td>
-      <td>${Math.round(calcPayout(s.eligible_jcs||0))}</td>
+      <td>${Math.round(s.payout_amount!=null?+s.payout_amount:calcPayout(s.eligible_jcs||0))}</td>
       <td>${rank}</td>
     </tr>`;
   }).join('');
@@ -1385,7 +1385,7 @@ async function renderLeaderboard(){
     const isFrozenWeek=stats.some(s=>s.is_frozen);
     const payoutLabel=isFrozenWeek?'Payout':'Est. Payout';
     const earners=stats.filter(s=>(s.eligible_jcs||0)>50);
-    const pool=stats.reduce((a,s)=>a+calcPayout(s.eligible_jcs||0),0);
+    const pool=stats.reduce((a,s)=>a+(s.payout_amount!=null?+s.payout_amount:calcPayout(s.eligible_jcs||0)),0);
     const avgJcs=earners.length?Math.round(earners.reduce((a,s)=>a+(s.eligible_jcs||0),0)/earners.length):0;
     const top=stats[0];
     const lbKpiEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -1448,7 +1448,7 @@ async function renderLeaderboard(){
         <td style="color:${(s.voided_jcs||0)>0?'#DC2626':'var(--muted)'};">${s.voided_jcs||0}</td>
         <td><b>${s.eligible_jcs||0}</b></td>
         <td><span class="badge">${tierBadge}</span></td>
-        <td>₹${Math.round(calcPayout(s.eligible_jcs||0))}</td>
+        <td>₹${Math.round(s.payout_amount!=null?+s.payout_amount:calcPayout(s.eligible_jcs||0))}</td>
       </tr>`;
     }).join('');
   }catch(e){
@@ -1944,9 +1944,10 @@ function renderHubLeaderboard(stats){
     if(!grouped[hub])grouped[hub]={city:s.city||'—',rows:[]};
     grouped[hub].rows.push(s);
   });
+  const hubPay=r=>r.payout_amount!=null?+r.payout_amount:calcPayout(r.eligible_jcs||0);
   const hubs=Object.keys(grouped).sort((a,b)=>{
-    const pa=grouped[a].rows.reduce((x,r)=>x+calcPayout(r.eligible_jcs||0),0);
-    const pb=grouped[b].rows.reduce((x,r)=>x+calcPayout(r.eligible_jcs||0),0);
+    const pa=grouped[a].rows.reduce((x,r)=>x+hubPay(r),0);
+    const pb=grouped[b].rows.reduce((x,r)=>x+hubPay(r),0);
     return pb-pa;
   });
   if(!hubs.length){tbody.innerHTML='<tr><td colspan="7" style="padding:16px 8px;text-align:center;color:var(--muted);">No data</td></tr>';return;}
@@ -1955,7 +1956,7 @@ function renderHubLeaderboard(stats){
     const g=grouped[hub];
     const jcArr=g.rows.map(r=>r.eligible_jcs||0).sort((a,b)=>a-b);
     const earners=jcArr.filter(j=>j>50).length;
-    const total=g.rows.reduce((x,r)=>x+calcPayout(r.eligible_jcs||0),0);
+    const total=g.rows.reduce((x,r)=>x+hubPay(r),0);
     const median=jcArr.length%2===0?(jcArr[jcArr.length/2-1]+jcArr[jcArr.length/2])/2:jcArr[Math.floor(jcArr.length/2)];
     const totalJcs=g.rows.reduce((x,r)=>x+(r.eligible_jcs||0),0);
     const isOpen=!!_hubExpandState[hub];
@@ -1988,7 +1989,7 @@ function renderHubLeaderboard(stats){
           <td>${tier>0?'<span style="color:#15803D;font-weight:700;">T'+tier+'</span>':'<span style="color:var(--muted);">✗</span>'}</td>
           <td><b>${r.eligible_jcs||0}</b></td>
           <td style="color:var(--muted);">—</td>
-          <td style="color:#15803D;font-weight:600;">₹${Math.round(calcPayout(r.eligible_jcs||0))}</td>
+          <td style="color:#15803D;font-weight:600;">₹${Math.round(hubPay(r))}</td>
         </tr>`);
       });
     }
@@ -2056,7 +2057,7 @@ function _buildCSV(stats,isFrozen){
   const csvRows=stats.map(s=>{
     const tier=getTierInfo(s.eligible_jcs||0).tier;
     const tierLabel=tier>0?'T'+tier:'Below';
-    return[s.tech_name,s.hub_name||'',s.city||'',s.intrip_jcs||0,s.submission_jcs||0,s.voided_jcs||0,s.eligible_jcs||0,tierLabel,Math.round(isFrozen?(s.payout_amount||calcPayout(s.eligible_jcs||0)):calcPayout(s.eligible_jcs||0))].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',');
+    return[s.tech_name,s.hub_name||'',s.city||'',s.intrip_jcs||0,s.submission_jcs||0,s.voided_jcs||0,s.eligible_jcs||0,tierLabel,Math.round(s.payout_amount!=null?+s.payout_amount:calcPayout(s.eligible_jcs||0))].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',');
   });
   return headers.join(',')+'\n'+csvRows.join('\n');
 }
