@@ -836,17 +836,10 @@ body.pinned #hbg{display:none}
           <div class="an-wrap" style="height:260px"><canvas id="an-c1"></canvas></div>
           <div class="an-note">Bars = voided ÷ all billed. Lines = void rate within type (solid red = Intrip, dashed amber = EndTrip). A week is final only Wednesday of the following week — recent weeks marked * are maturing. Weeks before Jun 8 excluded (void flags under-captured).</div>
         </div>
-        <div class="an-grid2">
-          <div class="an-card">
-            <div class="an-card-title">Guardrail — void: earners vs non-earners</div>
-            <div class="an-wrap" style="height:220px"><canvas id="an-c2"></canvas></div>
-            <div class="an-note">If earners void more than non-earners, volume is being gamed.</div>
-          </div>
-          <div class="an-card">
-            <div class="an-card-title">Cohort — same techs, before vs after announcement (all cities)</div>
-            <div class="an-cgrid" id="an-cohort"></div>
-            <div class="an-note">Techs active pre-announcement tracked into live full weeks — removes new-joiner dilution.</div>
-          </div>
+        <div class="an-card">
+          <div class="an-card-title">Guardrail — void: earners vs non-earners</div>
+          <div class="an-wrap" style="height:220px"><canvas id="an-c2"></canvas></div>
+          <div class="an-note">If earners void more than non-earners, volume is being gamed.</div>
         </div>
 
         <div class="an-level"><b>L2</b> Where — city and hub</div>
@@ -860,7 +853,7 @@ body.pinned #hbg{display:none}
             <div style="display:flex;gap:5px;flex-wrap:wrap" id="an-pills"></div>
           </div>
           <div class="an-wrap" style="height:250px"><canvas id="an-c4"></canvas></div>
-          <div class="an-note">Red dots (right axis) = selected-week void % of billed. Sorted by selected-week JC/tech desc. Follows city filter.</div>
+          <div class="an-note">Selected week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad without GAS sync assume 4 techs/day. Sorted by selected-week JC/tech desc.</div>
         </div>
 
       </div>
@@ -2781,8 +2774,13 @@ function anPooled(w, cityF){
   const wm=anWeeks.find(m=>m.w===w); const wdays=wm?wm.days:7;
   let jcs=0,intrip=0,avgDaySum=0,attDays=0;
   Object.keys(byHub).forEach(h=>{
-    const a=anAtt[h+'|'+w];
+    const a=anAtt?anAtt[h+'|'+w]:null;
     if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
+    else{
+      // Fallback: Fathenagar + Hyderabad city hubs have no attendance in GAS sync — assume 4 techs/day
+      const isHyd=anHubCity[h]==='Hyderabad', isFath=h==='fathenagar';
+      if(isHyd||isFath){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=4;attDays=Math.max(attDays,wdays);}
+    }
   });
   if(!avgDaySum)return null;
   const td=avgDaySum*wdays;
@@ -2857,7 +2855,7 @@ function anRenderPills(){
     `<button class="an-wbtn ${m.w===anSelWeek?'active':''}" onclick="anSetWeek('${m.w}')">${m.short}${m.days<7?'*':''}</button>`).join('');
 }
 function anRenderAll(){
-  anTiles();anRenderPills();anChart0();anChartTechs();anChart1();anChart2();anCohortCard();anChart3();anChart4();
+  anTiles();anRenderPills();anChart0();anChartTechs();anChart1();anChart2();anChart3();anChart4();
 }
 
 function anTiles(){
@@ -2966,7 +2964,7 @@ function anChart1(){
     ctx.restore();}};
   if(anCh[1])anCh[1].destroy();
   anCh[1]=new Chart(document.getElementById('an-c1'),{type:'bar',
-    data:{labels:QW.map(m=>m.short),datasets:[
+    data:{labels:QW.map(m=>[m.short,m.label]),datasets:[
       {label:'Void % of billed',data:q.map(r=>r.vrAll),backgroundColor:QW.map(m=>m.mature?'#fca5a5':'#fecaca'),borderRadius:4,maxBarThickness:80,order:3},
       {label:'Intrip void rate',data:q.map(r=>r.vrIntrip),type:'line',borderColor:'#dc2626',backgroundColor:'#dc2626',borderWidth:2.5,pointRadius:3,tension:.25,order:1},
       {label:'EndTrip void rate',data:q.map(r=>r.vrEnd),type:'line',borderColor:'#f59e0b',backgroundColor:'#f59e0b',borderDash:[6,3],borderWidth:2.5,pointRadius:3,tension:.25,order:1},
@@ -2986,7 +2984,7 @@ function anChart2(){
   const q=QW.map(m=>anDist(m.w));
   if(anCh[2])anCh[2].destroy();
   anCh[2]=new Chart(document.getElementById('an-c2'),{type:'bar',
-    data:{labels:QW.map(m=>m.short),datasets:[
+    data:{labels:QW.map(m=>[m.short,m.label]),datasets:[
       {label:'Earners (≥51)',data:q.map(r=>r.vrEarn),backgroundColor:'#10b981',borderRadius:4},
       {label:'Non-earners',data:q.map(r=>r.vrNon),backgroundColor:'#f87171',borderRadius:4},
     ]},
@@ -3012,7 +3010,7 @@ function anChart3(){
   const cities=[['Bangalore','#6366f1'],['NCR','#f59e0b'],['Hyderabad','#10b981']];
   if(anCh[3])anCh[3].destroy();
   anCh[3]=new Chart(document.getElementById('an-c3'),{type:'line',
-    data:{labels:anWeeks.map(m=>m.short),datasets:cities.map(([cy,col])=>(
+    data:{labels:anWeeks.map(m=>[m.short,m.label]),datasets:cities.map(([cy,col])=>(
       {label:cy,data:anWeeks.map(m=>anPooled(m.w,cy)?.jpt??null),borderColor:col,backgroundColor:col,borderWidth:2.5,pointRadius:3.5,tension:.25,spanGaps:false}))},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
@@ -3031,10 +3029,20 @@ function anChartTechs(){
     if(f&&anHubCity[r.hubKey]!==f)return;
     byDate[r.date]=(byDate[r.date]||0)+r.tech;
   });
+  // Hyderabad city has no GAS sync — synthesize flat-4 so the chart still renders
+  if(f==='Hyderabad'&&!Object.keys(byDate).length){
+    const synStart=new Date(AN_START+'T00:00:00Z').getTime();
+    const synEnd=Date.now();
+    for(let ms=synStart;ms<=synEnd;ms+=86400000){
+      const ds=new Date(ms).toISOString().slice(0,10);
+      byDate[ds]=4; // assumed ~4 techs/day in Hyd (actual data unavailable)
+    }
+  }
   const keys=Object.keys(byDate).sort();
   // no attendance readable → hide card (an-att-warn already explains why)
   if(!anAtt||!keys.length){card.style.display='none';if(anCh[5]){anCh[5].destroy();anCh[5]=null;}return;}
   card.style.display='block';
+  const isSynth=f==='Hyderabad'&&!(anAttRows||[]).some(r=>anHubCity[r.hubKey]===f);
   // continuous UTC date axis min..max so missing days become real gaps (not compressed away)
   const start=new Date(keys[0]+'T00:00:00Z').getTime();
   const end=new Date(keys[keys.length-1]+'T00:00:00Z').getTime();
@@ -3054,7 +3062,7 @@ function anChartTechs(){
   if(anCh[5])anCh[5].destroy();
   anCh[5]=new Chart(document.getElementById('an-techs'),{type:'line',
     data:{labels:labels.map(fmt),datasets:[
-      {label:'Active techs/day',data:daily,borderColor:'#c7d2fe',backgroundColor:'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,order:2},
+      {label:isSynth?'Active techs/day (assumed flat 4)':'Active techs/day',data:daily,borderColor:isSynth?'#fbbf24':'#c7d2fe',backgroundColor:isSynth?'#fbbf24':'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:isSynth?[6,4]:[],order:2},
       {label:'7-day avg',data:avg,borderColor:'#4f46e5',backgroundColor:'#4f46e5',borderWidth:2.5,pointRadius:0,tension:.3,spanGaps:false,order:1},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
@@ -3080,26 +3088,61 @@ function anChart4(){
   const jptOf=(h,w)=>{
     const a=hubAgg[h]?.[w];if(!a)return null;
     const att=anAtt?.[a.hubKey+'|'+w];
-    return att&&att.td>0?+(a.jcs/att.td).toFixed(2):null;};
+    if(att&&att.td>0&&att.days>0){
+      // Use avg-rate × week-days for consistency with anPooled
+      const wm=anWeeks.find(x=>x.w===w);
+      return +(a.jcs/(att.td/att.days*(wm?wm.days:7))).toFixed(2);
+    }
+    // Fallback: Fathenagar + Hyderabad hubs assume 4 techs/day
+    const isHyd=anHubCity[a.hubKey]==='Hyderabad', isFath=a.hubKey==='fathenagar';
+    if(isHyd||isFath){const wm=anWeeks.find(x=>x.w===w);return +(a.jcs/(4*(wm?wm.days:7))).toFixed(2);}
+    return null;};
   const hubs=Object.keys(hubAgg).sort((a,b)=>(jptOf(b,anSelWeek)||0)-(jptOf(a,anSelWeek)||0));
   const COLS=['#6366f1','#0ea5e9','#f59e0b','#10b981','#ec4899','#8b5cf6'];
+  // For selected week: color green if jpt improved vs prev week, red if declined
+  const prevW=shown.length>=2?shown[shown.length-2].w:null;
+  const selColors=hubs.map(h=>{
+    const cur=jptOf(h,anSelWeek), prev=prevW?jptOf(h,prevW):null;
+    if(cur==null)return '#94a3b8';
+    if(prev==null)return COLS[anWeeks.findIndex(x=>x.w===anSelWeek)%6];
+    return cur>prev+0.1?'#10b981':cur<prev-0.1?'#ef4444':COLS[anWeeks.findIndex(x=>x.w===anSelWeek)%6];});
   const datasets=shown.map((m,i)=>{
     const isSel=m.w===anSelWeek;
-    return {label:m.short+(isSel?' (selected)':''),
+    return {label:m.short+(isSel?' (selected)':m.label?' — '+m.label:''),
       data:hubs.map(h=>jptOf(h,m.w)),
-      backgroundColor:COLS[anWeeks.findIndex(x=>x.w===m.w)%6]+(isSel?'ff':i===shown.length-2?'99':'55'),borderRadius:3};});
+      backgroundColor:isSel?selColors:COLS[anWeeks.findIndex(x=>x.w===m.w)%6]+(i===shown.length-2?'88':'44'),
+      borderRadius:3};});
   datasets.push({label:'Void % (selected)',type:'line',showLine:false,yAxisID:'y2',
     data:hubs.map(h=>{const a=hubAgg[h]?.[anSelWeek];return a&&a.jcs?+(100*a.voids/a.jcs).toFixed(1):null;}),
-    pointRadius:4,pointBackgroundColor:'#ef4444',borderColor:'#ef4444'});
+    pointRadius:5,pointBackgroundColor:'#ef4444',borderColor:'#ef4444'});
+  // Plugin: value labels on selected-week bars
+  const valLabels={id:'anC4Lbl',afterDatasetsDraw(c){
+    const selIdx=datasets.findIndex(d=>d.label.includes('selected')&&d.type!=='line');
+    if(selIdx<0)return;
+    const meta=c.getDatasetMeta(selIdx);
+    const ctx=c.ctx;ctx.save();
+    meta.data.forEach((bar,i)=>{
+      const v=datasets[selIdx].data[i];if(v==null)return;
+      ctx.font='bold 10px sans-serif';ctx.fillStyle='#1e293b';ctx.textAlign='center';
+      ctx.fillText(v.toFixed(1),bar.x,bar.y-4);
+    });
+    ctx.restore();}};
   if(anCh[4])anCh[4].destroy();
   anCh[4]=new Chart(document.getElementById('an-c4'),{type:'bar',
     data:{labels:hubs,datasets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
-        tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y2'?` Void: ${c.raw==null?'—':c.raw+'%'}`:` ${c.dataset.label}: ${c.raw??'no attendance data'}`}}},
-      scales:{x:{ticks:{font:{size:10}}},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true,filter:i=>i.datasetIndex<shown.length}},
+        tooltip:{callbacks:{label:c=>{
+          if(c.dataset.yAxisID==='y2')return c.raw==null?null:` Void: ${c.raw}%`;
+          const h=hubs[c.dataIndex];
+          const a=hubAgg[h]?.[shown[c.datasetIndex]?.w];
+          const jcStr=a?` (${a.jcs.toLocaleString()} JCs)`:'';
+          return c.raw==null?` ${c.dataset.label}: no data`:` ${c.dataset.label}: ${c.raw} JC/tech/day${jcStr}`;
+        }}}},
+      scales:{x:{ticks:{font:{size:9.5},maxRotation:35}},
         y:{title:{display:true,text:'JC / tech / day',font:{size:10}},beginAtZero:true},
-        y2:{position:'right',title:{display:true,text:'Void %',color:'#ef4444',font:{size:10}},min:0,max:20,ticks:{color:'#ef4444',callback:v=>v+'%'},grid:{drawOnChartArea:false}}}}});
+        y2:{position:'right',title:{display:true,text:'Void %',color:'#ef4444',font:{size:10}},min:0,max:20,ticks:{color:'#ef4444',callback:v=>v+'%'},grid:{drawOnChartArea:false}}}},
+    plugins:[valLabels]});
   const selMeta=anWeeks[wi];
   document.getElementById('an-c4-label').textContent=`${selMeta.short}: ${selMeta.label}`+(f?` · ${f}`:'');
 }
