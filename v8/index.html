@@ -335,6 +335,17 @@ body.pinned #hbg{display:none}
         </div>
       </a>
 
+      <!-- RFD Check tile — Admin only -->
+      <a class="tile" href="./rfd-check.html" data-feature="rfd-check">
+        <div class="tile-accent" style="background:linear-gradient(90deg,#374151,#6B7280)"></div>
+        <div class="tile-body">
+          <div class="tile-icon">🚦</div>
+          <div class="tile-title">RFD Check</div>
+          <div class="tile-desc">Verify IoT, MCU &amp; JC billing status before marking a bike RFD</div>
+          <button class="tile-cta" style="background:#F3F4F6;color:#374151">Check Bike →</button>
+        </div>
+      </a>
+
       <!-- Technician Incentives tile -->
       <a class="tile" href="./incentive.html" data-feature="incentive-tech" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#F59E0B,#16A34A)"></div>
@@ -476,7 +487,7 @@ async function loadUserPermissions(userId){
     // Superadmin check — grants admin-panel regardless of group features
     var{data:{session:s}}=await sbClient.auth.getSession();
     if(s&&s.user&&s.user.app_metadata&&s.user.app_metadata.is_superadmin){
-      f['admin-panel']=true;f['trace-ho']=true;f['trace-hunter']=true;
+      f['admin-panel']=true;f['trace-ho']=true;f['trace-hunter']=true;f['rfd-check']=true;
     }
     return f;
   }catch(e){console.warn('[FP] Permission check failed',e);return {};}
