@@ -2650,7 +2650,7 @@ const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar assumed avg techs/day (G
 const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
 const AN_QUALITY_FROM='2026-06-08';   // void flags under-captured before this
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
-const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal'};
+const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal','miyapur':'fathenagar'};
 
 let anLoaded=false, anCity='Overall', anSelWeek=null;
 let anRows=[], anAtt=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
@@ -3082,7 +3082,7 @@ function anChart4(){
   const hubAgg={};
   shown.forEach(m=>{
     anRows.filter(r=>r.week_start===m.w&&(!f||r.city===f)).forEach(r=>{
-      const k=r.hub_name;
+      const k=(r.hubKey==='fathenagar')?'Fathe nagar':r.hub_name; // Miyapur merged into Fathenagar (same hub)
       if(!hubAgg[k])hubAgg[k]={};
       if(!hubAgg[k][m.w])hubAgg[k][m.w]={jcs:0,voids:0,hubKey:r.hubKey};
       hubAgg[k][m.w].jcs+=r.total_jcs;hubAgg[k][m.w].voids+=r.voided_jcs;});
