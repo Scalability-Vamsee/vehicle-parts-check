@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FleetPro — RFD Check</title>
+<link rel="icon" type="image/png" href="/v8/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#F3F4F6;--text:#111827;--muted:#6B7280;--border:#E5E7EB;--shadow:0 1px 3px rgba(0,0,0,.08);--radius:12px;--primary:#E8191C;--sidebar-w:240px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* Auth Screen */
+#auth-screen{position:fixed;inset:0;background:#1A1A2E;z-index:9999;display:flex;align-items:center;justify-content:center}
+.auth-box{background:#fff;border-radius:16px;padding:36px 32px;width:360px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.auth-logo img{width:44px;height:44px;border-radius:10px;object-fit:cover}
+.auth-logo-text .t1{font-size:.7rem;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.auth-logo-text .t2{font-size:1.1rem;font-weight:700;color:var(--text)}
+.auth-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:18px}
+.auth-field{margin-bottom:14px}
+.auth-field label{display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.auth-field input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s}
+.auth-field input:focus{border-color:#6366F1}
+.auth-btn{width:100%;padding:11px;background:#E8191C;color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+.auth-btn:hover{opacity:.9}
+.auth-err{font-size:.75rem;color:#E8191C;margin-top:10px;min-height:18px;text-align:center}
+
+/* Sidebar overlay */
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+#ov.show{display:block}
+
+/* Sidebar */
+#sb{position:fixed;top:0;left:0;height:100vh;width:var(--sidebar-w);z-index:200;transform:translateX(-100%);transition:transform .22s ease;display:flex;flex-direction:column}
+#sb.open{transform:translateX(0)}
+.sb-header{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 12px;gap:8px;flex-shrink:0}
+.sb-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.sb-brand-text .t1{font-size:.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sb-brand-text .t2{font-size:.9rem;font-weight:700}
+.pin-btn{font-size:.65rem;font-weight:600;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;background:transparent;display:flex;align-items:center;gap:4px}
+.sb-section{padding:4px 8px}
+.sb-label{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 8px 2px;opacity:.5}
+.sb-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;font-size:.78rem;font-weight:500;text-decoration:none;transition:background .12s,color .12s;cursor:pointer}
+.si{font-size:.9rem;width:20px;text-align:center;flex-shrink:0}
+.sb-spacer{flex:1}
+.sb-footer{padding:10px 16px 14px;flex-shrink:0}
+.sb-ver{font-size:.62rem}
+
+/* Top bar */
+#top{background:#fff;border-bottom:1px solid var(--border);padding:0 20px;height:54px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+body.pinned #top{margin-left:var(--sidebar-w)}
+body.pinned #main{margin-left:var(--sidebar-w)}
+#hbg{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);padding:4px 6px;border-radius:6px;line-height:1}
+#hbg:hover{background:var(--bg);color:var(--text)}
+.top-bc{font-size:.78rem;color:var(--muted)}
+.top-bc span{color:var(--text);font-weight:600}
+.top-bc-sep{margin:0 5px;color:var(--border)}
+
+/* Main */
+#main{transition:margin-left .22s ease;min-height:100vh}
+
+/* Hero */
+#hero{background:linear-gradient(135deg,#1A1A2E 0%,#16213E 100%);color:#fff;padding:22px 24px 18px}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hero-title{font-size:1.2rem;font-weight:700;margin-bottom:4px}
+.hero-sub{font-size:.75rem;color:rgba(255,255,255,.55);max-width:460px}
+.sync-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.7rem;color:rgba(255,255,255,.4);margin-top:12px}
+.sync-meta-val{color:rgba(255,255,255,.75);font-weight:500}
+.sync-btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:5px 12px;font-size:.7rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.sync-btn:hover{background:rgba(255,255,255,.2)}
+.sync-btn:disabled{opacity:.4;cursor:default}
+
+/* Stats row */
+#stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;padding:16px 20px 8px}
+.stat-card{background:#fff;border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);border:1px solid var(--border);position:relative;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat-card.c-total::before{background:linear-gradient(90deg,#6366F1,#8B5CF6)}
+.stat-card.c-iot::before{background:linear-gradient(90deg,#F59E0B,#EF4444)}
+.stat-card.c-mcu::before{background:linear-gradient(90deg,#F97316,#EF4444)}
+.stat-card.c-jc::before{background:linear-gradient(90deg,#1D4ED8,#0891B2)}
+.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.stat-card.active-filter{box-shadow:0 0 0 2px #6366F1}
+.stat-num{font-size:1.6rem;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-label{font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.stat-sub{font-size:.65rem;color:var(--muted);margin-top:3px}
+
+/* Filter bar */
+#filter-bar{background:#fff;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.75rem}
+.fb-label{font-weight:600;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em}
+.fb-select,.fb-input{padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.75rem;font-family:'Inter',sans-serif;color:var(--text);background:#fff;outline:none;cursor:pointer}
+.fb-select:focus,.fb-input:focus{border-color:#6366F1}
+.fb-input{min-width:170px}
+.view-toggle{display:flex;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;font-size:.72rem;font-weight:600}
+.view-toggle button{padding:5px 12px;border:none;background:#fff;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;font-size:.72rem;font-weight:600;transition:background .12s,color .12s}
+.view-toggle button.active{background:#1A1A2E;color:#fff}
+.row-count{margin-left:auto;font-size:.68rem;color:var(--muted)}
+
+/* Table wrapper */
+#table-wrap{overflow-x:auto;padding:0 20px 28px}
+#rfd-table{width:100%;border-collapse:collapse;font-size:.75rem;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border)}
+#rfd-table thead th{background:#1A1A2E;color:rgba(255,255,255,.7);font-size:.65rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;text-align:left;white-space:nowrap;position:sticky;top:54px}
+#rfd-table tbody tr:hover{background:#F9FAFB}
+#rfd-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;white-space:nowrap}
+#rfd-table tbody tr:last-child td{border-bottom:none}
+tr.viol-iot{background:#FEF2F2}
+tr.viol-iot:hover{background:#FDE8E8}
+tr.viol-jc-only{background:#FFFBEB}
+tr.viol-jc-only:hover{background:#FEF3C7}
+.reg-num{font-weight:700;color:#1A1A2E;letter-spacing:.02em}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:600;white-space:nowrap}
+.badge-ok{background:#D1FAE5;color:#065F46}
+.badge-warn{background:#FEE2E2;color:#991B1B}
+.badge-muted{background:#F3F4F6;color:var(--muted)}
+.badge-amber{background:#FEF3C7;color:#92400E}
+.truncate{max-width:160px;overflow:hidden;text-overflow:ellipsis;display:block}
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.loading-row td{text-align:center;padding:32px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img src="logo.jpg" alt="Bounce"/>
+      <div class="auth-logo-text"><div class="t1">Bounce Daily</div><div class="t2">FleetPro</div></div>
+    </div>
+    <div class="auth-title">Sign in to continue</div>
+    <div class="auth-field"><label>Email</label><input id="a-email" type="email" placeholder="you@bounce.com" autocomplete="email"/></div>
+    <div class="auth-field"><label>Password</label><input id="a-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="auth-btn" onclick="doLogin()">Sign In</button>
+    <div class="auth-err" id="a-err"></div>
+  </div>
+</div>
+
+<!-- Sidebar overlay + nav -->
+<div id="ov"></div>
+<nav id="sb"></nav>
+
+<!-- Main Content -->
+<div id="main">
+  <!-- Topbar -->
+  <header id="top">
+    <button id="hbg" onclick="toggleSidebar()">☰</button>
+    <div class="top-bc">FleetPro <span class="top-bc-sep">›</span> <span>RFD Check</span></div>
+  </header>
+
+  <!-- Hero -->
+  <div id="hero">
+    <div class="hero-top">
+      <div>
+        <div class="hero-title">🚦 RFD Violation Check</div>
+        <div class="hero-sub">Active vehicles activated without clearing IoT / MCU checks or billing the job card.</div>
+      </div>
+      <button class="sync-btn" id="sync-btn" onclick="syncNow(this)">↺ Sync Now</button>
+    </div>
+    <div class="sync-meta">
+      Data as of: <span class="sync-meta-val" id="sync-time">—</span>
+      <span id="next-run-wrap" style="display:none">· Next run: <span class="sync-meta-val" id="next-run-val">—</span></span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div id="stats-row">
+    <div class="stat-card c-total" onclick="setViewFilter('all')" title="All rows in cache">
+      <div class="stat-num" id="s-total">—</div>
+      <div class="stat-label">Total Violations</div>
+      <div class="stat-sub" id="s-total-sub">All active vehicles flagged</div>
+    </div>
+    <div class="stat-card c-iot" onclick="setViewFilter('iot')" title="IoT Glue check still needed">
+      <div class="stat-num" id="s-iot">—</div>
+      <div class="stat-label">IoT Pending</div>
+      <div class="stat-sub">iot_glue_check_needed = true</div>
+    </div>
+    <div class="stat-card c-mcu" onclick="setViewFilter('mcu')" title="MCU / 60A regen check needed">
+      <div class="stat-num" id="s-mcu">—</div>
+      <div class="stat-label">MCU Pending</div>
+      <div class="stat-sub">regen_60a_check_needed = true</div>
+    </div>
+    <div class="stat-card c-jc" onclick="setViewFilter('jc')" title="JC not yet billed">
+      <div class="stat-num" id="s-jc">—</div>
+      <div class="stat-label">JC Not Billed</div>
+      <div class="stat-sub">jc_billed = false</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div id="filter-bar">
+    <span class="fb-label">View</span>
+    <div class="view-toggle">
+      <button id="vt-iot-mcu" class="active" onclick="setViewFilter('iot_mcu')">IoT / MCU Issues</button>
+      <button id="vt-all" onclick="setViewFilter('all')">All</button>
+    </div>
+    <span class="fb-label" style="margin-left:6px">Hub</span>
+    <select id="hub-filter" class="fb-select" onchange="applyFilters()">
+      <option value="">All Hubs</option>
+    </select>
+    <input id="reg-search" class="fb-input" type="text" placeholder="Search reg…" oninput="debounceSearch()"/>
+    <span class="row-count" id="row-count"></span>
+  </div>
+
+  <!-- Table -->
+  <div id="table-wrap">
+    <table id="rfd-table">
+      <thead>
+        <tr>
+          <th>Reg Number</th>
+          <th>Hub</th>
+          <th>Rental Status</th>
+          <th>IoT Glue</th>
+          <th>MCU FW</th>
+          <th>JC Billed</th>
+          <th>Activated By</th>
+          <th>Activated</th>
+          <th>Technician</th>
+          <th>RFD Validation</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr class="loading-row"><td colspan="10">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Supabase + sidebar -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="./sidebar.js"></script>
+<script>
+var SB_URL  = 'https://clkfvmmlgwcvntxnolsv.supabase.co';
+var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2Z2bW1sZ3djdm50eG5vbHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ2NTgsImV4cCI6MjA5MDEyMDY1OH0.FA33GFQisWX_hDeGCWqL5yAZmPcuQRdxZX32I23lyoY';
+var EDGE_BASE = 'https://clkfvmmlgwcvntxnolsv.supabase.co/functions/v1';
+var SYNC_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+var sb = supabase.createClient(SB_URL, ANON_KEY);
+var K = ANON_KEY;  // overridden with session token on login
+var hubMap = {};   // hub_id → location_name
+var currentView = 'iot_mcu';
+var searchTimer = null;
+var allRows = [];
+
+// ── Auth ────────────────────────────────────────────────────────────────
+function bootPage() {
+  sb.auth.getSession().then(function(r) {
+    if (r.data && r.data.session) {
+      activateSession(r.data.session);
+    }
+    // else stay on auth screen
+  });
+}
+
+function doLogin() {
+  var email = document.getElementById('a-email').value.trim();
+  var pass  = document.getElementById('a-pass').value;
+  document.getElementById('a-err').textContent = '';
+  sb.auth.signInWithPassword({ email: email, password: pass }).then(function(r) {
+    if (r.error) { document.getElementById('a-err').textContent = r.error.message; return; }
+    activateSession(r.data.session);
+  });
+}
+
+function activateSession(session) {
+  K = session.access_token;
+  loadAndApplyPermissions(session).then(function(ok) {
+    if (!ok) { window.location.href = 'index.html'; return; }
+    hideAuthScreen();
+    loadPostAuthData();
+  });
+}
+
+function hideAuthScreen() {
+  var el = document.getElementById('auth-screen');
+  if (el) el.style.display = 'none';
+}
+
+function loadAndApplyPermissions(session) {
+  // Superadmin short-circuit
+  if (session.user && session.user.app_metadata && session.user.app_metadata.is_superadmin) {
+    return Promise.resolve(true);
+  }
+  return fetch(SB_URL + '/rest/v1/user_groups?select=group_id&user_id=eq.' + session.user.id, {
+    headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+  }).then(function(r) { return r.json(); }).then(function(groups) {
+    if (!groups || groups.length === 0) return false;
+    var gids = groups.map(function(g) { return g.group_id; }).join(',');
+    return fetch(SB_URL + '/rest/v1/group_features?select=feature_key&group_id=in.(' + gids + ')', {
+      headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+    }).then(function(r) { return r.json(); }).then(function(features) {
+      var map = {};
+      (features || []).forEach(function(f) { map[f.feature_key] = true; });
+      // Gate elements
+      document.querySelectorAll('[data-feature]').forEach(function(el) {
+        if (!map[el.dataset.feature]) el.style.display = 'none';
+      });
+      // Check page feature
+      return !!map['rfd-check'];
+    });
+  }).catch(function() { return false; });
+}
+
+// ── Post-auth data ────────────────────────────────────────────────────────
+function loadPostAuthData() {
+  loadHubMap().then(function() {
+    populateHubFilter();
+    loadStats();
+    loadSyncTime();
+    loadRows();
+  });
+}
+
+function loadHubMap() {
+  return fetch(SB_URL + '/rest/v1/rental_locations?select=id,location_name&order=id', {
+    headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+  }).then(function(r) { return r.json(); }).then(function(rows) {
+    (rows || []).forEach(function(h) { hubMap[h.id] = h.location_name; });
+  }).catch(function() {});
+}
+
+function populateHubFilter() {
+  var sel = document.getElementById('hub-filter');
+  var ids = Object.keys(hubMap).map(Number).sort(function(a,b){return a-b;});
+  ids.forEach(function(id) {
+    var o = document.createElement('option');
+    o.value = id;
+    o.textContent = hubMap[id] || ('Hub ' + id);
+    sel.appendChild(o);
+  });
+}
+
+function loadSyncTime() {
+  fetch(SB_URL + '/rest/v1/rfd_violations_cache?select=synced_at&order=synced_at.desc&limit=1', {
+    headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+  }).then(function(r) { return r.json(); }).then(function(rows) {
+    if (!rows || !rows.length) return;
+    var ts = rows[0].synced_at;
+    document.getElementById('sync-time').textContent = fmtDate(ts);
+    var nxt = calcNextRun(ts, SYNC_INTERVAL_MS);
+    if (nxt) {
+      document.getElementById('next-run-val').textContent = nxt;
+      document.getElementById('next-run-wrap').style.display = '';
+    }
+  }).catch(function() {});
+}
+
+function calcNextRun(tsStr, intervalMs) {
+  if (!tsStr) return null;
+  var last = new Date(tsStr).getTime();
+  if (isNaN(last)) return null;
+  var next = new Date(last + intervalMs);
+  var diff = next.getTime() - Date.now();
+  if (diff <= 0) return 'soon';
+  var m = Math.round(diff / 60000);
+  if (m < 60) return 'in ~' + m + ' min';
+  return 'in ~' + Math.round(m / 60) + 'h';
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+function loadStats() {
+  var h = { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K, 'Prefer': 'count=exact', 'Range': '0-0' } };
+  var count = function(url) {
+    return fetch(SB_URL + '/rest/v1/rfd_violations_cache?select=bike_id' + url, h)
+      .then(function(r) { return parseInt(r.headers.get('Content-Range').split('/')[1]) || 0; })
+      .catch(function() { return 0; });
+  };
+  Promise.all([
+    count(''),
+    count('&iot_glue_check_needed=eq.true'),
+    count('&regen_60a_check_needed=eq.true'),
+    count('&jc_billed=eq.false')
+  ]).then(function(vals) {
+    document.getElementById('s-total').textContent = vals[0].toLocaleString();
+    document.getElementById('s-iot').textContent   = vals[1].toLocaleString();
+    document.getElementById('s-mcu').textContent   = vals[2].toLocaleString();
+    document.getElementById('s-jc').textContent    = vals[3].toLocaleString();
+  });
+}
+
+// ── View filter ───────────────────────────────────────────────────────────
+function setViewFilter(mode) {
+  currentView = mode;
+  document.getElementById('vt-iot-mcu').classList.toggle('active', mode === 'iot_mcu');
+  document.getElementById('vt-all').classList.toggle('active', mode === 'all');
+  // stat card clicks also update buttons
+  if (mode === 'iot') { currentView = 'iot';  document.getElementById('vt-iot-mcu').classList.add('active');   document.getElementById('vt-all').classList.remove('active'); }
+  if (mode === 'mcu') { currentView = 'mcu';  document.getElementById('vt-iot-mcu').classList.add('active');   document.getElementById('vt-all').classList.remove('active'); }
+  if (mode === 'jc')  { currentView = 'jc';   document.getElementById('vt-iot-mcu').classList.remove('active');document.getElementById('vt-all').classList.add('active'); }
+  if (mode === 'all') { document.getElementById('vt-iot-mcu').classList.remove('active');document.getElementById('vt-all').classList.add('active'); }
+  if (mode === 'iot_mcu') { document.getElementById('vt-iot-mcu').classList.add('active');document.getElementById('vt-all').classList.remove('active'); }
+  loadRows();
+}
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applyFilters, 350);
+}
+
+function applyFilters() { loadRows(); }
+
+// ── Data load ─────────────────────────────────────────────────────────────
+function loadRows() {
+  document.getElementById('tbody').innerHTML = '<tr class="loading-row"><td colspan="10">Loading…</td></tr>';
+  var hub = document.getElementById('hub-filter').value;
+  var reg = document.getElementById('reg-search').value.trim();
+
+  var url = SB_URL + '/rest/v1/rfd_violations_cache?select=*&order=hub_id.asc,reg_number.asc&limit=1500';
+
+  if (currentView === 'iot_mcu') {
+    url += '&or=(iot_glue_check_needed.eq.true,regen_60a_check_needed.eq.true)';
+  } else if (currentView === 'iot') {
+    url += '&iot_glue_check_needed=eq.true';
+  } else if (currentView === 'mcu') {
+    url += '&regen_60a_check_needed=eq.true';
+  } else if (currentView === 'jc') {
+    url += '&jc_billed=eq.false';
+  }
+  // 'all' — no extra filter
+
+  if (hub) url += '&hub_id=eq.' + encodeURIComponent(hub);
+  if (reg) url += '&reg_number=ilike.*' + encodeURIComponent(reg) + '*';
+
+  fetch(url, { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K } })
+    .then(function(r) { return r.json(); })
+    .then(function(rows) {
+      allRows = rows || [];
+      renderTable(allRows);
+      document.getElementById('row-count').textContent = allRows.length + ' rows';
+    })
+    .catch(function(e) {
+      document.getElementById('tbody').innerHTML = '<tr class="loading-row"><td colspan="10" style="color:#E8191C">Error loading data: ' + e.message + '</td></tr>';
+    });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderTable(rows) {
+  var tbody = document.getElementById('tbody');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">✅</div><div>No violations found for the current filters.</div></div></td></tr>';
+    return;
+  }
+  var html = '';
+  rows.forEach(function(r) {
+    var iotPending = r.iot_glue_check_needed === true;
+    var mcuPending = r.regen_60a_check_needed === true;
+    var jcOk       = r.jc_billed === true;
+    var rowClass   = (iotPending || mcuPending) ? 'viol-iot' : (!jcOk ? 'viol-jc-only' : '');
+
+    var hubName = hubMap[r.hub_id] || ('Hub ' + (r.hub_id || '?'));
+    var regDisplay = r.reg_number || '—';
+
+    html += '<tr class="' + rowClass + '">'
+      + '<td class="reg-num">' + esc(regDisplay) + '</td>'
+      + '<td><span class="truncate" title="' + esc(hubName) + '">' + esc(hubName) + '</span></td>'
+      + '<td><span class="truncate" title="' + esc(r.rental_status||'') + '">' + esc(r.rental_status || '—') + '</span></td>'
+      + '<td>' + checkBadge(!iotPending, 'IoT') + '</td>'
+      + '<td>' + checkBadge(!mcuPending, 'MCU') + '</td>'
+      + '<td>' + jcBadge(r.jc_billed, r.jc_log_status) + '</td>'
+      + '<td><span class="truncate" title="' + esc(r.activated_by||'') + '">' + esc(shortBy(r.activated_by)) + '</span></td>'
+      + '<td>' + esc(fmtRel(r.activated_at)) + '</td>'
+      + '<td><span class="truncate" title="' + esc(r.technician_name||'') + '">' + esc(shortName(r.technician_name)) + '</span></td>'
+      + '<td><span class="truncate" style="max-width:120px" title="' + esc(r.rfd_validation_status||'') + '">' + esc(r.rfd_validation_status || '—') + '</span></td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function checkBadge(ok, label) {
+  if (ok) return '<span class="badge badge-ok">✓ Done</span>';
+  return '<span class="badge badge-warn">⚠ Pending</span>';
+}
+
+function jcBadge(billed, logStatus) {
+  if (billed === true)  return '<span class="badge badge-ok">✓ Billed</span>';
+  if (billed === false) return '<span class="badge badge-amber">⚠ ' + esc(logStatus || 'Not Billed') + '</span>';
+  return '<span class="badge badge-muted">—</span>';
+}
+
+function shortBy(txt) {
+  if (!txt) return '—';
+  // Trim long automated messages
+  if (txt.length > 28) return txt.slice(0, 26) + '…';
+  return txt;
+}
+
+function shortName(txt) {
+  if (!txt) return '—';
+  return txt.split(' ').slice(0,2).join(' ');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  var d = new Date(ts.replace(' ','T').replace('+00','Z'));
+  if (isNaN(d.getTime())) return ts;
+  return d.toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+function fmtRel(ts) {
+  if (!ts) return '—';
+  var d = new Date(ts.replace ? ts.replace(' ','T').replace('+00','Z') : ts);
+  if (isNaN(d.getTime())) return ts;
+  var diff = Date.now() - d.getTime();
+  var hrs = Math.floor(diff / 3600000);
+  if (hrs < 1) return Math.floor(diff/60000) + 'm ago';
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs/24);
+  return days + 'd ago';
+}
+
+// ── Sync Now ──────────────────────────────────────────────────────────────
+function syncNow(btn) {
+  btn.disabled = true;
+  btn.textContent = 'Syncing…';
+  var prevTs = null;
+  fetch(SB_URL + '/rest/v1/rfd_violations_cache?select=synced_at&order=synced_at.desc&limit=1', {
+    headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+  }).then(function(r) { return r.json(); }).then(function(rows) {
+    prevTs = rows && rows.length ? rows[0].synced_at : null;
+    return fetch(EDGE_BASE + '/rfd-check-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: ANON_KEY, Authorization: 'Bearer ' + K },
+      body: '{}'
+    });
+  }).then(function() {
+    // Poll for new synced_at
+    var attempts = 0;
+    var poll = setInterval(function() {
+      attempts++;
+      fetch(SB_URL + '/rest/v1/rfd_violations_cache?select=synced_at&order=synced_at.desc&limit=1', {
+        headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + K }
+      }).then(function(r) { return r.json(); }).then(function(rows) {
+        var newTs = rows && rows.length ? rows[0].synced_at : null;
+        if (newTs !== prevTs || attempts >= 30) {
+          clearInterval(poll);
+          btn.disabled = false;
+          btn.textContent = '↺ Sync Now';
+          loadStats();
+          loadSyncTime();
+          loadRows();
+        }
+      });
+    }, 2000);
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = '↺ Sync Now';
+  });
+}
+
+bootPage();
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@
     { label:'Service Operations', items:[
       { href:'./maintenance.html', icon:'🔧', label:'Preventive Maintenance', feature:'maintenance' },
       { href:'./queue.html',       icon:'📋', label:'OOS Queue',              feature:'oos-queue' },
+      { href:'./rfd-check.html',   icon:'🚦', label:'RFD Check',              feature:'rfd-check' },
     ]},
     { label:'Hub Operations', items:[
       { href:'./deployment.html',  icon:'🚲', label:'Deployment Queue',       feature:'deployment' },
