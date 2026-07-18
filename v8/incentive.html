@@ -853,7 +853,7 @@ body.pinned #hbg{display:none}
             <div style="display:flex;gap:5px;flex-wrap:wrap" id="an-pills"></div>
           </div>
           <div class="an-wrap" style="height:250px"><canvas id="an-c4"></canvas></div>
-          <div class="an-note">Selected week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad without GAS sync assume 4 techs/day. Sorted by selected-week JC/tech desc.</div>
+          <div class="an-note">Selected week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad assume 3.5 techs/day for weeks before W6 (real attendance used from W6). Sorted by selected-week JC/tech desc.</div>
         </div>
 
       </div>
@@ -2646,6 +2646,8 @@ let _dashBooted=false;  // guard: getSession path + onAuthStateChange can both f
 const AN_START='2026-06-01';          // analysis window start
 const AN_ANNOUNCE_WEEK='2026-06-22';  // incentive announced Jun 23 (W3 Jun 15–21 retro-paid)
 const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
+const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar assumed avg techs/day (GAS attendance unreliable pre-W6)
+const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
 const AN_QUALITY_FROM='2026-06-08';   // void flags under-captured before this
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal'};
@@ -2775,13 +2777,12 @@ function anPooled(w, cityF){
   const wm=anWeeks.find(m=>m.w===w); const wdays=wm?wm.days:7;
   let jcs=0,intrip=0,avgDaySum=0,attDays=0;
   Object.keys(byHub).forEach(h=>{
+    const isHF=anHubCity[h]==='Hyderabad'||h==='fathenagar';
     const a=anAtt?anAtt[h+'|'+w]:null;
-    if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
-    else{
-      // Fallback: Fathenagar + Hyderabad city hubs have no attendance in GAS sync — assume 4 techs/day
-      const isHyd=anHubCity[h]==='Hyderabad', isFath=h==='fathenagar';
-      if(isHyd||isFath){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=4;attDays=Math.max(attDays,wdays);}
-    }
+    // Hyd/Fathenagar: GAS attendance unreliable before W6 → assume flat rate for W1–W5, trust real from W6
+    if(isHF&&w<HYD_REAL_FROM){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=HYD_ASSUMED_TECHS;attDays=Math.max(attDays,wdays);}
+    else if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
+    else if(isHF){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=HYD_ASSUMED_TECHS;attDays=Math.max(attDays,wdays);}
   });
   if(!avgDaySum)return null;
   const td=avgDaySum*wdays;
@@ -3030,20 +3031,20 @@ function anChartTechs(){
     if(f&&anHubCity[r.hubKey]!==f)return;
     byDate[r.date]=(byDate[r.date]||0)+r.tech;
   });
-  // Hyderabad city has no GAS sync — synthesize flat-4 so the chart still renders
-  if(f==='Hyderabad'&&!Object.keys(byDate).length){
-    const synStart=new Date(AN_START+'T00:00:00Z').getTime();
-    const synEnd=Date.now();
-    for(let ms=synStart;ms<=synEnd;ms+=86400000){
+  // Hyderabad: GAS attendance unreliable before W6 → assume flat rate for pre-W6 days (override), real from W6
+  let hydSynth=false;
+  if(f==='Hyderabad'){
+    const synEnd=new Date(HYD_REAL_FROM+'T00:00:00Z').getTime();
+    for(let ms=new Date(AN_START+'T00:00:00Z').getTime();ms<synEnd;ms+=86400000){
       const ds=new Date(ms).toISOString().slice(0,10);
-      byDate[ds]=4; // assumed ~4 techs/day in Hyd (actual data unavailable)
+      byDate[ds]=HYD_ASSUMED_TECHS; hydSynth=true;
     }
   }
   const keys=Object.keys(byDate).sort();
   // no attendance readable → hide card (an-att-warn already explains why)
   if(!anAtt||!keys.length){card.style.display='none';if(anCh[5]){anCh[5].destroy();anCh[5]=null;}return;}
   card.style.display='block';
-  const isSynth=f==='Hyderabad'&&!(anAttRows||[]).some(r=>anHubCity[r.hubKey]===f);
+  const isSynth=hydSynth;
   // continuous UTC date axis min..max so missing days become real gaps (not compressed away)
   const start=new Date(keys[0]+'T00:00:00Z').getTime();
   const end=new Date(keys[keys.length-1]+'T00:00:00Z').getTime();
@@ -3063,7 +3064,7 @@ function anChartTechs(){
   if(anCh[5])anCh[5].destroy();
   anCh[5]=new Chart(document.getElementById('an-techs'),{type:'line',
     data:{labels:labels.map(fmt),datasets:[
-      {label:isSynth?'Active techs/day (assumed flat 4)':'Active techs/day',data:daily,borderColor:isSynth?'#fbbf24':'#c7d2fe',backgroundColor:isSynth?'#fbbf24':'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:isSynth?[6,4]:[],order:2},
+      {label:isSynth?'Active techs/day (pre-W6 assumed 3.5)':'Active techs/day',data:daily,borderColor:isSynth?'#fbbf24':'#c7d2fe',backgroundColor:isSynth?'#fbbf24':'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:isSynth?[6,4]:[],order:2},
       {label:'7-day avg',data:avg,borderColor:'#4f46e5',backgroundColor:'#4f46e5',borderWidth:2.5,pointRadius:0,tension:.3,spanGaps:false,order:1},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
@@ -3089,14 +3090,12 @@ function anChart4(){
   const jptOf=(h,w)=>{
     const a=hubAgg[h]?.[w];if(!a)return null;
     const att=anAtt?.[a.hubKey+'|'+w];
-    if(att&&att.td>0&&att.days>0){
-      // Use avg-rate × week-days for consistency with anPooled
-      const wm=anWeeks.find(x=>x.w===w);
-      return +(a.jcs/(att.td/att.days*(wm?wm.days:7))).toFixed(2);
-    }
-    // Fallback: Fathenagar + Hyderabad hubs assume 4 techs/day
-    const isHyd=anHubCity[a.hubKey]==='Hyderabad', isFath=a.hubKey==='fathenagar';
-    if(isHyd||isFath){const wm=anWeeks.find(x=>x.w===w);return +(a.jcs/(4*(wm?wm.days:7))).toFixed(2);}
+    const wm=anWeeks.find(x=>x.w===w); const wd=wm?wm.days:7;
+    const isHF=anHubCity[a.hubKey]==='Hyderabad'||a.hubKey==='fathenagar';
+    // Hyd/Fathenagar: assumed flat rate before W6 (override), real from W6, else assumed fallback
+    if(isHF&&w<HYD_REAL_FROM)return +(a.jcs/(HYD_ASSUMED_TECHS*wd)).toFixed(2);
+    if(att&&att.td>0&&att.days>0)return +(a.jcs/(att.td/att.days*wd)).toFixed(2);
+    if(isHF)return +(a.jcs/(HYD_ASSUMED_TECHS*wd)).toFixed(2);
     return null;};
   const hubs=Object.keys(hubAgg).sort((a,b)=>(jptOf(b,anSelWeek)||0)-(jptOf(a,anSelWeek)||0));
   const COLS=['#6366f1','#0ea5e9','#f59e0b','#10b981','#ec4899','#8b5cf6'];
