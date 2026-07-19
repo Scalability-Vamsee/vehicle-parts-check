@@ -237,7 +237,6 @@ body.pinned #hbg{display:none}
 #fab-group{position:fixed;bottom:24px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:800;}
 .fab-btn{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:1.2rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:transform .15s,box-shadow .15s;font-family:inherit;text-decoration:none;}
 .fab-btn:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(0,0,0,.26);}
-.fab-help{background:#0F172A;color:#fff;}
 .fab-feedback{background:#E8191C;color:#fff;}
 
 /* ── Feedback Modal ── */
@@ -2422,10 +2421,6 @@ function _resetFeedbackModal(){
 
 function openFeedbackModal(){
   _resetFeedbackModal();
-  const fab=document.getElementById('help-fab');
-  if(fab&&window._currentTechName){
-    fab.href='mailto:vamsee@bounceshare.com?subject='+encodeURIComponent('Incentive Query — '+window._currentTechName);
-  }
   document.getElementById('fm-text').value='';
   document.getElementById('fm-status').textContent='';
   const sb=document.getElementById('fm-submit-btn');
@@ -2594,10 +2589,9 @@ let _dashBooted=false;  // guard: getSession path + onAuthStateChange can both f
   });
 })();
 </script>
-<!-- ── FABs: Help + Feedback ─────────────────────────────── -->
+<!-- ── FAB: Feedback ─────────────────────────────── -->
 <div id="fab-group">
   <button class="fab-btn fab-feedback" onclick="openFeedbackModal()" title="Send feedback">💬</button>
-  <a class="fab-btn fab-help" id="help-fab" href="mailto:vamsee@bounceshare.com?subject=Incentive%20Query" title="Help — email us">❓</a>
 </div>
 
 <!-- ── Feedback Modal ─────────────────────────────────────── -->
