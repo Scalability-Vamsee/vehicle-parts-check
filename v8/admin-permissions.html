@@ -272,14 +272,14 @@ function onAuthSession(session){
   document.getElementById('admin-secret-input').focus();
 }
 
-sb.auth.getSession().then(function(r){
-  if(r.data.session)onAuthSession(r.data.session);
-  else show('auth-gate');
-});
+// Use onAuthStateChange for all session detection.
+// INITIAL_SESSION fires on page load when a session already exists in localStorage —
+// previously we only handled SIGNED_IN, so navigating from another page was ignored.
 sb.auth.onAuthStateChange(function(event,session){
-  if(event==='SIGNED_IN'&&session)onAuthSession(session);
-  else if(event==='SIGNED_OUT')show('auth-gate');
-  else if(event==='TOKEN_REFRESHED'&&session)K=session.access_token;
+  if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){onAuthSession(session);}
+  else if(event==='INITIAL_SESSION'&&!session){show('auth-gate');}
+  else if(event==='SIGNED_OUT'){show('auth-gate');}
+  else if(event==='TOKEN_REFRESHED'&&session){K=session.access_token;}
 });
 
 function unlockAdmin(){
