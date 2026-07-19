@@ -94,6 +94,7 @@ v8/
   icon-192.png / icon-512.png — Hunter PWA install icons
   admin-techs.html    — Admin: Manage Technicians
   admin-permissions.html — Admin: Permissions
+  rfd-check.html      — Admin: RFD Check (reg search → IoT/MCU/JC pass-fail; reads rfd_violations_cache)
   logo.jpg            — Bounce logo
 ```
 
@@ -128,7 +129,7 @@ Sections and their labels:
 - **Hub Operations**: Deployment Queue
 - **RSA Operations**: FW Pending Map, RSA Warroom
 - **Recovery Operations**: Trace, Hunter ← (data-feature="trace-ho")
-- **Admin**: Manage Technicians, Permissions
+- **Admin**: Manage Technicians, Permissions, RFD Check ← (data-feature="rfd-check")
 - **Coming Soon**: Fleet Analytics, Alert Centre
 
 Sidebar never auto-pins. No `@media(min-width:900px)` rule. `localStorage('sb_pinned')` for user preference only.
