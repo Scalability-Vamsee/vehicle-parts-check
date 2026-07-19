@@ -1,5 +1,60 @@
 # Fleetpro — Context File
-*Last updated: 2026-07-17 (session 28 cont. — W6 attendance lag diagnosed as manual chain (IA8 logged); ops instruction drafted for W6 daily-tab fill; all prior hotfixes (c05aaab, 1eb7b71, 900d95b) recorded below. Prior session 27: sync-hr-employees v11 pending MCP deploy. Also 2026-07-16: maintenance.html Firmware/IoT status tags + JC-history bar-into-hero + item wrap, verify+pushed & live — block below.)*
+*Last updated: 2026-07-19 (session 2) — auth storageKey root-cause fix on all admin pages + rfd-check.html maintenance-style redesign + global favicon sweep (881612e / 833b6db). Prior (session 1): RFD Check page built + deployed. 2026-07-18 Analytics: payout_amount-from-DB fix (frozen weeks W3 ₹14,725/W4 ₹15,750), Hyd/Fathenagar 3.5 techs/day for W1–W5 + real from W6, Miyapur→Fathenagar merge (c2828b2/ce63938/416507f/41d851a). 2026-07-17: W6 attendance lag diagnosed; hotfixes 900d95b/1eb7b71/c05aaab. 2026-07-16: maintenance.html FW/IoT tags + JC-history hero + item wrap, live.*
+
+## 🆕 2026-07-19 (session 2) — auth fix + rfd-check redesign + favicon sweep
+
+### storageKey root-cause (magic-link re-prompt fully closed)
+
+Pages using the **default** `supabase.createClient(SB_URL,ANON_KEY)` — no storageKey — couldn't read the session that index.html/maintenance.html etc. store under `fleetpro_session`. The INITIAL_SESSION event fired but returned null (wrong key), so the auth screen always showed. Added `{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}}` to all four affected pages: **admin-permissions.html** (storageKey only — INITIAL_SESSION handler already fixed at a97482c), **admin-techs.html**, **admin-analytics.html**, **rfd-check.html**. Pushed 881612e + 833b6db. Combined with a97482c, the magic-link-always-showing bug is fully closed on all admin pages.
+
+### rfd-check.html — maintenance-style redesign (pushed 881612e)
+
+Full UI rebuild to match maintenance.html exactly:
+- **Dark gradient hero** + `.sw` search row with SVG icon + Try: hint chips (3 random bikes from `rfd_violations_cache` where `iot_glue_check_needed=true` OR `regen_60a_check_needed=true`) + sync bar (last updated + "Next sync ~hh:mm")
+- **Magic link auth** (replaced password) + `storageKey:'fleetpro_session'` + `INITIAL_SESSION` handler + superadmin short-circuit
+- **Hub name** resolved via `rental_locations` hubMap preloaded at login — no more "Hub 29"
+- **4-state JC logic:** ✅ Billed / ⚠️ Not Opened (draft exists, log blank — `jc_log_status` null or `'draft job card created'` + `!jc_billed`) / ⚠️ Not Billed (log entries present) / ➖ No JC
+- **Cleaner labels with descriptions:** "Before Activation" (was "Previous Status") + desc "Vehicle status immediately before ops changed it"; "Last Ops Action" (was "Ops Last Status") + desc "Most recent entry in bike operations log"; "JC Stage" (was "JC Status"); "JC Last Updated" (was "JC Log Date")
+- **Favicon** → `logo.jpg`
+
+### Global favicon sweep (pushed 833b6db)
+
+`icon-192.png` (Hunter PWA icon) replaced with `logo.jpg` (Bounce logo) as the browser favicon `<link rel="icon">` across all 12 remaining pages: incentive, index, maintenance, trace-hunter, trace-ho, tech, rsa, queue, jc-approval, fw-map, deployment, admin-analytics. Combined with the 3 pages in 881612e (rfd-check, admin-permissions, admin-techs) — all 15 v8 pages now show the Bounce logo tab icon. `icon-192.png` stays in the repo as the PWA app icon (referenced by `trace-hunter-manifest.json`); only the `<link rel="icon">` changed.
+
+---
+
+## 🆕 2026-07-19 (session 1) — RFD Check page (Cowork-built, Claude Code verify+pushed & live)
+
+**Background:** Altmobility BaaS pings not coming via API — ops directly set `vehicle_status = 'active'` in DB without clearing IoT/MCU checks or billing the JC. This page surfaces those violations for admin review.
+
+**What was built:**
+
+- **`rfd_violations_cache` table** (Supabase migration applied): 24 columns (bike_id, reg_number, hub_id, vehicle_status, rental_status, iot_provider, iot_glue_check_needed, regen_60a_check_needed, ops_last_status, activated_by, activated_at, jc_id, jc_ref, jc_status, jc_created_at, total_cost, jc_log_status, technician_name, rfd_validation_status, jc_log_at, jc_billed, iot_ok, mcu_ok, synced_at). Indexes on reg/hub/iot/mcu. RLS: authenticated read. Source: Metabase question `0cfdcf89-0134-445c-9044-7e5c3f4cb5ea`.
+
+- **`rfd-check-sync` edge function** (v1, ACTIVE, verify_jwt=false): Fetches Metabase question as CSV → full delete+reinsert of `rfd_violations_cache` in 500-row batches. Strips test bikes (`reg_number ilike 'testBIKE%'`). Initial populate triggered via pg_net at deploy time.
+
+- **pg_cron job 42 `rfd-check-sync-2h`** (`0 */2 * * *`): Calls `rfd-check-sync` every 2 hours via `net.http_post` with anon key.
+
+- **`v8/rfd-check.html`** — Search-first admin page. No dashboard, no list view. Enter a reg number → instant check card showing:
+  - Overall verdict: **RFD CLEAR** (green) or **RFD INCOMPLETE** (red)
+  - Per-check status: IoT Glue (iot_glue_check_needed), MCU FW 60A (regen_60a_check_needed), JC Billed (jc_billed + jc_log_status + JC ref + cost + technician)
+  - Context: rental status, previous status, ops last status, activated by/at, RFD validation, JC dates
+  - Partial reg search → picker list; not-found state
+  - Auth: same permissions-first + superadmin short-circuit pattern. Feature gate: `rfd-check`.
+
+- **`v8/sidebar.js`** — `🚦 RFD Check` moved to Admin section (feature-gated `rfd-check`); removed from Service Operations.
+
+- **`v8/index.html`** — `🚦 RFD Check` tile added (half-width, grey accent, "Check Bike →" CTA, feature-gated `rfd-check`). `f['rfd-check']=true` added to the superadmin short-circuit block.
+
+- **`v8/admin-permissions.html`** — `{key:'rfd-check', label:'RFD Check'}` added to `ALL_FEATURES` array (pushed at commit `b7ac7a1`). Admins can now grant this feature to any group via the permissions matrix.
+
+**RFD-ready conditions:** `jc_billed = true` AND `iot_glue_check_needed = false` AND `regen_60a_check_needed = false`.
+
+**Pushed & live (Claude Code, verify+push each: brace/paren balance + inline `node --check` + secret scan + token-scrubbed clone):** v1 table page + `sidebar.js` (+ favicon Claude Code added — Cowork's new page had shipped without one) at `d382ea3`; `admin-permissions.html` `rfd-check` key at `b7ac7a1`; then the **search-first refactor** + sidebar move to Admin + `index.html` tile at `4cc4dd5`. All three files now match the description above (search-first is the live state).
+
+**Supabase (all live):** `rfd_violations_cache` table, `rfd-check-sync` edge fn v1, cron job 42. ⚠️ `rfd-check-sync` is deployed **`verify_jwt=false`** (public endpoint, called by cron with anon key) — acceptable for a cron-only sync fn but worth noting; and the Metabase query is **~9,937 rows** (the "JC not billed" leg dominates) — fine for the search-first lookup, but a future list view should default to IoT/MCU-pending.
+
+---
 
 ## 🆕 2026-07-16 — maintenance.html UI (Cowork-built, Claude Code verify+push)
 
@@ -27,6 +82,12 @@ Three maintenance.html changes verified (diff-only-the-feature + brace/paren bal
 - **Drill-down time in IST + chronic badge (commit c05aaab):** `jc_billed_datetime`/`first_comeback_datetime` shown as MM/DD HH:MM converted UTC→IST (+5:30); `weight≥2` rows get an amber "×N chronic" badge + amber row bg.
 - **New L0 "Active technicians — day on day" chart (commit aba0e40, IA9):** `technician_available` (hub_productivity_daily) summed across hubs per day, city-filtered, thin daily line + bold 7-day trailing avg (avg = mean of non-null days in the trailing 7-cal-day window; missing days = line-break gaps, never fake zeros). Built by Claude Code directly. Pairs with pooled JC/tech/day to separate headcount dilution from real gain.
 - **Attendance loader identified:** `hub_productivity_daily` is loaded by an external GAS **`oos-productivity-sync` @ 9:30 AM IST** — named ONLY in the table comment of migration `20260708000002`; the GAS is not mirrored in this repo. Chronic partial weeks (W6 = 2/7; W4/W5 stuck at 6/7) are that loader's silent lag, not an app bug. Hardening tracked as **IA8** (needs the GAS source). See memory `hub-productivity-attendance-sync`.
+
+**Analytics — session 28 cont. (2026-07-17 → 2026-07-18):**
+- **Cowork change set (commit ce63938, 2026-07-17):** removed the Cohort card; two-line `[Wn, date-range]` labels on the void/guardrail/city charts; hub-breakdown selected-week bars colored green (improved) / red (declined) vs prior week + value labels + JC-count tooltip; introduced a flat-attendance fallback for Hyd/Fathenagar (later refined to 3.5, below).
+- **Payout display fix (commit c2828b2, 2026-07-17):** all 6 payout displays (leaderboard row, pool KPI, hub total, hub sub-rows, trend table, CSV) now read the frozen `payout_amount` from the DB, `calcPayout(eligible_jcs)` only as null-fallback (`!=null` keeps a real ₹0). Frozen weeks were recomputing and diverging — W3 showed ₹17,900 vs actual ₹14,725; now **W3 ₹14,725, W4 ₹15,750**.
+- **Hyderabad attendance assumption (commit 416507f, 2026-07-18):** Fathenagar/Hyderabad use flat **3.5 techs/day for W1–W5**, real attendance from **W6** (`HYD_ASSUMED_TECHS=3.5`, `HYD_REAL_FROM='2026-07-06'`) — applied to pooled trend, hub breakdown, and the active-techs line (dashed-amber "pre-W6 assumed 3.5"). Verified against source export `RRR/OOS_Productivity_Jun1_Jul8_2026.xlsx`: Fathenagar W5 had only **3 day-rows** (Jul 3–5 = 3/3/2 → 2.67, a partial tail, NOT a weekly avg), W6 = 3.5. Replaced the earlier flat-4.
+- **Miyapur = Fathenagar merge (commit 41d851a, 2026-07-18):** alias `miyapur→fathenagar` in `AN_HUB_ALIAS` (merges pooled/city/active-techs/hub→city map) + hub breakdown keyed by normalized hub → Miyapur JCs roll into one "Fathe nagar" (Hyderabad) hub instead of a separate attendance-less row. ⚠️ **Merge + 3.5 assumption live ONLY in the Analytics-tab JS** — underlying `hub_productivity_daily` / `incentive_weekly_stats` still treat Miyapur separately and lack Hyderabad's early attendance; durable fix = IA8 (Miyapur→Fathenagar at the data layer + harden `oos-productivity-sync`).
 
 **`sync-incentive-data` v18-regression scare + v21 recovery — ✅ resolved 2026-07-16/17.** A "v17/v18" edit was made against the STALE `incentive/edge-functions/sync-incentive-data.ts` copy (a pre-v19 v16 fork missing `toIstTimestamptz` +05:30 and `purge_stale_jc_log_rows`) and deployed — regressing void/timestamp handling (would reintroduce ghost rows). Recovered by redeploying v20 as **v21 (Supabase version 26)**; `incentive_weekly_stats` rebuilt (W2 = ₹15,650); `jc_name_aliases` RLS auth-read policy added. Canonical file already trusts Metabase `rr_count_3d_comeback` directly (no false-void datetime filter) — there was never a filter to revert. **Git comment reconciled v20→v21, commit 8b8eae8** (comment-only, no logic change). ⚠️ **Canonical edge fn = `supabase/functions/sync-incentive-data/index.ts` ONLY; the `incentive/edge-functions/` copies are stale traps** — see memory `sync-incentive-data-canonical-path`.
 - ⏳ **Open verification:** after tonight's 00:00 IST cron, confirm `jc_name_aliases` has fresh rows with `created_by='sync'` (distinguishes from the manual `created_by='sheet-sync'` one-time reconciliation done 2026-07-09). User will check via Supabase editor. If none appear, suspect the v7 dup-name crash → deploy v8 via MCP.
