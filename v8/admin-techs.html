@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FleetPro — Tech Admin</title>
-<link rel="icon" type="image/png" href="/v8/icon-192.png">
+<link rel="icon" type="image/jpeg" href="/v8/logo.jpg">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -213,7 +213,7 @@ const SB_URL='https://clkfvmmlgwcvntxnolsv.supabase.co';
 const ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2Z2bW1sZ3djdm50eG5vbHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ2NTgsImV4cCI6MjA5MDEyMDY1OH0.FA33GFQisWX_hDeGCWqL5yAZmPcuQRdxZX32I23lyoY';
 const EDGE_URL = SB_URL + '/functions/v1/admin-create-tech';
 
-const sb = supabase.createClient(SB_URL, ANON_KEY);
+const sb = supabase.createClient(SB_URL, ANON_KEY, {auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
 let ADMIN_SECRET = '';
 let _techs = [];
 
