@@ -680,19 +680,7 @@ body.pinned #hbg{display:none}
       <div class="tab-header">
         <div>
           <div class="tab-title">Admin Panel</div>
-          <div class="tab-subtitle">Upload data, manage technicians, view burn overview</div>
-        </div>
-      </div>
-
-      <!-- Sync Panel (kept for immediate refresh after name mapping) -->
-      <div class="upload-panel" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-        <div>
-          <div class="upload-title" style="margin-bottom:6px;">Data Sync</div>
-          <div style="font-size:.72rem;color:var(--muted);">Auto-syncs every 5 min. Use this to force a refresh immediately after name mapping.</div>
-        </div>
-        <div class="upload-area" style="margin-left:auto;">
-          <button class="upload-btn" id="sync-btn" onclick="triggerSync()">🔄 Sync Now</button>
-          <div class="upload-progress" id="upload-progress"></div>
+          <div class="tab-subtitle">Burn overview — all weeks from Jun 15</div>
         </div>
       </div>
 
@@ -714,51 +702,18 @@ body.pinned #hbg{display:none}
               <th>Active Techs</th>
               <th>Earners</th>
               <th>Median JCs</th>
+              <th>Avg JC / Tech</th>
+              <th>Void Rate</th>
               <th>Total Payout</th>
               <th>Payment</th>
             </tr>
           </thead>
           <tbody id="burn-tbody">
-            <tr><td colspan="5" style="text-align:center;color:var(--muted);">Loading…</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);">Loading…</td></tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Technician Management -->
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
-          <div style="font-size:.85rem;font-weight:800;color:#0F172A;">Technician Directory</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input id="tech-search" type="text" placeholder="Search name / email / hub…"
-              oninput="filterTechTable()"
-              style="font-size:.78rem;padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;width:200px;"/>
-            <select id="tech-filter-status" onchange="filterTechTable()"
-              style="font-size:.78rem;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;">
-              <option value="">All</option>
-              <option value="unmapped">Unmapped only</option>
-              <option value="active">Active only</option>
-              <option value="inactive">Inactive only</option>
-            </select>
-            <span id="tech-count" style="font-size:.75rem;color:var(--muted);"></span>
-          </div>
-        </div>
-        <table class="admin-table" id="tech-table">
-          <thead>
-            <tr>
-              <th>Emp ID</th>
-              <th>Name &amp; Contact</th>
-              <th>Hub / City</th>
-              <th>Leaderboard Name</th>
-              <th>JC Name(s) in System</th>
-              <th>Active</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tech-tbody">
-            <tr><td colspan="7" style="text-align:center;color:var(--muted);">Loading…</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
 
     <!-- Analytics Tab (superadmin/incentive-admin) -->
@@ -1480,7 +1435,7 @@ async function loadAdminData(){
 
   try{
     // Burn overview — include is_frozen; also fetch payment status per week
-    const{data:burnStats}=await sbClient.from('incentive_weekly_stats').select('week_start,tech_name,eligible_jcs,payout_amount,is_frozen').gte('week_start',TECH_SINCE).order('week_start',{ascending:false}).limit(200);
+    const{data:burnStats}=await sbClient.from('incentive_weekly_stats').select('week_start,tech_name,total_jcs,voided_jcs,eligible_jcs,payout_amount,is_frozen').gte('week_start',TECH_SINCE).order('week_start',{ascending:false}).limit(1000);
     const{data:weekCfgs}=await sbClient.from('incentive_week_config').select('week_start,payment_done,payment_done_by,payment_done_at');
     const weekCfgMap={};(weekCfgs||[]).forEach(c=>weekCfgMap[c.week_start]=c);
     renderBurnTable(burnStats||[],weekCfgMap);
@@ -1571,11 +1526,13 @@ function renderBurnTable(stats,weekCfgMap){
   const grouped={};
   stats.forEach(s=>{
     const week=s.week_start;
-    if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],isFrozen:false};
+    if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],totalJcs:0,voidedJcs:0,isFrozen:false};
     grouped[week].rows.push(s);
     grouped[week].techs.add(s.tech_name);
     grouped[week].jcs.push(s.eligible_jcs||0);
     grouped[week].payouts.push(s.payout_amount||0);
+    grouped[week].totalJcs+=(s.total_jcs||0);
+    grouped[week].voidedJcs+=(s.voided_jcs||0);
     if(s.is_frozen)grouped[week].isFrozen=true;
   });
   rebuildBurnRows(grouped);
@@ -1586,11 +1543,13 @@ function rebuildBurnRows(grouped){
     grouped={};
     _burnRawStats.forEach(s=>{
       const week=s.week_start;
-      if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],isFrozen:false};
+      if(!grouped[week])grouped[week]={rows:[],techs:new Set(),jcs:[],payouts:[],totalJcs:0,voidedJcs:0,isFrozen:false};
       grouped[week].rows.push(s);
       grouped[week].techs.add(s.tech_name);
       grouped[week].jcs.push(s.eligible_jcs||0);
       grouped[week].payouts.push(s.payout_amount||0);
+      grouped[week].totalJcs+=(s.total_jcs||0);
+      grouped[week].voidedJcs+=(s.voided_jcs||0);
       if(s.is_frozen)grouped[week].isFrozen=true;
     });
   }
@@ -1602,6 +1561,9 @@ function rebuildBurnRows(grouped){
     const median=jcs.length%2===0?(jcs[jcs.length/2-1]+jcs[jcs.length/2])/2:jcs[Math.floor(jcs.length/2)];
     const earners=jcs.filter(j=>j>50).length;
     const total=g.payouts.reduce((s,p)=>s+p,0);
+    const avgJcPerTech=g.techs.size>0?(g.totalJcs/g.techs.size).toFixed(1):'—';
+    const voidRate=g.totalJcs>0?((g.voidedJcs/g.totalJcs)*100).toFixed(1)+'%':'—';
+    const voidColor=g.totalJcs>0&&(g.voidedJcs/g.totalJcs)>0.05?'#DC2626':'#15803D';
     const isOpen=!!_burnExpandState[week];
     const cfg=_weekCfgMap[week]||{};
     const isFrozen=g.isFrozen;
@@ -1624,13 +1586,15 @@ function rebuildBurnRows(grouped){
       <td>${g.techs.size}</td>
       <td>${earners}</td>
       <td>${Math.round(median)}</td>
+      <td>${avgJcPerTech}</td>
+      <td style="color:${voidColor};font-weight:600;">${voidRate}</td>
       <td>₹${Math.round(total).toLocaleString('en-IN')}</td>
       <td>${paymentCell}</td>
     </tr>`);
     if(isOpen){
       const earnerRows=g.rows.filter(r=>(r.eligible_jcs||0)>50).sort((a,b)=>(b.eligible_jcs||0)-(a.eligible_jcs||0));
       const nonEarnerCount=g.rows.length-earnerRows.length;
-      rows.push(`<tr><td colspan="5" style="padding:0;">
+      rows.push(`<tr><td colspan="8" style="padding:0;">
         <table style="width:100%;font-size:.72rem;border-collapse:collapse;background:#F8FAFC;">
           <tr style="background:#EFF6FF;"><td style="padding:6px 8px 6px 28px;font-weight:700;color:#1D4ED8;font-size:.65rem;text-transform:uppercase;letter-spacing:.4px;" colspan="4">Earners this week (${earnerRows.length})</td></tr>
           ${earnerRows.map((r,i)=>`<tr style="border-bottom:1px solid #DBEAFE;">
@@ -1644,7 +1608,7 @@ function rebuildBurnRows(grouped){
       </td></tr>`);
     }
   });
-  tbody.innerHTML=rows.join('')||'<tr><td colspan="5">No data</td></tr>';
+  tbody.innerHTML=rows.join('')||'<tr><td colspan="8">No data</td></tr>';
 }
 
 function toggleBurnRow(week){
