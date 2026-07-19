@@ -1238,7 +1238,7 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
     modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
     document.body.appendChild(modal);
   }
-  modal.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.2);">
+  modal.innerHTML=`<div style="background:#fff;border-radius:16px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.2);">
     <div style="padding:18px 20px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center;">
       <div>
         <div style="font-size:.95rem;font-weight:800;color:#0F172A;">JC Detail — ${rangeLabel}</div>
@@ -1256,7 +1256,7 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
     const nextWeek=new Date(new Date(weekStart).getTime()+7*24*3600000).toISOString().slice(0,10);
     const{data:jcs,error}=await sbClient
       .from('incentive_jc_log')
-      .select('jc_billed_date,jc_billed_datetime,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime')
+      .select('jc_billed_date,jc_billed_datetime,reg_number,intrip,is_void,jc_weight,hub_name,first_comeback_datetime,jcsl_id')
       .eq('week_start',weekStart)
       .eq('technician_name',techName)
       .order('jc_billed_date',{ascending:true})
@@ -1287,11 +1287,13 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
         <thead>
           <tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
             <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Date</th>
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">JC ID</th>
             <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Reg No.</th>
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Hub</th>
             <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Type</th>
             <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Weight</th>
             <th style="padding:7px 8px;text-align:center;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Status</th>
-            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Comeback</th>
+            <th style="padding:7px 8px;text-align:left;font-size:.62rem;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.4px;">Comeback / Void Reason</th>
           </tr>
         </thead>
         <tbody>
@@ -1309,8 +1311,8 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
             } else if(j.jc_billed_date){
               dateCell=j.jc_billed_date.slice(5).replace('-','/');
             }
-            // Comeback in IST
-            let comeback='—';
+            // Comeback in IST + void reason
+            let comebackCell='—';
             if(j.first_comeback_datetime){
               const ct=new Date(j.first_comeback_datetime);
               const cist=new Date(ct.getTime()+5.5*3600000);
@@ -1318,7 +1320,17 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
               const cdd=String(cist.getUTCDate()).padStart(2,'0');
               const chh=String(cist.getUTCHours()).padStart(2,'0');
               const cmin=String(cist.getUTCMinutes()).padStart(2,'0');
-              comeback=`${cmm}/${cdd} ${chh}:${cmin}`;
+              const comebackStr=`${cmm}/${cdd} ${chh}:${cmin}`;
+              if(j.is_void&&j.jc_billed_datetime){
+                const billedMs=new Date(j.jc_billed_datetime).getTime();
+                const comebackMs=ct.getTime();
+                const diffDays=((comebackMs-billedMs)/(1000*3600*24)).toFixed(1);
+                comebackCell=`<span style="color:#64748B;">${comebackStr}</span><br><span style="font-size:.62rem;color:#DC2626;font-weight:600;">↩ comeback ${diffDays}d after billing</span>`;
+              } else {
+                comebackCell=`<span style="color:#64748B;">${comebackStr}</span>`;
+              }
+            } else if(j.is_void){
+              comebackCell=`<span style="font-size:.62rem;color:#94A3B8;">Void — no comeback recorded</span>`;
             }
             const isChron=(j.jc_weight||1)>=2;
             const type=j.intrip?'<span style="background:#EFF6FF;color:#1D4ED8;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Intrip</span>':'<span style="background:#F0FDF4;color:#15803D;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">Sub</span>';
@@ -1328,14 +1340,18 @@ async function openJcDrilldown(techName,weekStart,rangeLabel){
             const weightCell=isChron
               ?`<span style="background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;font-size:.62rem;font-weight:700;">×${j.jc_weight} chronic</span>`
               :`1`;
+            const hubCell=j.hub_name?`<span style="font-size:.68rem;color:#475569;">${j.hub_name}</span>`:'—';
+            const jcIdCell=j.jcsl_id?`<span style="font-family:monospace;font-size:.7rem;color:#475569;">${j.jcsl_id}</span>`:'—';
             const rowBg=j.is_void?'background:#FFFBFB;':isChron?'background:#FFFBEB;':'';
             return`<tr style="border-bottom:1px solid #F1F5F9;${rowBg}">
               <td style="padding:6px 8px;color:#0F172A;">${dateCell}</td>
+              <td style="padding:6px 8px;">${jcIdCell}</td>
               <td style="padding:6px 8px;font-weight:600;font-family:monospace;font-size:.78rem;">${j.reg_number||'—'}</td>
+              <td style="padding:6px 8px;">${hubCell}</td>
               <td style="padding:6px 8px;text-align:center;">${type}</td>
               <td style="padding:6px 8px;text-align:center;">${weightCell}</td>
               <td style="padding:6px 8px;text-align:center;">${status}</td>
-              <td style="padding:6px 8px;color:#64748B;font-size:.7rem;">${comeback}</td>
+              <td style="padding:6px 8px;font-size:.7rem;">${comebackCell}</td>
             </tr>`;
           }).join('')}
         </tbody>
