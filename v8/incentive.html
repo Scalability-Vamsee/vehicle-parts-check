@@ -796,7 +796,7 @@ body.pinned #hbg{display:none}
         <div class="an-card">
           <div class="an-card-title">Void Rate — % of billed JCs, split by JC type</div>
           <div class="an-wrap" style="height:260px"><canvas id="an-c1"></canvas></div>
-          <div class="an-note">Bars = voided ÷ all billed. Lines = void rate within type (solid red = Intrip, dashed amber = EndTrip). A week is final only Wednesday of the following week — recent weeks marked * are maturing. Weeks before Jun 8 excluded (void flags under-captured).</div>
+          <div class="an-note">Bars = voided ÷ all billed. Lines = void rate within type (solid red = Intrip, dashed amber = EndTrip). A week is final only Wednesday of the following week — recent weeks marked * are maturing. Weeks before Jun 8 excluded: a void = same bike returning within 3 days (query-detected, not manually marked); JCs in the first days of June have an artificially low void rate because comebacks from pre-Jun-1 repairs fall outside the analysis window. Jun 8–14 data exists but may still be slightly understated for the same reason.</div>
         </div>
         <div class="an-card">
           <div class="an-card-title">Guardrail — void: earners vs non-earners</div>
@@ -2678,7 +2678,7 @@ const AN_ANNOUNCE_WEEK='2026-06-22';  // incentive announced Jun 23 (W3 Jun 15�
 const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
 const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar assumed avg techs/day (GAS attendance unreliable pre-W6)
 const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
-const AN_QUALITY_FROM='2026-06-15';   // void flags under-captured before Jun 15; chart starts at incentive W1
+const AN_QUALITY_FROM='2026-06-08';   // void detection before Jun 8 is understated (lookback edge: comebacks from pre-Jun-1 work don't register)
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal','miyapur':'fathenagar'};
 
