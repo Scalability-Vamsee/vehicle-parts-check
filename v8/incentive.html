@@ -814,8 +814,8 @@ body.pinned #hbg{display:none}
             <div class="an-card-title" style="margin:0">Hub breakdown — <span id="an-c4-label"></span> (3-week comparison)</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap" id="an-pills"></div>
           </div>
-          <div class="an-wrap" style="height:250px"><canvas id="an-c4"></canvas></div>
-          <div class="an-note">Selected week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad assume 3.5 techs/day for weeks before W6 (real attendance used from W6). Sorted by selected-week JC/tech desc.</div>
+          <div class="an-wrap" style="height:280px"><canvas id="an-c4"></canvas></div>
+          <div class="an-note">Grouped by city: BLR → NCR → HYD. Within each group, sorted by selected-week JC/tech/day desc. Selected-week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad assume 3.5 techs/day for weeks before W6 (real attendance used from W6).</div>
         </div>
 
         <div class="an-level"><b>L3</b> Distribution — top 10% vs bottom 10% detail</div>
@@ -957,6 +957,9 @@ function switchTab(tab){
   document.getElementById(tab).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
   document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+  // "View as technician" makes no sense on the analytics tab — hide it there
+  const ats=document.getElementById('admin-tech-select');
+  if(ats)ats.style.display=(tab==='analytics'||!fpCan('incentive-admin'))?'none':'';
   if(tab==='leaderboard')renderLeaderboard();
   if(tab==='admin')loadAdminData();
   if(tab==='analytics'&&typeof loadAnalytics==='function')loadAnalytics();
@@ -2675,7 +2678,7 @@ const AN_ANNOUNCE_WEEK='2026-06-22';  // incentive announced Jun 23 (W3 Jun 15�
 const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
 const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar assumed avg techs/day (GAS attendance unreliable pre-W6)
 const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
-const AN_QUALITY_FROM='2026-06-08';   // void flags under-captured before this
+const AN_QUALITY_FROM='2026-06-15';   // void flags under-captured before Jun 15; chart starts at incentive W1
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal','miyapur':'fathenagar'};
 
@@ -3215,7 +3218,16 @@ function anChart4(){
     if(att&&att.td>0&&att.days>0)return +(a.jcs/(att.td/att.days*wd)).toFixed(2);
     if(isHF)return +(a.jcs/(HYD_ASSUMED_TECHS*wd)).toFixed(2);
     return null;};
-  const hubs=Object.keys(hubAgg).sort((a,b)=>(jptOf(b,anSelWeek)||0)-(jptOf(a,anSelWeek)||0));
+  // Sort: city group (BLR → NCR → HYD) then JC/tech/day desc within group
+  const hubCityOf=h=>{for(const w of Object.keys(hubAgg[h]||{})){const hk=hubAgg[h][w]?.hubKey;if(hk&&anHubCity[hk])return anHubCity[hk];}return 'Other';};
+  const cityOrd={'Bangalore':0,'NCR':1,'Hyderabad':2};
+  const hubs=Object.keys(hubAgg).sort((a,b)=>{
+    const ca=cityOrd[hubCityOf(a)]??9,cb=cityOrd[hubCityOf(b)]??9;
+    if(ca!==cb)return ca-cb;
+    return (jptOf(b,anSelWeek)||0)-(jptOf(a,anSelWeek)||0);});
+  // Build city → first-index map for separator plugin
+  const cityGroups={};
+  hubs.forEach((h,i)=>{const c=hubCityOf(h);if(cityGroups[c]==null)cityGroups[c]=i;});
   const COLS=['#6366f1','#0ea5e9','#f59e0b','#10b981','#ec4899','#8b5cf6'];
   // For selected week: color green if jpt improved vs prev week, red if declined
   const prevW=shown.length>=2?shown[shown.length-2].w:null;
@@ -3245,10 +3257,30 @@ function anChart4(){
       ctx.fillText(v.toFixed(1),bar.x,bar.y-4);
     });
     ctx.restore();}};
+  // Plugin: city group separators + labels
+  const cityLabels={id:'anC4City',afterDatasetsDraw(c){
+    const ctx=c.ctx,x=c.scales.x;if(!x)return;ctx.save();
+    const entries=Object.entries(cityGroups).sort((a,b)=>a[1]-b[1]);
+    entries.forEach(([city,idx],ei)=>{
+      const endIdx=ei+1<entries.length?entries[ei+1][1]-1:hubs.length-1;
+      if(ei>0){
+        const barW=x.getPixelForValue(1)-x.getPixelForValue(0);
+        const px=x.getPixelForValue(idx)-barW*0.55;
+        ctx.strokeStyle='#CBD5E1';ctx.setLineDash([4,3]);ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(px,c.chartArea.top-12);ctx.lineTo(px,c.chartArea.bottom+14);ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      const startPx=x.getPixelForValue(idx),endPx=x.getPixelForValue(endIdx);
+      const shortCity={'Bangalore':'BLR','NCR':'NCR','Hyderabad':'HYD'}[city]||city;
+      ctx.font='bold 9px sans-serif';ctx.fillStyle='#475569';ctx.textAlign='center';
+      ctx.fillText(shortCity,(startPx+endPx)/2,c.chartArea.top-3);
+    });
+    ctx.restore();}};
   if(anCh[4])anCh[4].destroy();
   anCh[4]=new Chart(document.getElementById('an-c4'),{type:'bar',
     data:{labels:hubs,datasets},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      layout:{padding:{top:16}},
       plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true,filter:i=>i.datasetIndex<shown.length}},
         tooltip:{callbacks:{label:c=>{
           if(c.dataset.yAxisID==='y2')return c.raw==null?null:` Void: ${c.raw}%`;
@@ -3260,7 +3292,7 @@ function anChart4(){
       scales:{x:{ticks:{font:{size:9.5},maxRotation:35}},
         y:{title:{display:true,text:'JC / tech / day',font:{size:10}},beginAtZero:true},
         y2:{position:'right',title:{display:true,text:'Void %',color:'#ef4444',font:{size:10}},min:0,max:20,ticks:{color:'#ef4444',callback:v=>v+'%'},grid:{drawOnChartArea:false}}}},
-    plugins:[valLabels]});
+    plugins:[valLabels,cityLabels]});
   const selMeta=anWeeks[wi];
   document.getElementById('an-c4-label').textContent=`${selMeta.short}: ${selMeta.label}`+(f?` · ${f}`:'');
 }
