@@ -1467,12 +1467,16 @@ async function loadAdminData(){
     const{data:weekCfgs}=await sbClient.from('incentive_week_config').select('week_start,payment_done,payment_done_by,payment_done_at');
     const weekCfgMap={};(weekCfgs||[]).forEach(c=>weekCfgMap[c.week_start]=c);
     const{data:dailyAtt}=await sbClient.from('hub_productivity_daily').select('date,technician_available').gte('date',TECH_SINCE).limit(2000);
-    const weekTechDaysMap={};
+    // Build {td: sum, days: count} per week so we can project rate × elapsed-days
+    // (raw sum inflates when attendance sync only covers 2–3 of 7 days)
+    const weekAttMap={};
     (dailyAtt||[]).forEach(r=>{
       const ws=weekStartStr(r.date);
-      weekTechDaysMap[ws]=(weekTechDaysMap[ws]||0)+(+r.technician_available||0);
+      if(!weekAttMap[ws])weekAttMap[ws]={td:0,days:0};
+      weekAttMap[ws].td+=(+r.technician_available||0);
+      weekAttMap[ws].days++;
     });
-    renderBurnTable(burnStats||[],weekCfgMap,weekTechDaysMap);
+    renderBurnTable(burnStats||[],weekCfgMap,weekAttMap);
 
     // HR employee directory + alias mapping status
     const{data:hrEmps}=await sbClient.from('hr_employees').select('employee_id,employee_name,designation,hub,city,email').order('employee_name');
@@ -1553,7 +1557,7 @@ async function saveTechMapping(techId){
 let _burnRawStats=[]; // kept for expand
 let _burnExpandState={}; // week → expanded
 let _weekCfgMap={}; // week_start → {payment_done, ...}
-let _weekTechDaysMap={}; // week_start → SUM(technician_available) across hubs for that week
+let _weekTechDaysMap={}; // week_start → {td: sum-of-technician_available, days: synced-day-count}
 
 function weekStartStr(dateStr){ // string in → 'YYYY-MM-DD' Monday-start out (renamed to avoid clobbering getWeekStart(date)→Date at line ~966)
   const d=new Date(dateStr+'T00:00:00');
@@ -1605,8 +1609,11 @@ function rebuildBurnRows(grouped){
     const median=jcs.length%2===0?(jcs[jcs.length/2-1]+jcs[jcs.length/2])/2:jcs[Math.floor(jcs.length/2)];
     const earners=jcs.filter(j=>j>50).length;
     const total=g.payouts.reduce((s,p)=>s+p,0);
-    const techDays=_weekTechDaysMap[week]||0;
-    const avgJcPerTech=techDays>0?(g.totalJcs/techDays).toFixed(1):(g.techs.size>0?(g.totalJcs/g.techs.size).toFixed(1):'—');
+    const att=_weekTechDaysMap[week];
+    const elapsed=Math.max(1,Math.min(7,Math.floor((new Date()-new Date(week+'T00:00:00'))/86400000)+1));
+    // project: avg-techs/day × elapsed-days (same guard as analytics anPooled)
+    const projTechDays=att&&att.days>0?(att.td/att.days)*elapsed:0;
+    const avgJcPerTech=projTechDays>0?(g.totalJcs/projTechDays).toFixed(1):(g.techs.size>0?(g.totalJcs/g.techs.size).toFixed(1):'—');
     const voidRate=g.totalJcs>0?((g.voidedJcs/g.totalJcs)*100).toFixed(1)+'%':'—';
     const voidColor=g.totalJcs>0&&(g.voidedJcs/g.totalJcs)>0.05?'#DC2626':'#15803D';
     const isOpen=!!_burnExpandState[week];
