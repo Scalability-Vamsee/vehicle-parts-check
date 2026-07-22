@@ -701,7 +701,7 @@ body.pinned #hbg{display:none}
               <th>Active Techs</th>
               <th>Earners</th>
               <th>Median JCs</th>
-              <th>Avg JC / Tech</th>
+              <th>Avg JC / Tech / Day</th>
               <th>Void Rate</th>
               <th>Total Payout</th>
               <th>Payment</th>
@@ -744,6 +744,14 @@ body.pinned #hbg{display:none}
         .an-cstat{border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center}
         .an-cstat .v{font-size:1.05rem;font-weight:800}
         .an-cstat .l{font-size:.58rem;color:var(--muted);margin-top:4px;line-height:1.5}
+        .an-dtable{width:100%;border-collapse:collapse;font-size:.72rem}
+        .an-dtable th{text-align:left;padding:5px 6px 5px 0;font-size:.58rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)}
+        .an-dtable td{padding:6px 6px 6px 0;border-bottom:1px solid #F8FAFC;vertical-align:middle}
+        .an-dtable tr:last-child td{border-bottom:none}
+        .an-dsumbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+        .an-dsum{flex:1;min-width:72px;background:#F8FAFC;border-radius:8px;padding:8px 10px;text-align:center}
+        .an-dsum .v{font-size:.95rem;font-weight:800;color:#0F172A}
+        .an-dsum .l{font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;line-height:1.4}
       </style>
 
       <div class="tab-header">
@@ -809,6 +817,27 @@ body.pinned #hbg{display:none}
           <div class="an-wrap" style="height:250px"><canvas id="an-c4"></canvas></div>
           <div class="an-note">Selected week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad assume 3.5 techs/day for weeks before W6 (real attendance used from W6). Sorted by selected-week JC/tech desc.</div>
         </div>
+
+        <div class="an-level"><b>L3</b> Distribution — top 10% vs bottom 10% detail</div>
+        <div class="an-grid2">
+          <div class="an-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div class="an-card-title" style="margin:0">🏆 Top 10% — star performers</div>
+              <span id="an-top10-badge" style="font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:10px;background:#D1FAE5;color:#065F46">—</span>
+            </div>
+            <div class="an-dsumbar" id="an-top10-sums"></div>
+            <div id="an-top10-body"></div>
+          </div>
+          <div class="an-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div class="an-card-title" style="margin:0">🎯 Bottom 10% — needs coaching</div>
+              <span id="an-bot10-badge" style="font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:10px;background:#FEE2E2;color:#991B1B">—</span>
+            </div>
+            <div class="an-dsumbar" id="an-bot10-sums"></div>
+            <div id="an-bot10-body"></div>
+          </div>
+        </div>
+        <div class="an-note" style="margin-bottom:14px">Week pills (W1…Wn above) control both hub breakdown and this decile view. Top 10% = highest NTILE decile by eligible JCs. Streak = consecutive weeks ≥51 eligible JCs. Recur = number of recent weeks in bottom 10%. Gap to ₹ = JCs short of 51 threshold.</div>
 
       </div>
       <div id="an-att-warn" style="display:none;margin-top:8px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;font-size:.7rem;color:#92400E;">
@@ -1437,7 +1466,13 @@ async function loadAdminData(){
     const{data:burnStats}=await sbClient.from('incentive_weekly_stats').select('week_start,tech_name,total_jcs,voided_jcs,eligible_jcs,payout_amount,is_frozen').gte('week_start',TECH_SINCE).order('week_start',{ascending:false}).limit(1000);
     const{data:weekCfgs}=await sbClient.from('incentive_week_config').select('week_start,payment_done,payment_done_by,payment_done_at');
     const weekCfgMap={};(weekCfgs||[]).forEach(c=>weekCfgMap[c.week_start]=c);
-    renderBurnTable(burnStats||[],weekCfgMap);
+    const{data:dailyAtt}=await sbClient.from('hub_productivity_daily').select('date,technician_available').gte('date',TECH_SINCE).limit(2000);
+    const weekTechDaysMap={};
+    (dailyAtt||[]).forEach(r=>{
+      const ws=weekStartStr(r.date);
+      weekTechDaysMap[ws]=(weekTechDaysMap[ws]||0)+(+r.technician_available||0);
+    });
+    renderBurnTable(burnStats||[],weekCfgMap,weekTechDaysMap);
 
     // HR employee directory + alias mapping status
     const{data:hrEmps}=await sbClient.from('hr_employees').select('employee_id,employee_name,designation,hub,city,email').order('employee_name');
@@ -1518,10 +1553,20 @@ async function saveTechMapping(techId){
 let _burnRawStats=[]; // kept for expand
 let _burnExpandState={}; // week → expanded
 let _weekCfgMap={}; // week_start → {payment_done, ...}
+let _weekTechDaysMap={}; // week_start → SUM(technician_available) across hubs for that week
 
-function renderBurnTable(stats,weekCfgMap){
+function weekStartStr(dateStr){ // string in → 'YYYY-MM-DD' Monday-start out (renamed to avoid clobbering getWeekStart(date)→Date at line ~966)
+  const d=new Date(dateStr+'T00:00:00');
+  const day=d.getDay(); // 0=Sun
+  const diff=day===0?6:day-1;
+  d.setDate(d.getDate()-diff);
+  return d.toISOString().slice(0,10);
+}
+
+function renderBurnTable(stats,weekCfgMap,techDaysMap){
   _burnRawStats=stats||[];
   if(weekCfgMap)_weekCfgMap=weekCfgMap;
+  if(techDaysMap)_weekTechDaysMap=techDaysMap;
   const grouped={};
   stats.forEach(s=>{
     const week=s.week_start;
@@ -1560,7 +1605,8 @@ function rebuildBurnRows(grouped){
     const median=jcs.length%2===0?(jcs[jcs.length/2-1]+jcs[jcs.length/2])/2:jcs[Math.floor(jcs.length/2)];
     const earners=jcs.filter(j=>j>50).length;
     const total=g.payouts.reduce((s,p)=>s+p,0);
-    const avgJcPerTech=g.techs.size>0?(g.totalJcs/g.techs.size).toFixed(1):'—';
+    const techDays=_weekTechDaysMap[week]||0;
+    const avgJcPerTech=techDays>0?(g.totalJcs/techDays).toFixed(1):(g.techs.size>0?(g.totalJcs/g.techs.size).toFixed(1):'—');
     const voidRate=g.totalJcs>0?((g.voidedJcs/g.totalJcs)*100).toFixed(1)+'%':'—';
     const voidColor=g.totalJcs>0&&(g.voidedJcs/g.totalJcs)>0.05?'#DC2626':'#15803D';
     const isOpen=!!_burnExpandState[week];
@@ -2800,6 +2846,97 @@ function anComputeCohort(){
     newN:newT.length,newAvg:avg(newT),newEarn:newT.filter(v=>v>=51).length};
 }
 
+/* ── Top/Bottom 10% Decile Detail ── */
+function anStreak(name,w){
+  const wIdx=anWeeks.findIndex(m=>m.w===w);
+  let s=0;
+  for(let i=wIdx;i>=0;i--){
+    const r=anRows.find(x=>x.tech_name===name&&x.week_start===anWeeks[i].w&&(anCity==='Overall'||x.city===anCity));
+    if(r&&r.eligible_jcs>=51)s++;else break;
+  }
+  return s;
+}
+function anBot10Recur(name,w){
+  // how many of last 3 weeks was this tech in bottom 10%?
+  const wIdx=anWeeks.findIndex(m=>m.w===w);
+  let count=0;
+  for(let i=Math.max(0,wIdx-2);i<=wIdx;i++){
+    const iw=anWeeks[i].w;
+    const wr2=anRowsFor(iw).sort((a,b)=>a.eligible_jcs-b.eligible_jcs);
+    const bot=Math.max(1,Math.ceil(wr2.length*0.1));
+    if(wr2.slice(0,bot).some(r=>r.tech_name===name))count++;
+  }
+  return count;
+}
+function anRenderDeciles(){
+  const w=anSelWeek||(anWeeks.filter(m=>m.days===7).slice(-1)[0]||anWeeks.slice(-1)[0])?.w;
+  if(!w)return;
+  const wr=anRowsFor(w).sort((a,b)=>b.eligible_jcs-a.eligible_jcs);
+  const n=wr.length;if(!n){
+    ['an-top10-body','an-bot10-body'].forEach(id=>document.getElementById(id).innerHTML='<div style="color:var(--muted);font-size:.75rem;padding:8px">No data</div>');return;}
+  const top10n=Math.max(1,Math.ceil(n*0.1));
+  const topRows=wr.slice(0,top10n);
+  const botRows=wr.slice(-top10n).reverse();
+  const wIdx=anWeeks.findIndex(m=>m.w===w);
+  const prevW=wIdx>0?anWeeks[wIdx-1].w:null;
+  const prevMap={};
+  if(prevW)anRowsFor(prevW).forEach(r=>prevMap[r.tech_name]=r.eligible_jcs);
+  const void5pct=r=>r.total_jcs>0?+(100*r.voided_jcs/r.total_jcs).toFixed(1):null;
+  const delta=r=>prevMap[r.tech_name]!=null?r.eligible_jcs-prevMap[r.tech_name]:null;
+  const dtxt=d=>d==null?'—':(d>0?'+'+d:String(d));
+  const dclr=d=>d==null?'var(--muted)':d>0?'#10B981':d<0?'#EF4444':'#64748B';
+
+  // Top 10% summary
+  const topAvg=(topRows.reduce((s,r)=>s+r.eligible_jcs,0)/topRows.length).toFixed(0);
+  const topPay=topRows.reduce((s,r)=>s+(+r.payout_amount||0),0);
+  const topAbove=topRows.filter(r=>r.eligible_jcs>=51).length;
+  document.getElementById('an-top10-badge').textContent=`${topRows.length} techs · min ${topRows.at(-1)?.eligible_jcs} JCs`;
+  document.getElementById('an-top10-sums').innerHTML=
+    `<div class="an-dsum"><div class="v">${topAvg}</div><div class="l">Avg eligible JCs</div></div>`+
+    `<div class="an-dsum"><div class="v">₹${topPay.toLocaleString()}</div><div class="l">Group payout</div></div>`+
+    `<div class="an-dsum"><div class="v">${topAbove}/${topRows.length}</div><div class="l">Above ₹ threshold</div></div>`;
+  document.getElementById('an-top10-body').innerHTML=`<table class="an-dtable"><thead><tr>
+    <th>Technician</th><th>Hub</th><th style="text-align:right">Eligible</th>
+    <th style="text-align:right">Payout</th><th style="text-align:right">Δ Prev</th>
+    <th style="text-align:right">Void%</th><th style="text-align:right">Streak</th>
+  </tr></thead><tbody>${topRows.map(r=>{
+    const d=delta(r),vr=void5pct(r),st=anStreak(r.tech_name,w);
+    return `<tr>
+      <td><b>${r.tech_name.split(' ').slice(0,2).join(' ')}</b></td>
+      <td style="color:var(--muted)">${(r.hub_name||'').replace(/\s+hub$/i,'')}</td>
+      <td style="text-align:right;font-weight:800;color:#10B981">${r.eligible_jcs}</td>
+      <td style="text-align:right;font-weight:600">₹${(+r.payout_amount||0).toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600;color:${dclr(d)}">${dtxt(d)}</td>
+      <td style="text-align:right;color:${vr>8?'#EF4444':vr>5?'#F59E0B':'#10B981'}">${vr!=null?vr+'%':'—'}</td>
+      <td style="text-align:right;color:#6366F1;font-weight:600">${st>1?st+'w':'—'}</td>
+    </tr>`;}).join('')}</tbody></table>`;
+
+  // Bottom 10% summary
+  const botAvg=(botRows.reduce((s,r)=>s+r.eligible_jcs,0)/botRows.length).toFixed(0);
+  const botGap=Math.max(0,51-parseInt(botAvg));
+  const botRecurCount=botRows.filter(r=>anBot10Recur(r.tech_name,w)>=2).length;
+  document.getElementById('an-bot10-badge').textContent=`${botRows.length} techs · max ${botRows[0]?.eligible_jcs} JCs`;
+  document.getElementById('an-bot10-sums').innerHTML=
+    `<div class="an-dsum"><div class="v">${botAvg}</div><div class="l">Avg eligible JCs</div></div>`+
+    `<div class="an-dsum"><div class="v">-${botGap}</div><div class="l">Avg gap to ₹ threshold</div></div>`+
+    `<div class="an-dsum"><div class="v">${botRecurCount}</div><div class="l">Recurring 2+ wks</div></div>`;
+  document.getElementById('an-bot10-body').innerHTML=`<table class="an-dtable"><thead><tr>
+    <th>Technician</th><th>Hub</th><th style="text-align:right">Eligible</th>
+    <th style="text-align:right">Gap to ₹</th><th style="text-align:right">Δ Prev</th>
+    <th style="text-align:right">Void%</th><th style="text-align:right">Recur</th>
+  </tr></thead><tbody>${botRows.map(r=>{
+    const d=delta(r),vr=void5pct(r),recur=anBot10Recur(r.tech_name,w),gap=Math.max(0,51-r.eligible_jcs);
+    return `<tr>
+      <td><b>${r.tech_name.split(' ').slice(0,2).join(' ')}</b></td>
+      <td style="color:var(--muted)">${(r.hub_name||'').replace(/\s+hub$/i,'')}</td>
+      <td style="text-align:right;font-weight:800;color:${r.eligible_jcs>=51?'#10B981':'#0F172A'}">${r.eligible_jcs}</td>
+      <td style="text-align:right;font-weight:700;color:${gap>20?'#EF4444':gap>5?'#F59E0B':'#10B981'}">${gap>0?'−'+gap:'✓'}</td>
+      <td style="text-align:right;font-weight:600;color:${dclr(d)}">${dtxt(d)}</td>
+      <td style="text-align:right;color:${vr>8?'#EF4444':vr>5?'#F59E0B':'#6B7280'}">${vr!=null?vr+'%':'—'}</td>
+      <td style="text-align:right;font-weight:600;color:${recur>=3?'#DC2626':recur>=2?'#F59E0B':'#94A3B8'}">${recur>=2?recur+'w':'new'}</td>
+    </tr>`;}).join('')}</tbody></table>`;
+}
+
 /* ── markers plugin (dynamic week positions) ── */
 function anMarkers(weeks){
   return {id:'anMk',afterDatasetsDraw(c){
@@ -2825,13 +2962,13 @@ function anSetCity(btn){
   document.querySelectorAll('#an-city .an-fbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');anCity=btn.dataset.c;anRenderAll();
 }
-function anSetWeek(w){anSelWeek=w;anRenderPills();anChart4();}
+function anSetWeek(w){anSelWeek=w;anRenderPills();anChart4();anRenderDeciles();}
 function anRenderPills(){
   document.getElementById('an-pills').innerHTML=anWeeks.map(m=>
     `<button class="an-wbtn ${m.w===anSelWeek?'active':''}" onclick="anSetWeek('${m.w}')">${m.short}${m.days<7?'*':''}</button>`).join('');
 }
 function anRenderAll(){
-  anTiles();anRenderPills();anChart0();anChartTechs();anChart1();anChart2();anChart3();anChart4();
+  anTiles();anRenderPills();anChart0();anChartTechs();anChart1();anChart2();anChart3();anChart4();anRenderDeciles();
 }
 
 function anTiles(){
