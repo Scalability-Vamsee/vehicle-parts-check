@@ -2676,7 +2676,7 @@ let _dashBooted=false;  // guard: getSession path + onAuthStateChange can both f
 const AN_START='2026-06-01';          // analysis window start
 const AN_ANNOUNCE_WEEK='2026-06-22';  // incentive announced Jun 23 (W3 Jun 15–21 retro-paid)
 const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
-const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar assumed avg techs/day (GAS attendance unreliable pre-W6)
+const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar fallback (3.5 avg with absences); use real hub_productivity_daily per-day when available
 const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
 const AN_QUALITY_FROM='2026-06-08';   // void detection before Jun 8 is understated (lookback edge: comebacks from pre-Jun-1 work don't register)
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
@@ -2809,10 +2809,13 @@ function anPooled(w, cityF){
   Object.keys(byHub).forEach(h=>{
     const isHF=anHubCity[h]==='Hyderabad'||h==='fathenagar';
     const a=anAtt?anAtt[h+'|'+w]:null;
-    // Hyd/Fathenagar: GAS attendance unreliable before W6 → assume flat rate for W1–W5, trust real from W6
-    if(isHF&&w<HYD_REAL_FROM){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=HYD_ASSUMED_TECHS;attDays=Math.max(attDays,wdays);}
+    // Hyd/Fathenagar: hybrid — use real td for days we have, fill remaining days with 3.5 assumed
+    if(isHF){
+      const realDays=a?a.days:0,realTd=a?a.td:0;
+      const totalTd=realTd+Math.max(0,wdays-realDays)*HYD_ASSUMED_TECHS;
+      jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=totalTd/wdays;attDays=Math.max(attDays,wdays);
+    }
     else if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
-    else if(isHF){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=HYD_ASSUMED_TECHS;attDays=Math.max(attDays,wdays);}
   });
   if(!avgDaySum)return null;
   const td=avgDaySum*wdays;
@@ -3152,13 +3155,16 @@ function anChartTechs(){
     if(f&&anHubCity[r.hubKey]!==f)return;
     byDate[r.date]=(byDate[r.date]||0)+r.tech;
   });
-  // Hyderabad: GAS attendance unreliable before W6 → assume flat rate for pre-W6 days (override), real from W6
+  // Hyderabad synthetic fill: hub_productivity_daily has gaps for Fathenagar (Miyapur).
+  // Hybrid: use real attendance for any day with actual data; fill 3.5 only for days with NO real Hyd row.
+  // Applies to both Hyderabad filter AND Overall so the city isn't silently dropped.
   let hydSynth=false;
-  if(f==='Hyderabad'){
+  if(!f||f==='Hyderabad'){
+    const hydRealDates=new Set((anAttRows||[]).filter(r=>anHubCity[r.hubKey]==='Hyderabad').map(r=>r.date));
     const synEnd=new Date(HYD_REAL_FROM+'T00:00:00Z').getTime();
     for(let ms=new Date(AN_START+'T00:00:00Z').getTime();ms<synEnd;ms+=86400000){
       const ds=new Date(ms).toISOString().slice(0,10);
-      byDate[ds]=HYD_ASSUMED_TECHS; hydSynth=true;
+      if(!hydRealDates.has(ds)){byDate[ds]=(byDate[ds]||0)+HYD_ASSUMED_TECHS; hydSynth=true;}
     }
   }
   const keys=Object.keys(byDate).sort();
@@ -3213,10 +3219,9 @@ function anChart4(){
     const att=anAtt?.[a.hubKey+'|'+w];
     const wm=anWeeks.find(x=>x.w===w); const wd=wm?wm.days:7;
     const isHF=anHubCity[a.hubKey]==='Hyderabad'||a.hubKey==='fathenagar';
-    // Hyd/Fathenagar: assumed flat rate before W6 (override), real from W6, else assumed fallback
-    if(isHF&&w<HYD_REAL_FROM)return +(a.jcs/(HYD_ASSUMED_TECHS*wd)).toFixed(2);
+    // Hyd/Fathenagar: hybrid — real td for days we have, fill remaining with 3.5 assumed
+    if(isHF){const realDays=att?att.days:0,realTd=att?att.td:0;const totalTd=realTd+Math.max(0,wd-realDays)*HYD_ASSUMED_TECHS;return +(a.jcs/totalTd).toFixed(2);}
     if(att&&att.td>0&&att.days>0)return +(a.jcs/(att.td/att.days*wd)).toFixed(2);
-    if(isHF)return +(a.jcs/(HYD_ASSUMED_TECHS*wd)).toFixed(2);
     return null;};
   // Sort: city group (BLR → NCR → HYD) then JC/tech/day desc within group
   const hubCityOf=h=>{for(const w of Object.keys(hubAgg[h]||{})){const hk=hubAgg[h][w]?.hubKey;if(hk&&anHubCity[hk])return anHubCity[hk];}return 'Other';};
