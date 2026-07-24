@@ -2816,6 +2816,13 @@ function anPooled(w, cityF){
       jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=totalTd/wdays;attDays=Math.max(attDays,wdays);
     }
     else if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
+    else if(byHub[h].jcs>0){
+      // No attendance synced for this hub this week — fall back to most recent week's rate
+      // so the current-week projection isn't silently missing most of the fleet
+      const fallback=[...anWeeks].reverse().find(m=>m.w<w&&anAtt?.[h+'|'+m.w]?.td>0);
+      const fa=fallback?anAtt[h+'|'+fallback.w]:null;
+      if(fa){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=fa.td/fa.days;attDays=Math.max(attDays,wdays);}
+    }
   });
   if(!avgDaySum)return null;
   const td=avgDaySum*wdays;
