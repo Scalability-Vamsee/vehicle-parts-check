@@ -12,6 +12,7 @@ area. If you find a duplicate, fold it into the canonical and delete the copy.
 |-----|------|---------|
 | Project memory / rules | `CLAUDE.md` | Auth pattern, deploy, tables, do-not-violate decisions. Always-loaded. |
 | Edit locks | `LOCKS.md` | Claim a page before editing. Protocol at top. |
+| Push discipline | `docs/PUSH-DISCIPLINE.md` | The 9-rule push checklist (one `/tmp/fleetpro-push` clone, re-clone fresh, never push from the mount, verify+secret-scan, PAT hygiene, non-ff=stop, edge fns are source-of-record only). |
 | Cowork primer | `../docs/COWORK-PRIMER.md` | Paste into Cowork at session start (it doesn't auto-load CLAUDE.md). Includes the always-re-clone rule. |
 | Daily prompts | `../START-HERE.md` | START prompt on open, END prompt on close (per window/project). |
 | This index | `docs/INDEX.md` | Map of all FleetPro docs. |
@@ -46,6 +47,8 @@ area. If you find a duplicate, fold it into the canonical and delete the copy.
 | Freeze-rebuild migration | `supabase/migrations/20260715000001_freeze_rebuild_first.sql` | ✅ pushed 2c32688 | Captures live `freeze_completed_weeks()` change (rebuild-before-freeze). Applied live 2026-07-09; git-reconciled 2026-07-15. |
 | Send-feedback edge fn | `supabase/functions/send-feedback/index.ts` | ✅ deployed (v4) + pushed 2026-07-05 · ⚠️ auth | Incentive Feedback FAB (text+audio) → `incentive_feedback` + Resend email. Audio → `feedback-audio` bucket. ⚠️ `verify_jwt:true` + anon-key call = 401 — **recommend calling with the logged-in session JWT (keep verify_jwt=true)** rather than opening a public endpoint. Confirm `feedback-audio` bucket (auth-write, superadmin-read). |
 | RFD Check | `v8/rfd-check.html` + `supabase/functions/rfd-check-sync` | ✅ pushed + live | Search-first admin tool — reg → **RFD CLEAR / INCOMPLETE** (IoT Glue, MCU FW 60A, JC Billed). Catches bikes force-activated by direct DB update. Backend: `rfd_violations_cache` ← `rfd-check-sync` v1 (Metabase Q `0cfdcf89`) on cron job 42 (every 2h). Feature key `rfd-check`. Full context: `Fleetpro-context.md` §2026-07-19. |
+| JC Failure Alert | `supabase/functions/jc-failure-alert` | ⚠️ v6 MCP-deployed · git pending push | Emails vamsee@bounceshare.com on new "draft JC creation failed" rows from Metabase card `703fa2b6`. v6 (2026-07-26): RFC 4180 CSV parser (fixes intrip blank caused by `dms_api_call_json` JSON fields); labels `intrip=true`→"🔴 RUNNING REPAIR", `false`→"GENERAL SERVICES (Repossessed)". Cron every 10 min (job TBC). `verify_jwt:false`. Full context: `Fleetpro-context.md` §2026-07-26. |
+| JC History Sync | `supabase/functions/jc-history-sync` | ⚠️ v12 MCP-deployed · git pending push | Syncs Metabase card `a2c3e48b` → `jc_history` table. v12 (2026-07-26): streaming reader (no full-payload OOM) + 90-day incremental (delete+reinsert last 90 days only). Metabase card updated to filter last 90 days. Full seed of 372,053 rows done 2026-07-26. Crons: job 21 (every 2h, service_role) + job 41 (every 3h, anon). Full context: `Fleetpro-context.md` §2026-07-26. |
 | Shared sidebar | `v8/sidebar.js` | ✅ | ONE source of truth for the sidebar on all 13 pages (markup + `data-feature` gates + injected dark theme + scroll). Edit here, not per-page (2026-07-02). |
 
 ## Launch notes

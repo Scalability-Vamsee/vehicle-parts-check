@@ -20,17 +20,7 @@ push via the `/tmp` clone (see Repo & Deployment below).
 - **Repo**: `vamseebounce/vehicle-parts-check` (main branch → GitHub Pages)
 - **Live URL**: `https://bounceops.online/v8/`
 - **Supabase project**: `clkfvmmlgwcvntxnolsv`
-- **Push workaround**: macOS FUSE lock prevents pushing from the mounted folder. Always clone to `/tmp/fleetpro-push/`, copy changed files, push from there.
-
-```bash
-cd /tmp && rm -rf fleetpro-push
-git clone https://<PAT>@github.com/vamseebounce/vehicle-parts-check.git fleetpro-push
-cp <changed files> /tmp/fleetpro-push/<same paths>
-cd /tmp/fleetpro-push
-git add . && git commit -m "<msg>" && git push origin main
-```
-
-**PAT**: Never commit to any file. Pass inline to clone URL only.
+- **Push discipline → `docs/PUSH-DISCIPLINE.md` (canonical).** macOS FUSE lock means you never push from the mounted folder — always clone fresh to `/tmp/fleetpro-push`, copy changed files, verify, push, scrub. Full rules (clone hygiene, secret scan, PAT inline-only, non-ff = STOP, edge fns = source-of-record) live in that doc.
 
 ## 🚀 Cowork → Claude Code deploy handoff (MANDATORY)
 
