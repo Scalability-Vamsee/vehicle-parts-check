@@ -18,5 +18,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
 | admin-permissions.html | (free) | — | — |
+| rfd-check.html | (free) | — | — |
+| sidebar.js | (free) | — | — |
 | supabase/functions (edge fn source) | (free) | — | — |
 | docs (context/checklists) | (free) | — | — |
