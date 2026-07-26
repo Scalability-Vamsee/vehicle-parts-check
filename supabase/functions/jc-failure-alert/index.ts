@@ -5,7 +5,7 @@ const SB_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND  = Deno.env.get('RESEND_API_KEY')!;
 const MB_URL  = 'http://metabaselatest-dy7gqwqrma-el.a.run.app';
 const MB_CARD = '703fa2b6-0b00-4383-aead-9b06ae176a3b';
-const ALERT_TO = 'vamsee@scalability.club';
+const ALERT_TO = 'vamsee@bounceshare.com';
 
 interface Row {
   id: string;
@@ -29,17 +29,39 @@ Deno.serve(async () => {
   if (!mbRes.ok) return new Response(`Metabase fetch failed: ${mbRes.status}`, { status: 500 });
   const csv = await mbRes.text();
 
-  // 2. Parse CSV
-  const lines = csv.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const rows: Row[] = lines.slice(1).map(line => {
-    const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || [];
-    const obj: any = {};
-    headers.forEach((h, i) => {
-      obj[h] = (vals[i] || '').replace(/^"|"$/g, '').trim();
+  // 2. Parse CSV — RFC 4180 compliant (handles JSON fields with commas/newlines)
+  function parseCSV(text: string): Record<string, string>[] {
+    const allRows: string[][] = [];
+    let row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    let i = 0;
+    while (i < text.length) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"' && text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        else if (ch === '"') { inQuotes = false; }
+        else { field += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { row.push(field); field = ''; }
+        else if (ch === '\r') { /* skip */ }
+        else if (ch === '\n') { row.push(field); field = ''; allRows.push(row); row = []; }
+        else { field += ch; }
+      }
+      i++;
+    }
+    row.push(field);
+    if (row.length > 1 || row[0] !== '') allRows.push(row);
+    if (allRows.length === 0) return [];
+    const hdrs = allRows[0];
+    return allRows.slice(1).map(r => {
+      const obj: Record<string, string> = {};
+      hdrs.forEach((h, idx) => { obj[h] = r[idx] ?? ''; });
+      return obj;
     });
-    return obj;
-  });
+  }
+  const rows: Row[] = parseCSV(csv) as unknown as Row[];
 
   // 3. Filter only failure rows
   const failures = rows.filter(r =>
@@ -80,23 +102,23 @@ Deno.serve(async () => {
       <td>${r.odo_km ? Number(r.odo_km).toLocaleString() + ' km' : '—'}</td>
       <td>${r.hub_name || r.hub_id || '—'}</td>
       <td style="color:${r.intrip === 'true' ? '#DC2626' : '#374151'};font-weight:${r.intrip === 'true' ? '700' : '400'}">
-        ${r.intrip === 'true' ? '🔴 IN TRIP' : '—'}
+        ${r.intrip === 'true' ? '🔴 RUNNING REPAIR' : 'GENERAL SERVICES (Repossessed)'}
       </td>
       <td>${r.status.replace('draft job card creation failed :', '')}</td>
       <td>${fmtTime(r.created_at)}</td>
     </tr>`).join('');
 
   const intripCount = newFailures.filter(r => r.intrip === 'true').length;
-  const subjectPrefix = intripCount > 0 ? `🔴 ${intripCount} in-trip · ` : '';
+  const subjectPrefix = intripCount > 0 ? `🔴 ${intripCount} running repair · ` : '';
 
   const html = `
     <div style="font-family:sans-serif;max-width:900px">
       <h2 style="color:#DC2626">🚨 Draft JC Creation Failures — ${newFailures.length} new</h2>
-      ${intripCount > 0 ? `<p style="color:#DC2626;font-weight:700">${intripCount} failure(s) are for in-trip bikes — immediate attention needed.</p>` : ''}
+      ${intripCount > 0 ? `<p style="color:#DC2626;font-weight:700">${intripCount} failure(s) are for running repair bikes — immediate attention needed.</p>` : ''}
       <table border="1" cellpadding="8" style="border-collapse:collapse;font-size:13px;width:100%">
         <tr style="background:#F3F4F6">
           <th>JC ID</th><th>Reg</th><th>Chassis</th><th>Odo</th>
-          <th>Hub</th><th>In Trip</th><th>Failure Reason</th><th>Time (IST)</th>
+          <th>Hub</th><th>Type</th><th>Failure Reason</th><th>Time (IST)</th>
         </tr>
         ${tableRows}
       </table>
