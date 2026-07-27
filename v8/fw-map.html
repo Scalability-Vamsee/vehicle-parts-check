@@ -128,6 +128,10 @@ body.pinned #main{margin-left:var(--sb-width)}
 .map-btn.loading{position:relative;color:transparent!important;}
 .map-btn.loading::after{content:'';position:absolute;top:50%;left:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid #9CA3AF;border-top-color:#374151;border-radius:50%;animation:btn-spin .6s linear infinite;}
 @keyframes btn-spin{to{transform:rotate(360deg)}}
+.fw-toggle-group{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.fw-toggle{padding:5px 11px;font-size:.75rem;font-weight:700;font-family:'Inter',sans-serif;background:#fff;border:none;cursor:pointer;color:#6B7280;transition:all .15s;white-space:nowrap}
+.fw-toggle:first-child{border-right:1px solid var(--border)}
+.fw-toggle.active{background:#E8191C;color:#fff}
 #map-error{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;font-size:.78rem;padding:8px 14px;border-radius:8px;margin:0 16px 8px;}
 #map{flex:1;min-height:400px;}
 #map-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(26,26,46,.9);color:#fff;padding:16px 24px;border-radius:10px;font-size:.85rem;z-index:450;display:none;align-items:center;gap:10px;pointer-events:none;}
@@ -230,6 +234,10 @@ body.pinned #main{margin-left:var(--sb-width)}
     <div id="map-topbar">
       <h2>📍 FW Flash Pending — Live Map</h2>
       <span class="count-pill" id="count-pill">Loading…</span>
+      <div class="fw-toggle-group">
+        <button class="fw-toggle active" id="toggle-diu" onclick="setFwMode('diu')">DIU FW</button>
+        <button class="fw-toggle" id="toggle-mcu" onclick="setFwMode('mcu')">MCU 60A</button>
+      </div>
       <input id="search-input" type="text" placeholder="🔍 Search reg / phone…" oninput="renderFiltered()" autocomplete="off"/>
       <select id="hub-filter" onchange="renderFiltered()">
         <option value="">All Hubs</option>
@@ -276,8 +284,10 @@ var CURRENT_USER_EMAIL=null;
 var sbClient=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
 
 // fw_bikes_live = fw_pending_cache ⨝ bike_location_cache ⨝ bike_rider_cache
+// mcu_bikes_live = rfd_violations_cache(regen_60a_check_needed) ⨝ bike_location_cache ⨝ bike_rider_cache
 // Returns only FW-pending bikes (~1,366 rows) vs fetching all 3 tables (~20k rows)
 var FW_LIVE_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/fw_bikes_live?select=chassis_number,reg_number,hub,lat,lng,loc_time,current_soc,vehicle_status,rider_name,rider_phone&limit=5000';
+var MCU_LIVE_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/mcu_bikes_live?select=chassis_number,reg_number,hub,lat,lng,loc_time,current_soc,vehicle_status,rider_name,rider_phone&limit=5000';
 var HUB_LOCATION_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/rental_locations?select=id,location_name,lat,lng,short_address,status&status=eq.active&city_id=eq.1';
 
 // Darkstore/charge station data (embedded)
@@ -360,6 +370,8 @@ async function loadRsaLocations(){
 
 // Global state
 var _allPending=[];
+var _allMcu=[];
+var _fwMode='diu'; // 'diu' or 'mcu'
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:true,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
@@ -491,7 +503,8 @@ function renderFiltered(){
   var qPhone=normPhone(raw);
   var hub=document.getElementById('hub-filter').value;
   markerGroup.clearLayers();
-  var filtered=_allPending.filter(function(b){
+  var _source=_fwMode==='mcu'?_allMcu:_allPending;
+  var filtered=_source.filter(function(b){
     if(hub&&b.hub!==hub)return false;
     if(raw){
       var reg=normReg(b.reg);
@@ -582,10 +595,11 @@ document.addEventListener('click',function(e){
 
 var FW_CACHE_KEY='fw_map_pending_v8';
 
-function applyPending(pending,fromCache,cacheTs){
-  _allPending=pending;
+// Rebuild hub filter dropdown from the active mode's data
+function rebuildHubFilter(){
+  var source=_fwMode==='mcu'?_allMcu:_allPending;
   var hubs={};
-  pending.forEach(function(b){hubs[b.hub]=1;});
+  source.forEach(function(b){hubs[b.hub]=1;});
   var sel=document.getElementById('hub-filter');
   var cur=sel.value;
   sel.innerHTML='<option value="">All Hubs</option>';
@@ -595,6 +609,21 @@ function applyPending(pending,fromCache,cacheTs){
     if(h===cur)opt.selected=true;
     sel.appendChild(opt);
   });
+}
+
+// Switch between DIU FW and MCU 60A modes
+function setFwMode(mode){
+  _fwMode=mode;
+  document.getElementById('toggle-diu').classList.toggle('active',mode==='diu');
+  document.getElementById('toggle-mcu').classList.toggle('active',mode==='mcu');
+  document.getElementById('search-input').value='';
+  rebuildHubFilter();
+  renderFiltered();
+}
+
+function applyPending(pending,fromCache,cacheTs){
+  _allPending=pending;
+  if(_fwMode==='diu')rebuildHubFilter();
   renderFiltered();
   var withRider=pending.filter(function(b){return b.rider_phone;}).length;
   if(fromCache&&cacheTs){
@@ -604,6 +633,11 @@ function applyPending(pending,fromCache,cacheTs){
     var now=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     document.getElementById('updated-at').textContent='Updated '+now+(withRider?' ('+withRider+' with rider)':'');
   }
+}
+
+function applyMcu(mcu){
+  _allMcu=mcu;
+  if(_fwMode==='mcu'){rebuildHubFilter();renderFiltered();}
 }
 
 // fetchRiderData no longer needed — rider data included in fw_bikes_live view
@@ -634,6 +668,26 @@ async function fetchFreshData(){
   return pending;
 }
 
+async function fetchMcuData(){
+  // mcu_bikes_live = rfd_violations_cache(regen_60a_check_needed) ⨝ bike_location_cache ⨝ bike_rider_cache
+  var res=await fetch(MCU_LIVE_URL,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+  if(!res.ok)throw new Error('MCU Supabase error '+res.status);
+  var rows=await res.json();
+  return rows.map(function(b){
+    return {
+      chassis:b.chassis_number||'',
+      reg:b.reg_number,
+      lat:b.lat,
+      lng:b.lng,
+      soc:b.current_soc,
+      loc_time:b.loc_time,
+      hub:b.hub,
+      rider_name:b.rider_name||'',
+      rider_phone:b.rider_phone||''
+    };
+  });
+}
+
 async function loadMapData(){
   // Guard: never show map loading over the auth screen
   var authScreen=document.getElementById('auth-screen');
@@ -650,17 +704,19 @@ async function loadMapData(){
   try{var c=localStorage.getItem(FW_CACHE_KEY);if(c)cached=JSON.parse(c);}catch(e){}
   if(cached&&cached.pending&&cached.pending.length){
     loading.style.display='none';
+    if(cached.mcu)_allMcu=cached.mcu;
     applyPending(cached.pending,true,cached.ts);
-    fetchRiderData();
   }else{
     loading.style.display='flex';
   }
 
-  // Step 2: Fetch current Supabase data (no sync yet — show fast)
+  // Step 2: Fetch DIU + MCU in parallel (no sync yet — show fast)
   try{
-    var[pending]=await Promise.all([fetchFreshData(),fetchRiderData()]);
-    try{localStorage.setItem(FW_CACHE_KEY,JSON.stringify({pending:pending,ts:Date.now()}));}catch(e){}
+    var[pending,mcu]=await Promise.all([fetchFreshData(),fetchMcuData()]);
+    _allMcu=mcu;
+    try{localStorage.setItem(FW_CACHE_KEY,JSON.stringify({pending:pending,mcu:mcu,ts:Date.now()}));}catch(e){}
     applyPending(pending,false,null);
+    if(_fwMode==='mcu'){rebuildHubFilter();renderFiltered();}
   }catch(e){
     if(!cached||!cached.pending||!cached.pending.length){
       errEl.textContent='Error loading data: '+e.message;
