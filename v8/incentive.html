@@ -2982,7 +2982,7 @@ function anSetCity(btn){
   document.querySelectorAll('#an-city .an-fbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');anCity=btn.dataset.c;anRenderAll();
 }
-function anSetWeek(w){anSelWeek=w;anRenderPills();anChart4();anRenderDeciles();}
+function anSetWeek(w){anSelWeek=w;anRenderPills();anTiles();anChart4();anRenderDeciles();}
 function anRenderPills(){
   document.getElementById('an-pills').innerHTML=anWeeks.map(m=>
     `<button class="an-wbtn ${m.w===anSelWeek?'active':''}" onclick="anSetWeek('${m.w}')">${m.short}${m.days<7?'*':''}</button>`).join('');
@@ -2993,7 +2993,7 @@ function anRenderAll(){
 
 function anTiles(){
   const fulls=anWeeks.filter(m=>m.days===7);
-  const cur=fulls.length?fulls[fulls.length-1]:anWeeks[anWeeks.length-1];
+  const cur=anWeeks.find(m=>m.w===anSelWeek)||(fulls.length?fulls[fulls.length-1]:anWeeks[anWeeks.length-1]);
   const d=anDist(cur.w), pj=anPooled(cur.w);
   const bJ=anBaseJpt(), bTE=anBaseDist('totalEligible'), bER=anBaseDist('earnerRate');
   const set=(id,v)=>document.getElementById(id).textContent=v;

@@ -235,8 +235,8 @@ body.pinned #main{margin-left:var(--sb-width)}
       <h2>📍 FW Flash Pending — Live Map</h2>
       <span class="count-pill" id="count-pill">Loading…</span>
       <div class="fw-toggle-group">
-        <button class="fw-toggle active" id="toggle-diu" onclick="setFwMode('diu')">DIU FW</button>
-        <button class="fw-toggle" id="toggle-mcu" onclick="setFwMode('mcu')">MCU 60A</button>
+        <button class="fw-toggle" id="toggle-diu" onclick="setFwMode('diu')">DIU FW</button>
+        <button class="fw-toggle active" id="toggle-mcu" onclick="setFwMode('mcu')">MCU 60A</button>
       </div>
       <input id="search-input" type="text" placeholder="🔍 Search reg / phone…" oninput="renderFiltered()" autocomplete="off"/>
       <select id="hub-filter" onchange="renderFiltered()">
@@ -373,7 +373,7 @@ async function loadRsaLocations(){
 // Global state
 var _allPending=[];
 var _allMcu=[];
-var _fwMode='diu'; // 'diu' or 'mcu'
+var _fwMode='mcu'; // 'diu' or 'mcu'
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:true,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
