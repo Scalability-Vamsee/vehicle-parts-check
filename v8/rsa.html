@@ -460,8 +460,12 @@ var rsaGroup=L.layerGroup().addTo(leafMap);
 var clusterGroup=L.layerGroup(); // off by default — toggled via Layers panel
 
 // ── BLR zone clusters (extracted from KML, polygons only) ──
+// Central Cluster: KML only had 4 corners while its neighbors have 7-9 (finer boundary detail),
+// leaving triangular gaps on all 4 sides. Snapped to reuse neighbors' own junction vertices
+// (RRNagara/Bellandur corner, Hoodi/Hebbal corner, YPR/Hebbal corner) — best-effort visual fix,
+// not a re-survey. Original 4 corners preserved unchanged; only intermediate points inserted.
 var BLR_CLUSTERS=[
-  {name:'Central Cluster',color:'#FF5252',coords:[[13.0526998,77.559199],[12.9382907,77.5578257],[12.9376215,77.656016],[13.0326319,77.6525828]]},
+  {name:'Central Cluster',color:'#FF5252',coords:[[13.0526998,77.559199],[12.9382907,77.5578257],[12.9416368,77.5846049],[12.9376215,77.656016],[13.0259422,77.656016],[13.0326319,77.6525828],[13.0480174,77.5660654]]},
   {name:'YPR Cluster',color:'#FBC02D',coords:[[12.9878076,77.5543924],[13.0145693,77.5564524],[13.0480174,77.5660654],[13.1062063,77.5269266],[13.1055376,77.4788614],[13.0640709,77.4575754],[12.9898148,77.460322]]},
   {name:'RR Nagara Cluster',color:'#AFB42B',coords:[[12.9878076,77.5543924],[12.9898148,77.460322],[12.8706911,77.462382],[12.8365497,77.5770518],[12.850618,77.5866862],[12.9416368,77.5846049],[12.9382907,77.5578257]]},
   {name:'Bellandur Cluster',color:'#3949AB',coords:[[12.850618,77.5866862],[12.8352107,77.6800486],[12.8419055,77.7130076],[12.9208906,77.7363535],[12.9349446,77.6917216],[12.9376215,77.656016],[12.9416368,77.5846049]]},
