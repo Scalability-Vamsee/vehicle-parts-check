@@ -6,6 +6,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light"/>
 <title>Technician Incentives — FleetPro</title>
 <link rel="manifest" href="/v8/incentive-manifest.json">
 <meta name="theme-color" content="#E8191C">
@@ -137,17 +138,20 @@ body.pinned #hbg{display:none}
 .payout-nudge{font-size:.78rem;color:var(--muted);line-height:1.5;padding:12px;background:#F9FAFB;border-radius:8px;border-left:3px solid var(--brand);}
 
 /* ── Trend Table ── */
-.trend-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.trend-table{width:100%;min-width:520px;border-collapse:collapse;font-size:.78rem;}
 .trend-table thead{background:#F9FAFB;border-bottom:1px solid var(--border);}
 .trend-table th{padding:12px 8px;text-align:left;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-size:.65rem;}
 .trend-table td{padding:12px 8px;border-bottom:1px solid var(--border);color:var(--text);}
+.trend-table td:first-child{white-space:nowrap;}
 .trend-table tbody tr:hover{background:#F9FAFB;}
+.trend-table tbody tr{cursor:pointer;}
+.trend-table tbody tr td{min-height:44px;}
 .trend-table tbody tr.current{background:#FEF3C7;border-left:3px solid #F59E0B;}
 .trend-table .dim{color:var(--muted);}
 .trend-table .good{color:#16A34A;font-weight:600;}
 
 /* ── Leaderboard ── */
-.leaderboard-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.leaderboard-table{width:100%;min-width:640px;border-collapse:collapse;font-size:.8rem;}
 .leaderboard-table thead{background:#F9FAFB;border-bottom:1px solid var(--border);}
 .leaderboard-table th{padding:12px 8px;text-align:left;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-size:.65rem;}
 .leaderboard-table td{padding:12px 8px;border-bottom:1px solid var(--border);color:var(--text);}
@@ -196,6 +200,7 @@ body.pinned #hbg{display:none}
   .leaderboard-table,.trend-table,.admin-table{font-size:.7rem;}
   .leaderboard-table th,.trend-table th,.admin-table th{font-size:.6rem;padding:8px 4px;}
   .leaderboard-table td,.trend-table td,.admin-table td{padding:8px 4px;}
+  .trend-table td{padding:12px 8px;} /* trend rows are tap targets (drill-down) — keep full padding on mobile */
 }
 @media(min-width:768px){
   body.pinned #sb{transform:translateX(0)}
@@ -401,7 +406,7 @@ body.pinned #hbg{display:none}
         </div>
         <div class="kpi-card kpi-highlight">
           <div class="kpi-label" id="kpi-payout-label" data-i18n="kpiPayoutLabel">Estimated Payout</div>
-          <div class="kpi-value" id="kpi-payout" style="font-size:2.6rem;color:#15803D;white-space:nowrap;">₹ —</div>
+          <div class="kpi-value" id="kpi-payout" style="font-size:clamp(1.6rem,6vw,2.6rem);color:#15803D;white-space:nowrap;">₹ —</div>
           <div class="kpi-detail" id="kpi-payout-detail" data-i18n="kpiPayoutDetail">Based on tier calculation</div>
         </div>
         <div class="kpi-card">
@@ -455,6 +460,7 @@ body.pinned #hbg{display:none}
       <!-- Trend Table -->
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);">
         <div style="font-size:.85rem;font-weight:800;color:#0F172A;margin-bottom:14px;" data-i18n="trendTitle">Weekly Trend (from 15 Jun)</div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="trend-table" id="trend-table">
           <thead>
             <tr>
@@ -471,6 +477,7 @@ body.pinned #hbg{display:none}
             <tr><td colspan="7" style="text-align:center;color:var(--muted);">Loading…</td></tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -508,7 +515,7 @@ body.pinned #hbg{display:none}
         </div>
         <div class="kpi-card kpi-highlight">
           <div class="kpi-label">Total Payout Pool</div>
-          <div class="kpi-value" id="lb-kpi-pool" style="font-size:2.6rem;color:#15803D;white-space:nowrap;">₹ —</div>
+          <div class="kpi-value" id="lb-kpi-pool" style="font-size:clamp(1.6rem,6vw,2.6rem);color:#15803D;white-space:nowrap;">₹ —</div>
           <div class="kpi-detail">Sum of all est. payouts</div>
         </div>
         <div class="kpi-card">
@@ -558,6 +565,7 @@ body.pinned #hbg{display:none}
       <!-- Technician Leaderboard -->
       <div id="lb-sub-tech">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="leaderboard-table" id="leaderboard-table">
           <thead>
             <tr>
@@ -575,6 +583,7 @@ body.pinned #hbg{display:none}
             <tr><td colspan="6" style="text-align:center;color:var(--muted);">Loading…</td></tr>
           </tbody>
         </table>
+        </div>
       </div>
       </div><!-- /lb-sub-tech -->
     </div>
@@ -783,13 +792,13 @@ body.pinned #hbg{display:none}
         <div class="an-card">
           <div class="an-card-title">JC per Tech per Day — pooled weekly trend (Intrip + EndTrip split · total JCs line)</div>
           <div class="an-wrap" style="height:300px"><canvas id="an-c0"></canvas></div>
-          <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day · N/7 att when incomplete (tech-days = avg techs/day × days-in-week, so a week with few synced attendance days is projected from the rate, not divided by a partial denominator). Grey = pre-announcement. Hub JC attribution = technician's dominant hub.</div>
+          <div class="an-note" id="an-c0-note">Bar = JC/tech/day: solid = Intrip (bottom), translucent = EndTrip/OOS (top), % = share of billed JCs. Dark line (right axis) = total JCs billed; dotted = current week projected (jpt × avg techs/day × 7). Under week labels: tech-days · avg techs/day · N/7 att when incomplete (tech-days = avg techs/day × days-in-week, so a week with few synced attendance days is projected from the rate, not divided by a partial denominator). Grey = pre-announcement. Hub JC attribution = technician's dominant hub. From 20 Jul onward, the ops attendance sheet stopped syncing — the denominator switches to distinct technicians billing per hub per day (averaged across the week), the same "how many people worked" measure the sheet used to provide.</div>
         </div>
 
         <div class="an-card" id="an-techs-card">
           <div class="an-card-title">Active technicians — day on day (attendance sheet)</div>
           <div class="an-wrap" style="height:230px"><canvas id="an-techs"></canvas></div>
-          <div class="an-note">Thin line = `technician_available` summed across hubs per day (city-filtered); bold line = 7-day trailing average. Source = ops attendance (`hub_productivity_daily`). Days with no attendance synced show as gaps (line breaks), not zeros. Read against the pooled JC/tech/day above: headcount rising while per-tech is flat = dilution; flat headcount with per-tech rising = real productivity gain.</div>
+          <div class="an-note">Thin light line = `technician_available` from ops attendance (`hub_productivity_daily`); dashed amber = distinct technicians billing a JC that day, used from 20 Jul onward since the attendance Google Sheet stopped syncing (see below). Bold line = 7-day trailing average across whichever source applies per day. Days with neither source show as gaps (line breaks), not zeros. Read against the pooled JC/tech/day above: headcount rising while per-tech is flat = dilution; flat headcount with per-tech rising = real productivity gain.</div>
         </div>
 
         <div class="an-level"><b>L1</b> Quality — are comebacks under control?</div>
@@ -815,7 +824,7 @@ body.pinned #hbg{display:none}
             <div style="display:flex;gap:5px;flex-wrap:wrap" id="an-pills"></div>
           </div>
           <div class="an-wrap" style="height:280px"><canvas id="an-c4"></canvas></div>
-          <div class="an-note">Grouped by city: BLR → NCR → HYD. Within each group, sorted by selected-week JC/tech/day desc. Selected-week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad: real attendance used per day where synced, 3.5/day assumed for the missing days.</div>
+          <div class="an-note">Grouped by city: BLR → NCR → HYD. Within each group, sorted by selected-week JC/tech/day desc. Selected-week bar: <span style="color:#10b981;font-weight:600">green</span> = improved vs prior week, <span style="color:#ef4444;font-weight:600">red</span> = declined. Red dots (right axis) = selected-week void %. Fathenagar + Hyderabad: real attendance used per day where synced, 3.5/day assumed for the missing days. Other hubs from 20 Jul onward (attendance sheet stopped syncing): denominator = distinct technicians billing per day at that hub, averaged across the week — a per-day proxy, not a weekly headcount.</div>
         </div>
 
         <div class="an-level"><b>L3</b> Distribution — top 10% vs bottom 10% detail</div>
@@ -982,6 +991,16 @@ function formatDateRange(startDate){
   const e=new Date(s.getTime()+6*24*3600000);
   const fmt=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
   return `${fmt(s)} – ${fmt(e)}`;
+}
+// Compact form for narrow table cells (e.g. mobile trend table): same-month range
+// collapses to "15–21 Jun" instead of repeating the month twice ("15 Jun – 21 Jun").
+function formatDateRangeCompact(startDate){
+  const s=new Date(startDate);
+  const e=new Date(s.getTime()+6*24*3600000);
+  const sameMonth=s.getMonth()===e.getMonth()&&s.getFullYear()===e.getFullYear();
+  const mon=d=>d.toLocaleDateString('en-IN',{month:'short'});
+  if(sameMonth)return `${s.getDate()}–${e.getDate()} ${mon(e)}`;
+  return `${s.getDate()} ${mon(s)}–${e.getDate()} ${mon(e)}`;
 }
 
 async function populateWeekSelector(){
@@ -1201,9 +1220,10 @@ function renderTrendTable(stats,currentWeek,rankByWeek){
   tbody.innerHTML=stats.map((s,i)=>{
     const isCurrent=s.week_start===currentWeek;
     const range=formatDateRange(new Date(s.week_start));
+    const rangeCompact=formatDateRangeCompact(new Date(s.week_start));
     const rank=rankByWeek&&rankByWeek[s.week_start]?`#${rankByWeek[s.week_start]}`:'—';
-    return`<tr class="${isCurrent?'current':''}" style="cursor:pointer;" onclick="openJcDrilldown('${s.tech_name}','${s.week_start}','${range}')">
-      <td><span class="${isCurrent?'good':'dim'}">${range} <span style="font-size:.6rem;color:var(--muted);">🔍</span></span></td>
+    return`<tr class="${isCurrent?'current':''}" style="cursor:pointer;min-height:44px;" onclick="openJcDrilldown('${s.tech_name}','${s.week_start}','${range}')">
+      <td><span class="${isCurrent?'good':'dim'}">${rangeCompact} <span style="font-size:1rem;color:var(--muted);padding:4px;display:inline-block;vertical-align:middle;">🔍</span></span></td>
       <td>${s.intrip_jcs||0}</td>
       <td>${s.submission_jcs||0}</td>
       <td>${s.voided_jcs||0}</td>
@@ -2679,11 +2699,19 @@ const AN_PAYOUT_WEEK='2026-06-29';    // first payout Sat Jul 4
 const HYD_ASSUMED_TECHS=3.5;          // Hyd/Fathenagar fallback (3.5 avg with absences); use real hub_productivity_daily per-day when available
 const HYD_REAL_FROM='2026-07-06';     // trust real Hyd attendance from W6 onward; W1–W5 use the assumption
 const AN_QUALITY_FROM='2026-06-08';   // void detection before Jun 8 is understated (lookback edge: comebacks from pre-Jun-1 work don't register)
+// ATT_SHEET_STALE_FROM: the ops attendance Google Sheet (→ hub_productivity_daily) stopped
+// syncing after this date. From this date onward we ALWAYS use the JC-billing biller-proxy
+// (anProxyAtt/anBillerRate below — distinct technicians billing per hub PER DAY, averaged across
+// the week, same question the sheet answered) as the tech-headcount denominator, even if a stray
+// attendance row exists for a later day — a partial/unreliable feed is worse than a consistent
+// proxy. Before this date, hub_productivity_daily remains primary; the proxy only fills hub-weeks
+// with zero attendance rows (same "fallback for gaps" pattern as the Hyderabad assumption below).
+const ATT_SHEET_STALE_FROM='2026-07-20';
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal','miyapur':'fathenagar'};
 
 let anLoaded=false, anCity='Overall', anSelWeek=null;
-let anRows=[], anAtt=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
+let anRows=[], anAtt=null, anProxyAtt=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
 let anCh=[null,null,null,null,null,null];
 
 function anNormHub(s){
@@ -2744,6 +2772,36 @@ async function loadAnalytics(){
     }catch(e){console.warn('[AN] attendance not readable',e?.message||e);}
     document.getElementById('an-att-warn').style.display=anAtt?'none':'block';
 
+    // Proxy attendance from JC billing, for ATT_SHEET_STALE_FROM onward (ops attendance sheet
+    // stopped syncing after 2026-07-20). For each hub+day, count DISTINCT technicians who billed
+    // ≥1 non-void JC that day — same "how many people worked that day" question the sheet
+    // answered — then fold into anAtt/anAttRows with the SAME {td,days} shape as real attendance,
+    // so anPooled/jptOf/anChartTechs consume it identically with no separate code path. A tech who
+    // only bills on 1 of 7 days contributes 1 day of headcount, not 7 — matching how the sheet
+    // would have counted a single day's attendance, not a whole week's.
+    anProxyAtt={};
+    try{
+      const jc=await anFetchAll('incentive_jc_log','jc_billed_date,technician_name,hub_name,is_void',
+        'jc_billed_date',ATT_SHEET_STALE_FROM);
+      const byHubDay={};
+      jc.filter(r=>!r.is_void).forEach(r=>{
+        const d=String(r.jc_billed_date).slice(0,10);
+        const hubKey=anNormHub(r.hub_name);
+        const k=hubKey+'|'+d;
+        if(!byHubDay[k])byHubDay[k]=new Set();
+        byHubDay[k].add(r.technician_name);
+      });
+      Object.keys(byHubDay).forEach(k=>{
+        const [hubKey,d]=k.split('|');
+        const t=byHubDay[k].size;
+        const w=formatDate(getWeekStart(new Date(d)));
+        const key=hubKey+'|'+w;
+        if(!anProxyAtt[key])anProxyAtt[key]={td:0,days:0};
+        anProxyAtt[key].td+=t; anProxyAtt[key].days++;
+        anAttRows.push({date:d,hubKey,tech:t,proxy:true});
+      });
+    }catch(e){console.warn('[AN] biller-proxy attendance failed',e?.message||e);}
+
     // dynamic week list
     const today=new Date();
     anWeeks=[...new Set(anRows.map(r=>r.week_start))].sort().map((w,i)=>{
@@ -2788,6 +2846,15 @@ function anDist(w){
     vrEarn:sum(earn,'total_jcs')?+(100*sum(earn,'voided_jcs')/sum(earn,'total_jcs')).toFixed(1):null,
     vrNon:sum(non,'total_jcs')?+(100*sum(non,'voided_jcs')/sum(non,'total_jcs')).toFixed(1):null};
 }
+// anBillerRate: avg distinct-technicians-per-day for hub h during week w, computed from the
+// incentive_jc_log biller-proxy (anProxyAtt — see loadAnalytics). Same {td,days} shape as real
+// attendance (anAtt), so callers use it exactly like att.td/att.days. Per-day distinct counts are
+// keyed on hub_name (the real column), so two different hubs' "Freelancer" technicians count as 2
+// distinct people, not 1 — tech_name alone is free text and collides across hubs.
+function anBillerRate(h,w){
+  const p=anProxyAtt?anProxyAtt[h+'|'+w]:null;
+  return p&&p.days>0?p.td/p.days:null;
+}
 // pooled jpt: hub JC totals (dominant-hub attribution) ÷ attendance tech-days, matched hubs only
 function anPooled(w, cityF){
   const f=cityF||(anCity==='Overall'?null:anCity);
@@ -2805,6 +2872,7 @@ function anPooled(w, cityF){
   // each hub's attendance RATE (avg techs/day) across the week's day count — identical to the
   // reference dashboard's formula: td = (Σ per-hub avg techs/day) × days-in-week.
   const wm=anWeeks.find(m=>m.w===w); const wdays=wm?wm.days:7;
+  const attStale=w>=ATT_SHEET_STALE_FROM; // ops attendance sheet stopped syncing — see const comment
   let jcs=0,intrip=0,avgDaySum=0,attDays=0;
   Object.keys(byHub).forEach(h=>{
     const isHF=anHubCity[h]==='Hyderabad'||h==='fathenagar';
@@ -2815,13 +2883,24 @@ function anPooled(w, cityF){
       const totalTd=realTd+Math.max(0,wdays-realDays)*HYD_ASSUMED_TECHS;
       jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=totalTd/wdays;attDays=Math.max(attDays,wdays);
     }
+    // From ATT_SHEET_STALE_FROM onward, always use the distinct-billers-per-day proxy (ignore any
+    // stray attendance rows — a partial feed is worse than a consistent one).
+    else if(attStale){
+      const br=anBillerRate(h,w);
+      if(br>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=br;attDays=Math.max(attDays,wdays);}
+    }
     else if(a&&a.td>0&&a.days>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=a.td/a.days;attDays=Math.max(attDays,a.days);}
     else if(byHub[h].jcs>0){
-      // No attendance synced for this hub this week — fall back to most recent week's rate
-      // so the current-week projection isn't silently missing most of the fleet
+      // No attendance synced for this hub this week (pre-stale-cutoff) — fall back first to the
+      // most recent week's rate, then to the distinct-billers proxy if no prior attendance exists
+      // at all, so the current-week projection isn't silently missing most of the fleet.
       const fallback=[...anWeeks].reverse().find(m=>m.w<w&&anAtt?.[h+'|'+m.w]?.td>0);
       const fa=fallback?anAtt[h+'|'+fallback.w]:null;
       if(fa){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=fa.td/fa.days;attDays=Math.max(attDays,wdays);}
+      else{
+        const br=anBillerRate(h,w);
+        if(br>0){jcs+=byHub[h].jcs;intrip+=byHub[h].intrip;avgDaySum+=br;attDays=Math.max(attDays,wdays);}
+      }
     }
   });
   if(!avgDaySum)return null;
@@ -3174,6 +3253,7 @@ function anChartTechs(){
       if(!hydRealDates.has(ds)){byDate[ds]=(byDate[ds]||0)+HYD_ASSUMED_TECHS; hydSynth=true;}
     }
   }
+  const proxyDates=new Set((anAttRows||[]).filter(r=>r.proxy&&(!f||anHubCity[r.hubKey]===f)).map(r=>r.date));
   const keys=Object.keys(byDate).sort();
   // no attendance readable → hide card (an-att-warn already explains why)
   if(!anAtt||!keys.length){card.style.display='none';if(anCh[5]){anCh[5].destroy();anCh[5]=null;}return;}
@@ -3182,23 +3262,26 @@ function anChartTechs(){
   // continuous UTC date axis min..max so missing days become real gaps (not compressed away)
   const start=new Date(keys[0]+'T00:00:00Z').getTime();
   const end=new Date(keys[keys.length-1]+'T00:00:00Z').getTime();
-  const labels=[],daily=[];
+  const labels=[],daily=[],dailyProxy=[];
   for(let ms=start;ms<=end;ms+=86400000){
     const ds=new Date(ms).toISOString().slice(0,10);
     labels.push(ds);
-    daily.push(byDate[ds]!=null?+byDate[ds].toFixed(1):null); // null → line breaks (gap)
+    const v=byDate[ds]!=null?+byDate[ds].toFixed(1):null; // null → line breaks (gap)
+    if(proxyDates.has(ds)){daily.push(null);dailyProxy.push(v);}
+    else{daily.push(v);dailyProxy.push(null);}
   }
-  // 7-day trailing average over available (non-null) days in the window
+  // 7-day trailing average over available (non-null) days in the window — real + proxy combined
   const avg=labels.map((ds,i)=>{
     let sum=0,n=0;
-    for(let k=i;k>i-7&&k>=0;k--){if(daily[k]!=null){sum+=daily[k];n++;}}
+    for(let k=i;k>i-7&&k>=0;k--){const v=daily[k]??dailyProxy[k];if(v!=null){sum+=v;n++;}}
     return n?+(sum/n).toFixed(1):null;
   });
   const fmt=ds=>{const p=ds.split('-');return p[1]+'/'+p[2];}; // MM/DD tick labels
   if(anCh[5])anCh[5].destroy();
   anCh[5]=new Chart(document.getElementById('an-techs'),{type:'line',
     data:{labels:labels.map(fmt),datasets:[
-      {label:isSynth?'Active techs/day (pre-W6 assumed 3.5)':'Active techs/day',data:daily,borderColor:isSynth?'#fbbf24':'#c7d2fe',backgroundColor:isSynth?'#fbbf24':'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:isSynth?[6,4]:[],order:2},
+      {label:isSynth?'Active techs/day (pre-W6 assumed 3.5)':'Active techs/day',data:daily,borderColor:'#c7d2fe',backgroundColor:'#c7d2fe',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:isSynth?[6,4]:[],order:2},
+      {label:'Active techs/day (JC-billing proxy, sheet stale from 20 Jul)',data:dailyProxy,borderColor:'#fbbf24',backgroundColor:'#fbbf24',borderWidth:1.5,pointRadius:0,tension:.15,spanGaps:false,borderDash:[6,4],order:2},
       {label:'7-day avg',data:avg,borderColor:'#4f46e5',backgroundColor:'#4f46e5',borderWidth:2.5,pointRadius:0,tension:.3,spanGaps:false,order:1},
     ]},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
@@ -3228,8 +3311,12 @@ function anChart4(){
     const isHF=anHubCity[a.hubKey]==='Hyderabad'||a.hubKey==='fathenagar';
     // Hyd/Fathenagar: hybrid — real td for days we have, fill remaining with 3.5 assumed
     if(isHF){const realDays=att?att.days:0,realTd=att?att.td:0;const totalTd=realTd+Math.max(0,wd-realDays)*HYD_ASSUMED_TECHS;return +(a.jcs/totalTd).toFixed(2);}
+    // From ATT_SHEET_STALE_FROM onward, always use the distinct-billers-per-day proxy
+    if(w>=ATT_SHEET_STALE_FROM){const br=anBillerRate(a.hubKey,w);return br>0?+(a.jcs/(br*wd)).toFixed(2):null;}
     if(att&&att.td>0&&att.days>0)return +(a.jcs/(att.td/att.days*wd)).toFixed(2);
-    return null;};
+    // pre-stale week with no attendance at all for this hub — proxy fallback
+    const br=anBillerRate(a.hubKey,w);
+    return br>0?+(a.jcs/(br*wd)).toFixed(2):null;};
   // Sort: city group (BLR → NCR → HYD) then JC/tech/day desc within group
   const hubCityOf=h=>{for(const w of Object.keys(hubAgg[h]||{})){const hk=hubAgg[h][w]?.hubKey;if(hk&&anHubCity[hk])return anHubCity[hk];}return 'Other';};
   const cityOrd={'Bangalore':0,'NCR':1,'Hyderabad':2};
@@ -3310,6 +3397,21 @@ function anChart4(){
 }
 </script>
 <script src="./sidebar.js"></script>
-<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('/v8/incentive-sw.js');}</script>
+<script>
+if('serviceWorker'in navigator){
+  navigator.serviceWorker.register('/v8/incentive-sw.js');
+  // When a new SW version activates (i.e. this page was pushed a new deploy), show a small
+  // non-blocking banner rather than force-reloading mid-use — a tech mid-action shouldn't lose it.
+  navigator.serviceWorker.addEventListener('message',e=>{
+    if(e.data?.type!=='SW_UPDATED')return;
+    if(document.getElementById('sw-update-banner'))return;
+    const b=document.createElement('div');
+    b.id='sw-update-banner';
+    b.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:2000;background:#0F172A;color:#fff;padding:12px 16px;border-radius:12px;font-family:Inter,sans-serif;font-size:.82rem;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);';
+    b.innerHTML='<span>A new version is available.</span><button style="background:#E8191C;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:.8rem;cursor:pointer;font-family:Inter,sans-serif;" onclick="location.reload()">Reload</button>';
+    document.body.appendChild(b);
+  });
+}
+</script>
 </body>
 </html>
