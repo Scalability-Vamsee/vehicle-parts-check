@@ -317,6 +317,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <div class="lp-title">Map Layers</div>
     <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-hubs" checked onchange="toggleLayer('hubs')" style="accent-color:#E8191C"/><div class="lp-dot" style="background:#E8191C;border-radius:3px"></div>Bounce Hubs</label></div>
     <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-rsa" checked onchange="toggleLayer('rsa')" style="accent-color:#1D4ED8"/><div class="lp-dot" style="background:#1D4ED8"></div>RSA Team</label></div>
+    <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-clusters" onchange="toggleLayer('clusters')" style="accent-color:#7C3AED"/><div class="lp-dot" style="background:#7C3AED;border-radius:2px;opacity:.7"></div>Zone Clusters</label></div>
   </div>
   <div id="legend">
     <div class="leg-title">Ticket Status</div>
@@ -456,6 +457,25 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png
 var ticketGroup=L.layerGroup().addTo(leafMap);
 var hubGroup=L.layerGroup().addTo(leafMap);
 var rsaGroup=L.layerGroup().addTo(leafMap);
+var clusterGroup=L.layerGroup(); // off by default — toggled via Layers panel
+
+// ── BLR zone clusters (extracted from KML, polygons only) ──
+var BLR_CLUSTERS=[
+  {name:'Central Cluster',color:'#FF5252',coords:[[13.0526998,77.559199],[12.9382907,77.5578257],[12.9376215,77.656016],[13.0326319,77.6525828]]},
+  {name:'YPR Cluster',color:'#FBC02D',coords:[[12.9878076,77.5543924],[13.0145693,77.5564524],[13.0480174,77.5660654],[13.1062063,77.5269266],[13.1055376,77.4788614],[13.0640709,77.4575754],[12.9898148,77.460322]]},
+  {name:'RR Nagara Cluster',color:'#AFB42B',coords:[[12.9878076,77.5543924],[12.9898148,77.460322],[12.8706911,77.462382],[12.8365497,77.5770518],[12.850618,77.5866862],[12.9416368,77.5846049],[12.9382907,77.5578257]]},
+  {name:'Bellandur Cluster',color:'#3949AB',coords:[[12.850618,77.5866862],[12.8352107,77.6800486],[12.8419055,77.7130076],[12.9208906,77.7363535],[12.9349446,77.6917216],[12.9376215,77.656016],[12.9416368,77.5846049]]},
+  {name:'Hoodi Cluster',color:'#795548',coords:[[12.9858003,77.7514597],[13.0506931,77.7754923],[13.0660775,77.7542063],[13.0259422,77.656016],[12.9376215,77.656016],[12.9362831,77.686915],[12.9208906,77.7363535],[12.9269139,77.7535196]]},
+  {name:'Hebbal Cluster',color:'#7B8C9E',coords:[[13.1062063,77.5269266],[13.0480174,77.5660654],[13.0326319,77.6525828],[13.0259422,77.656016],[13.0660775,77.7542063],[13.0970306,77.7362737],[13.1150872,77.6373968],[13.131805,77.6113043],[13.1344797,77.5728521]]}
+];
+function renderClusters(){
+  clusterGroup.clearLayers();
+  BLR_CLUSTERS.forEach(function(z){
+    L.polygon(z.coords,{color:z.color,weight:2,opacity:.85,fillColor:z.color,fillOpacity:.12})
+      .bindTooltip(z.name,{permanent:false,direction:'center',className:'leaflet-tooltip'})
+      .addTo(clusterGroup);
+  });
+}
 
 // Per-city config: [centerLat, centerLng, zoom, divLat, lngMin, lngMax, lngLabel, city bounds]
 var CITY_CONFIG={
@@ -1226,6 +1246,10 @@ function toggleLayer(key){
   var chk=document.getElementById('lyr-'+key);
   if(key==='hubs'){chk.checked?leafMap.addLayer(hubGroup):leafMap.removeLayer(hubGroup);}
   else if(key==='rsa'){chk.checked?leafMap.addLayer(rsaGroup):leafMap.removeLayer(rsaGroup);}
+  else if(key==='clusters'){
+    if(chk.checked){renderClusters();leafMap.addLayer(clusterGroup);}
+    else{leafMap.removeLayer(clusterGroup);}
+  }
 }
 document.addEventListener('click',function(e){
   var panel=document.getElementById('layers-panel');
