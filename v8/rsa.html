@@ -468,10 +468,24 @@ var BLR_CLUSTERS=[
   {name:'Hoodi Cluster',color:'#795548',coords:[[12.9858003,77.7514597],[13.0506931,77.7754923],[13.0660775,77.7542063],[13.0259422,77.656016],[12.9376215,77.656016],[12.9362831,77.686915],[12.9208906,77.7363535],[12.9269139,77.7535196]]},
   {name:'Hebbal Cluster',color:'#7B8C9E',coords:[[13.1062063,77.5269266],[13.0480174,77.5660654],[13.0326319,77.6525828],[13.0259422,77.656016],[13.0660775,77.7542063],[13.0970306,77.7362737],[13.1150872,77.6373968],[13.131805,77.6113043],[13.1344797,77.5728521]]}
 ];
+// Chaikin corner-cutting — smooths angular polygons by iteratively cutting corners
+function chaikin(pts,iter){
+  var p=pts.slice();
+  for(var k=0;k<iter;k++){
+    var n=[],len=p.length;
+    for(var i=0;i<len;i++){
+      var p0=p[i],p1=p[(i+1)%len];
+      n.push([0.75*p0[0]+0.25*p1[0], 0.75*p0[1]+0.25*p1[1]]);
+      n.push([0.25*p0[0]+0.75*p1[0], 0.25*p0[1]+0.75*p1[1]]);
+    }
+    p=n;
+  }
+  return p;
+}
 function renderClusters(){
   clusterGroup.clearLayers();
   BLR_CLUSTERS.forEach(function(z){
-    L.polygon(z.coords,{color:z.color,weight:2,opacity:.85,fillColor:z.color,fillOpacity:.12})
+    L.polygon(chaikin(z.coords,3),{color:z.color,weight:2,opacity:.85,fillColor:z.color,fillOpacity:.12})
       .bindTooltip(z.name,{permanent:false,direction:'center',className:'leaflet-tooltip'})
       .addTo(clusterGroup);
   });
