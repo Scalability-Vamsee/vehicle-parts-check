@@ -229,14 +229,11 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 <!-- Global filters: City + Date -->
 <div id="global-bar">
   <span class="filter-label">City</span>
-  <div class="ms-wrap" id="ms-city">
-    <div class="ms-btn" onclick="toggleDropdown('ms-city')">All <span class="arrow">▾</span></div>
-    <div class="ms-dropdown">
-      <div class="ms-actions"><button class="ms-action-btn" onclick="msSelectAll('ms-city')">All</button><button class="ms-action-btn" onclick="msClear('ms-city')">Clear</button></div>
-      <div class="ms-opt"><input type="checkbox" id="c-blr" value="BLR" onchange="renderTickets()"/><label for="c-blr">🏙 Bangalore (BLR)</label></div>
-      <div class="ms-opt"><input type="checkbox" id="c-ncr" value="NCR" onchange="renderTickets()"/><label for="c-ncr">🏙 Delhi (NCR)</label></div>
-      <div class="ms-opt"><input type="checkbox" id="c-hyd" value="HYD" onchange="renderTickets()"/><label for="c-hyd">🏙 Hyderabad (HYD)</label></div>
-    </div>
+  <div id="city-pills" style="display:flex;gap:4px;align-items:center">
+    <button class="z-btn" id="cp-all" onclick="setCityFilter('ALL')">All</button>
+    <button class="z-btn active" id="cp-blr" onclick="setCityFilter('BLR')">BLR</button>
+    <button class="z-btn" id="cp-ncr" onclick="setCityFilter('NCR')">NCR</button>
+    <button class="z-btn" id="cp-hyd" onclick="setCityFilter('HYD')">HYD</button>
   </div>
   <div class="divider"></div>
   <span class="filter-label">From</span>
@@ -508,7 +505,7 @@ var zoneShadeGroup=L.layerGroup().addTo(leafMap);
 
 function updateDividers(){
   dividerGroup.clearLayers();
-  var citySel=getChecked('ms-city');
+  var citySel=getSelectedCities();
   if(!citySel.length)return; // no city selected = no dividers
   citySel.forEach(function(code){
     var c=CITY_CONFIG[code];if(!c)return;
@@ -674,6 +671,17 @@ function copyMapLink(lat,lng,btn){
 }
 
 // ── Filter helpers ──
+// ── City pill filter ──
+var _cityActive=['BLR']; // active city codes; [] = All (no filter)
+function setCityFilter(code){
+  if(code==='ALL'){_cityActive=[];}
+  else{var i=_cityActive.indexOf(code);if(i>=0)_cityActive.splice(i,1);else _cityActive.push(code);}
+  document.getElementById('cp-all').classList.toggle('active',_cityActive.length===0);
+  ['BLR','NCR','HYD'].forEach(function(c){document.getElementById('cp-'+c.toLowerCase()).classList.toggle('active',_cityActive.indexOf(c)>=0);});
+  renderTickets();
+}
+function getSelectedCities(){return _cityActive.slice();}
+
 function getChecked(wrapId){
   var all=[].slice.call(document.querySelectorAll('#'+wrapId+' input[type=checkbox]'));
   var checked=all.filter(function(c){return c.checked;});
@@ -692,7 +700,6 @@ function renderTickets(){
   updateDropdownLabel('ms-status','All ');
   updateDropdownLabel('ms-tat','All ');
   updateDropdownLabel('ms-tech','All ');
-  updateDropdownLabel('ms-city','All ');
   var statusSel=getChecked('ms-status');
   var tatSel=getChecked('ms-tat');
   var techSel=getChecked('ms-tech');
@@ -729,7 +736,7 @@ function renderTickets(){
         }
       }
     }
-    var citySel=getChecked('ms-city');
+    var citySel=getSelectedCities();
     if(citySel.length){
       if(citySel.indexOf(inferCity(t)||'')<0)return false;
     }
@@ -750,7 +757,7 @@ function renderTickets(){
   updateDividers();
 
   // Map fit: only refit when city selection changes
-  var citySel=getChecked('ms-city');
+  var citySel=getSelectedCities();
   var cityKey=citySel.slice().sort().join(',');
   if(cityKey!==_lastCitySel){
     _lastCitySel=cityKey;
@@ -772,7 +779,7 @@ function renderTickets(){
 
   // Tiles reflect current filter selection
   // Tiles: city-scoped only (global filter — ignore Zone/Status/TAT/Assigned)
-  var citySel=getChecked('ms-city');
+  var citySel=getSelectedCities();
   var globalFiltered=_all.filter(function(t){
     if(citySel.length&&citySel.indexOf(inferCity(t)||'')<0)return false;
     return true;
@@ -832,7 +839,7 @@ function recenterMap(){
 
 function flashStatus(status, color){
   // Respect city filter — only flash tickets visible in current city selection
-  var citySel=getChecked('ms-city');
+  var citySel=getSelectedCities();
   var matches=_all.filter(function(t){
     if(effStatus(t)!==status)return false;
     if(!(t.display_lat||t.lat)||!(t.display_lng||t.lng))return false;
@@ -881,7 +888,7 @@ function drawZoneShade(){
   zoneShadeGroup.clearLayers();
   if(_zoneFilter==='ALL')return;
   // Shade applies per selected city
-  var cities=getChecked('ms-city');
+  var cities=getSelectedCities();
   var toShade=cities.length?cities:Object.keys(CITY_CONFIG);
   toShade.forEach(function(cityKey){
     var c=CITY_CONFIG[cityKey];if(!c)return;
@@ -1306,7 +1313,7 @@ function showView(v){
 // ── Dashboard rendering ──
 function renderDashboard(){
   // Use city-filtered dataset (same scope as tiles)
-  var citySel=getChecked('ms-city');
+  var citySel=getSelectedCities();
   var data=_all.filter(function(t){
     if(citySel.length&&citySel.indexOf(inferCity(t)||'')<0)return false;
     return true;
@@ -1446,8 +1453,8 @@ async function loadAndApplyPermissions(userId){
   document.getElementById('date-to').min=t;
   document.getElementById('date-to').max=maxTo30.toLocaleDateString('en-CA');
   // Default city = BLR
-  var blrChk=document.getElementById('c-blr');
-  if(blrChk){blrChk.checked=true;updateDropdownLabel('ms-city','All ');updateDividers();}
+  // City default = BLR (pill pre-marked active via HTML; _cityActive=['BLR'] set at declaration)
+  updateDividers();
   // Default status = NEW + IN_PROGRESS (hide DONE)
   document.getElementById('s-new').checked=true;
   document.getElementById('s-ip').checked=true;
