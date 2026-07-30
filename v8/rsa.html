@@ -766,15 +766,11 @@ function renderTickets(){
       // Single city: zoom to city center
       var cc=CITY_CONFIG[citySel[0]];
       if(cc)leafMap.setView(cc.center,cc.zoom,{animate:true});
-    }else if(citySel.length>1){
-      // Multiple cities: fit to combined bounds
+    }else{
+      // All (or future multi-city): fit to union of all known city bounds → pan-India view
       var mb=[];
-      citySel.forEach(function(code){var c=CITY_CONFIG[code];if(c)mb=mb.concat(c.bounds);});
-      if(mb.length)leafMap.fitBounds(L.latLngBounds(mb).pad(0.05),{animate:true,maxZoom:11});
-    }else if(bounds.length>1){
-      leafMap.fitBounds(L.latLngBounds(bounds).pad(0.2),{animate:true,maxZoom:12});
-    }else if(bounds.length===1){
-      leafMap.setView(bounds[0],13,{animate:true});
+      Object.keys(CITY_CONFIG).forEach(function(k){mb=mb.concat(CITY_CONFIG[k].bounds);});
+      if(mb.length)leafMap.fitBounds(L.latLngBounds(mb).pad(0.2),{animate:true,maxZoom:9});
     }
   }
 
