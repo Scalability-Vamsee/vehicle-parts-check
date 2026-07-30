@@ -674,8 +674,9 @@ function copyMapLink(lat,lng,btn){
 // ── City pill filter ──
 var _cityActive=['BLR']; // active city codes; [] = All (no filter)
 function setCityFilter(code){
-  if(code==='ALL'){_cityActive=[];}
-  else{var i=_cityActive.indexOf(code);if(i>=0)_cityActive.splice(i,1);else _cityActive.push(code);}
+  // Single-select: clicking active city reverts to All; clicking another switches to it
+  if(code==='ALL'||(_cityActive.length===1&&_cityActive[0]===code)){_cityActive=[];}
+  else{_cityActive=[code];}
   document.getElementById('cp-all').classList.toggle('active',_cityActive.length===0);
   ['BLR','NCR','HYD'].forEach(function(c){document.getElementById('cp-'+c.toLowerCase()).classList.toggle('active',_cityActive.indexOf(c)>=0);});
   renderTickets();
