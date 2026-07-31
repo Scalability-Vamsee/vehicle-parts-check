@@ -432,6 +432,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       <div class="tp-tab" id="at-tab-roster" onclick="switchAdminTab('roster')">📅 Roster</div>
       <div class="tp-tab" id="at-tab-directory" onclick="switchAdminTab('directory')">👤 Directory</div>
       <div class="tp-tab" id="at-tab-ledger" onclick="switchAdminTab('ledger')">🔧 Spares</div>
+      <div class="tp-tab" id="at-tab-assets" onclick="switchAdminTab('assets')">🗂 Assets</div>
     </div>
     <!-- Vehicles tab: table left + form right -->
     <div id="at-body-vehicles" style="display:flex;gap:20px;align-items:flex-start">
@@ -533,6 +534,16 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       <!-- Log view -->
       <div id="lt-body-log" style="display:none">
         <div id="lt-log-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
+      </div>
+    </div>
+    <!-- Assets tab -->
+    <div id="at-body-assets" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <span style="font-size:.72rem;color:#6B7280">Track tools, laptops and equipment issued to each technician. Click any cell to update.</span>
+        <button class="tb-btn" onclick="loadAssetsTab(true)" style="margin-left:auto">↻ Refresh</button>
+      </div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div id="at-assets-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
       </div>
     </div>
   </div>
@@ -1589,7 +1600,7 @@ function openAdminPanel(){showView('admin');}
 function closeAdminPanel(){showView('map');}
 function switchAdminTab(tab){
   _adminTab=tab;
-  ['vehicles','roster','directory','ledger'].forEach(function(t){
+  ['vehicles','roster','directory','ledger','assets'].forEach(function(t){
     document.getElementById('at-tab-'+t).classList.toggle('active',t===tab);
     var bd=document.getElementById('at-body-'+t);
     if(bd)bd.style.display=t===tab?(t==='vehicles'?'flex':'block'):'none';
@@ -1598,6 +1609,7 @@ function switchAdminTab(tab){
   if(tab==='roster')loadRosterTab();
   if(tab==='directory')loadDirectoryTab();
   if(tab==='ledger')loadLedgerTab();
+  if(tab==='assets')loadAssetsTab();
 }
 
 // ── Roster tab ──
@@ -2221,6 +2233,129 @@ async function saveLedgerEntry(){
     cancelLedgerAdd();
     renderLedger();
   }catch(e){alert('Save failed — please retry');}
+}
+
+// ── Core Assets tab ──
+var _ASSET_TYPES=['Tools','Laptop Bounce','Laptop SMPL'];
+var _coreAssets=[];
+var _assetEditCell=null; // {techId,assetName}
+
+async function loadAssetsTab(force){
+  if(!K||K===ANON_KEY)return;
+  if(_coreAssets.length&&!force){renderAssetsGrid();return;}
+  document.getElementById('at-assets-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div>';
+  if(!_dirTechs.length)await loadDirectoryTab(false);
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_core_assets?select=id,tech_id,asset_name,is_issued,issued_at,returned_at,note',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    _coreAssets=res.ok?await res.json():[];
+  }catch(e){_coreAssets=[];}
+  renderAssetsGrid();
+}
+
+function renderAssetsGrid(){
+  var techs=(_rosterTechs.length?_rosterTechs:_dirTechs).filter(function(t){return t.city!=='HO';});
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtD(d){if(!d)return null;var p=d.split('-');return parseInt(p[2])+' '+mo[parseInt(p[1])-1]+' '+p[0];}
+  function asKey(n){return n.replace(/\s/g,'_');}
+
+  var html='<div style="overflow-x:auto"><table class="rtable"><thead><tr>'
+    +'<th style="text-align:left;padding:7px 10px;font-size:.75rem">Tech</th>';
+  _ASSET_TYPES.forEach(function(a){
+    html+='<th style="font-size:.75rem;font-weight:600;color:#6B7280;padding:7px 16px;white-space:nowrap">'+a+'</th>';
+  });
+  html+='</tr></thead><tbody>';
+
+  techs.forEach(function(tech){
+    html+='<tr><td style="padding:7px 10px;font-size:.8rem;white-space:nowrap">'+_esc(tech.name)
+      +'<span style="font-size:.65rem;color:#9CA3AF;margin-left:5px">'+_esc(tech.city||'')+'</span></td>';
+    _ASSET_TYPES.forEach(function(assetName){
+      var row=_coreAssets.find(function(r){return r.tech_id===tech.id&&r.asset_name===assetName;});
+      var editing=(_assetEditCell&&_assetEditCell.techId===tech.id&&_assetEditCell.assetName===assetName);
+      var k=asKey(assetName);
+      var selId='as-sel-'+tech.id+'-'+k;
+      var dtId='as-dt-'+tech.id+'-'+k;
+      var ntId='as-nt-'+tech.id+'-'+k;
+      if(editing){
+        var curIssued=row?row.is_issued:false;
+        var curDate=(row?(curIssued?row.issued_at:row.returned_at):'')||'';
+        var curNote=(row&&row.note)||'';
+        html+='<td style="padding:4px 6px"><div class="rt-cell-editor" style="min-width:170px">'
+          +'<select class="rt-ce-sel" id="'+selId+'">'
+          +'<option value="issued"'+(curIssued?' selected':'')+'>Issued</option>'
+          +'<option value="not_issued"'+(!curIssued?' selected':'')+'>Not Issued</option>'
+          +'</select>'
+          +'<input class="rt-ce-note" type="date" id="'+dtId+'" value="'+_esc(curDate)+'" placeholder="Date">'
+          +'<input class="rt-ce-note" type="text" id="'+ntId+'" value="'+_esc(curNote)+'" placeholder="Note (optional)">'
+          +'<div class="rt-ce-btns">'
+          +'<button class="rt-ce-save" onclick="saveAssetCell(\''+tech.id+'\',\''+assetName+'\')">Save</button>'
+          +'<button class="rt-ce-cancel" onclick="cancelAssetEdit()">Cancel</button>'
+          +'</div></div></td>';
+      }else if(!row){
+        html+='<td style="text-align:center;padding:6px 10px">'
+          +'<span onclick="editAssetCell(\''+tech.id+'\',\''+assetName+'\')" style="font-size:.73rem;padding:3px 12px;border-radius:6px;background:#F9FAFB;color:#9CA3AF;border:1px dashed #D1D5DB;cursor:pointer;display:inline-block">—</span>'
+          +'</td>';
+      }else if(row.is_issued){
+        var dl=fmtD(row.issued_at);
+        html+='<td style="text-align:center;padding:6px 10px">'
+          +'<span onclick="editAssetCell(\''+tech.id+'\',\''+assetName+'\')" title="'+(dl?'Issued '+dl:'')+(row.note?' · '+_esc(row.note):'')+'" style="font-size:.73rem;padding:3px 12px;border-radius:6px;background:#F0FDF4;color:#16A34A;border:1px solid #86EFAC;cursor:pointer;display:inline-block">✓ Issued'+(dl?'<br><span style="font-size:.6rem;color:#6B7280">'+dl+'</span>':'')+'</span>'
+          +'</td>';
+      }else{
+        var rl=fmtD(row.returned_at);
+        html+='<td style="text-align:center;padding:6px 10px">'
+          +'<span onclick="editAssetCell(\''+tech.id+'\',\''+assetName+'\')" title="'+(rl?'Returned '+rl:'')+(row.note?' · '+_esc(row.note):'')+'" style="font-size:.73rem;padding:3px 12px;border-radius:6px;background:#F9FAFB;color:#9CA3AF;border:1px solid #E5E7EB;cursor:pointer;display:inline-block">Not Issued'+(rl?'<br><span style="font-size:.6rem;color:#9CA3AF">'+rl+'</span>':'')+'</span>'
+          +'</td>';
+      }
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  if(!techs.length)html='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">No technicians — open Directory tab first</div>';
+  document.getElementById('at-assets-wrap').innerHTML=html;
+}
+
+function editAssetCell(techId,assetName){
+  _assetEditCell={techId:techId,assetName:assetName};
+  renderAssetsGrid();
+}
+function cancelAssetEdit(){_assetEditCell=null;renderAssetsGrid();}
+
+async function saveAssetCell(techId,assetName){
+  var k=assetName.replace(/\s/g,'_');
+  var selEl=document.getElementById('as-sel-'+techId+'-'+k);
+  var dtEl=document.getElementById('as-dt-'+techId+'-'+k);
+  var ntEl=document.getElementById('as-nt-'+techId+'-'+k);
+  if(!selEl)return;
+  var isIssued=selEl.value==='issued';
+  var date=(dtEl&&dtEl.value)||null;
+  var note=(ntEl&&ntEl.value.trim())||null;
+  var row=_coreAssets.find(function(r){return r.tech_id===techId&&r.asset_name===assetName;});
+  var body={tech_id:techId,asset_name:assetName,is_issued:isIssued,note:note,
+    issued_at:isIssued?date:(row?row.issued_at||null:null),
+    returned_at:isIssued?(row?row.returned_at||null:null):date,
+    updated_by:_currentUserId||undefined,updated_at:new Date().toISOString()};
+  try{
+    var res;
+    if(row){
+      res=await fetch(SB_URL+'/rest/v1/rsa_core_assets?id=eq.'+row.id,{
+        method:'PATCH',
+        headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify(body)
+      });
+    }else{
+      res=await fetch(SB_URL+'/rest/v1/rsa_core_assets',{
+        method:'POST',
+        headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify(body)
+      });
+    }
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var rows=await res.json();
+    var saved=rows&&rows[0]?rows[0]:Object.assign({id:null},body);
+    if(row){Object.assign(row,saved);}else{_coreAssets.push(saved);}
+  }catch(e){alert('Save failed — please retry');}
+  _assetEditCell=null;
+  renderAssetsGrid();
 }
 
 // ── Vehicles tab ──
