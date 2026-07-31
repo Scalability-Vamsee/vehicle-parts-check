@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#111827"/>
+<title>RSA Tech · FleetPro</title>
+<link rel="icon" type="image/jpeg" href="/v8/logo.jpg">
+<link rel="manifest" href="rsa-tech-manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --red:#E8191C;--accent:#3B82F6;--green:#16A34A;--amber:#F59E0B;
+  --bg:#F4F5F7;--card:#fff;--border:#E5E7EB;--text:#111827;--muted:#6B7280;
+  --dark:#111827;--dark2:#1F2937;--topbar-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100%;overflow:hidden;}
+
+/* ── Auth ── */
+#auth-screen{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9000;padding:24px;display:none;}
+#auth-screen.show{display:flex;}
+.auth-card{width:100%;max-width:360px;}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;}
+.auth-logo img{width:36px;height:36px;border-radius:8px;object-fit:cover;}
+.auth-logo-text .t1{font-weight:700;font-size:.95rem;}
+.auth-logo-text .t2{font-size:.72rem;color:var(--muted);}
+.auth-title{font-size:1.5rem;font-weight:800;margin-bottom:4px;}
+.auth-sub{font-size:.82rem;color:var(--muted);margin-bottom:18px;}
+.auth-input{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;font-size:1rem;outline:none;background:#F9FAFB;font-family:inherit;}
+.auth-input:focus{border-color:var(--accent);background:#fff;}
+.auth-btn{width:100%;margin-top:12px;background:var(--dark);color:#fff;border:none;border-radius:12px;padding:15px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.auth-btn:active{opacity:.85;}
+.auth-msg{margin-top:8px;font-size:.78rem;color:var(--red);min-height:18px;}
+.auth-sent-card{text-align:center;padding:10px 0;}
+.auth-sent-card .big{font-size:2.5rem;margin-bottom:10px;}
+.auth-sent-card p{font-size:.82rem;color:var(--muted);line-height:1.6;}
+.resend-btn{background:none;border:none;color:var(--accent);font-size:.82rem;margin-top:14px;cursor:pointer;text-decoration:underline;font-family:inherit;}
+
+/* ── Topbar ── */
+#topbar{height:var(--topbar-h);background:var(--dark);color:#fff;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;padding-top:env(safe-area-inset-top);}
+#tb-title{font-weight:700;font-size:.9rem;flex:1;}
+#tb-hub{font-size:.68rem;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+#logout-btn{background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);border-radius:8px;padding:5px 10px;font-size:.7rem;cursor:pointer;display:none;font-family:inherit;white-space:nowrap;}
+#logout-btn:active{opacity:.7;}
+
+/* ── Tab bar ── */
+#tabs{display:flex;background:var(--dark2);flex-shrink:0;}
+.tab{flex:1;padding:11px 0;text-align:center;font-size:.75rem;font-weight:600;color:rgba(255,255,255,.45);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab.active{color:#fff;border-bottom-color:var(--accent);}
+.tab.disabled{color:rgba(255,255,255,.2);cursor:default;}
+
+/* ── Content ── */
+#panels{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);}
+.panel{display:none;padding:14px 14px 20px;}
+.panel.active{display:block;}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;}
+.card-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;}
+
+/* ── Tech info card ── */
+.tech-name{font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.tech-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.tech-pill{font-size:.68rem;font-weight:600;padding:3px 10px;border-radius:20px;background:#F3F4F6;color:var(--muted);}
+.tech-pill.city{background:#EFF6FF;color:#1D4ED8;}
+
+/* ── Hub nav card ── */
+.hub-row{display:flex;align-items:center;gap:12px;}
+.hub-name{font-size:1rem;font-weight:700;flex:1;}
+.hub-nav-btn{background:#EFF6FF;color:#1D4ED8;border:none;border-radius:10px;padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;white-space:nowrap;}
+.hub-nav-btn:active{background:#DBEAFE;}
+
+/* ── Duty card ── */
+.duty-status-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.duty-badge{font-size:.8rem;font-weight:700;padding:5px 14px;border-radius:20px;}
+.duty-badge.on{background:#DCFCE7;color:#15803D;}
+.duty-badge.off{background:#F3F4F6;color:#6B7280;}
+.duty-since{font-size:.72rem;color:var(--muted);}
+.duty-gps{font-size:.65rem;padding:3px 10px;border-radius:16px;border:1px solid var(--border);color:var(--muted);margin-left:auto;}
+.duty-gps.live{border-color:#16A34A;color:#16A34A;}
+.duty-btn{width:100%;padding:18px;font-size:1.05rem;font-weight:800;border:none;border-radius:14px;cursor:pointer;font-family:inherit;transition:opacity .12s;letter-spacing:.3px;}
+.duty-btn:active{opacity:.85;}
+.duty-btn.start{background:#16A34A;color:#fff;}
+.duty-btn.end{background:var(--red);color:#fff;}
+.duty-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ── Today's log ── */
+.log-empty{font-size:.78rem;color:var(--muted);text-align:center;padding:18px 0;}
+.log-entry{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #F3F4F6;}
+.log-entry:last-child{border-bottom:none;}
+.log-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.log-dot.start{background:#16A34A;}
+.log-dot.end{background:var(--red);}
+.log-info{flex:1;}
+.log-action{font-size:.78rem;font-weight:700;color:var(--text);}
+.log-time{font-size:.68rem;color:var(--muted);margin-top:1px;}
+.log-gps{font-size:.62rem;color:var(--muted);margin-top:1px;}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(20px);background:#1F2937;color:#fff;padding:10px 20px;border-radius:24px;font-size:.82rem;font-weight:600;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:8000;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── SW update banner ── */
+#sw-banner{display:none;position:fixed;top:calc(var(--topbar-h) + 56px);left:0;right:0;background:#1D4ED8;color:#fff;padding:8px 16px;font-size:.78rem;font-weight:600;text-align:center;z-index:7900;cursor:pointer;}
+#sw-banner.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- ── Auth screen ── -->
+<div id="auth-screen" class="show">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="/v8/logo.jpg" alt="Bounce"/>
+      <div class="auth-logo-text">
+        <div class="t1">FleetPro · RSA Tech</div>
+        <div class="t2">Bounce Daily Fleet Operations</div>
+      </div>
+    </div>
+    <div id="auth-form">
+      <div class="auth-title">Sign in</div>
+      <div class="auth-sub">We'll send a magic link to your registered email</div>
+      <input class="auth-input" type="email" id="auth-email" placeholder="your@email.com" autocomplete="email"/>
+      <button class="auth-btn" onclick="sendMagicLink()">Send Magic Link</button>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+    <div id="auth-sent" style="display:none">
+      <div class="auth-sent-card">
+        <div class="big">📬</div>
+        <p>Magic link sent to<br/><b id="auth-sent-email"></b></p>
+        <p style="margin-top:8px">Check your email and tap the link to sign in.</p>
+        <button class="resend-btn" onclick="showAuthForm()">← Use a different email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SW update banner ── -->
+<div id="sw-banner" onclick="window.location.reload()">🔄 New version available — tap to refresh</div>
+
+<!-- ── Topbar ── -->
+<div id="topbar">
+  <span id="tb-title">RSA Tech</span>
+  <span id="tb-hub"></span>
+  <button id="logout-btn" onclick="signOut()">Sign out</button>
+</div>
+
+<!-- ── Tab bar ── -->
+<div id="tabs">
+  <div class="tab active" id="tab-home" onclick="switchTab('home')">🏠 Home</div>
+  <div class="tab disabled" id="tab-tickets" title="Coming — RSA-8">🎫 Tickets</div>
+  <div class="tab disabled" id="tab-fw" title="Coming — RSA-9">📡 FW Map</div>
+</div>
+
+<!-- ── Panels ── -->
+<div id="panels">
+
+  <!-- Home panel -->
+  <div class="panel active" id="panel-home">
+
+    <!-- Tech info card -->
+    <div class="card" id="tech-card" style="display:none">
+      <div class="card-title">My Profile</div>
+      <div class="tech-name" id="tc-name">—</div>
+      <div class="tech-meta" id="tc-meta"></div>
+    </div>
+
+    <!-- Not found card -->
+    <div class="card" id="not-found-card" style="display:none">
+      <div class="card-title">Profile</div>
+      <div style="font-size:.82rem;color:var(--red);font-weight:600">Account not linked to a tech profile</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:6px">Ask your admin to add your email in the RSA Directory.</div>
+    </div>
+
+    <!-- Hub nav card -->
+    <div class="card" id="hub-card" style="display:none">
+      <div class="card-title">Assigned Hub</div>
+      <div class="hub-row">
+        <span class="hub-name" id="hc-name">—</span>
+        <button class="hub-nav-btn" id="hc-nav-btn" onclick="navigateToHub()">📍 Navigate</button>
+      </div>
+    </div>
+
+    <!-- Duty card -->
+    <div class="card" id="duty-card" style="display:none">
+      <div class="card-title">Duty Status</div>
+      <div class="duty-status-row">
+        <span class="duty-badge off" id="duty-badge">● Off Duty</span>
+        <span class="duty-since" id="duty-since"></span>
+        <span class="duty-gps" id="duty-gps-badge">No GPS</span>
+      </div>
+      <button class="duty-btn start" id="duty-btn" onclick="toggleDuty()" disabled>Start Duty</button>
+    </div>
+
+    <!-- Today's log -->
+    <div class="card" id="log-card" style="display:none">
+      <div class="card-title" id="log-title">Today's Log</div>
+      <div id="log-entries"><div class="log-empty">No duty activity today</div></div>
+    </div>
+
+  </div><!-- /panel-home -->
+
+</div><!-- /panels -->
+
+<!-- ── Toast ── -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+var SB_URL='https://clkfvmmlgwcvntxnolsv.supabase.co';
+var ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2Z2bW1sZ3djdm50eG5vbHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ2NTgsImV4cCI6MjA5MDEyMDY1OH0.FA33GFQisWX_hDeGCWqL5yAZmPcuQRdxZX32I23lyoY';
+var sb=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
+var K=ANON_KEY;
+
+var _currentUserId=null;
+var _currentEmail='';
+var _techRecord=null;   // {id,name,city,working_location,employee_id,...}
+var _onDuty=false;
+var _dutyLog=[];        // today's entries
+var _gpsPos=null;       // {lat,lng,accuracy}
+var _gpsWatchId=null;
+var _toastTimer=null;
+
+// ── Helpers ──
+function _esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function getIstDate(){return new Date(Date.now()+5.5*3600000).toISOString().slice(0,10);}
+
+function fmtTime(ts){
+  // ts is a UTC ISO string; convert to IST HH:MM AM/PM
+  var d=new Date(ts);
+  var ist=new Date(d.getTime()+5.5*3600000);
+  var h=ist.getUTCHours(),m=ist.getUTCMinutes();
+  var ap=h>=12?'PM':'AM';
+  h=h%12||12;
+  return h+':'+(m<10?'0'+m:m)+' '+ap;
+}
+
+function showToast(msg){
+  var el=document.getElementById('toast');
+  el.textContent=msg;
+  el.classList.add('show');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(function(){el.classList.remove('show');},3000);
+}
+
+// ── GPS ──
+function startGPS(){
+  if(!('geolocation' in navigator))return;
+  _gpsWatchId=navigator.geolocation.watchPosition(function(pos){
+    _gpsPos={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+    var badge=document.getElementById('duty-gps-badge');
+    if(badge){
+      var acc=Math.round(pos.coords.accuracy);
+      badge.textContent='GPS ~'+acc+'m';
+      badge.className='duty-gps live';
+    }
+    // Enable duty button once GPS is ready
+    var btn=document.getElementById('duty-btn');
+    if(btn&&btn.disabled&&_techRecord)btn.disabled=false;
+  },function(err){
+    var badge=document.getElementById('duty-gps-badge');
+    if(badge){badge.textContent='GPS error';badge.className='duty-gps';}
+  },{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
+}
+
+function stopGPS(){
+  if(_gpsWatchId!==null){navigator.geolocation.clearWatch(_gpsWatchId);_gpsWatchId=null;}
+}
+
+// ── Auth ──
+function showAuthForm(){
+  document.getElementById('auth-form').style.display='block';
+  document.getElementById('auth-sent').style.display='none';
+  document.getElementById('auth-msg').textContent='';
+}
+
+async function sendMagicLink(){
+  var email=document.getElementById('auth-email').value.trim();
+  if(!email){document.getElementById('auth-msg').textContent='Enter your email';return;}
+  document.getElementById('auth-msg').textContent='Sending…';
+  var{error}=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.href}});
+  if(error){document.getElementById('auth-msg').textContent=error.message;return;}
+  document.getElementById('auth-form').style.display='none';
+  document.getElementById('auth-sent').style.display='block';
+  document.getElementById('auth-sent-email').textContent=email;
+  document.getElementById('auth-msg').textContent='';
+}
+document.getElementById('auth-email').addEventListener('keydown',function(e){if(e.key==='Enter')sendMagicLink();});
+
+async function signOut(){
+  stopGPS();
+  await sb.auth.signOut();
+  _currentUserId=null;_techRecord=null;_dutyLog=[];_onDuty=false;
+  document.getElementById('logout-btn').style.display='none';
+  document.getElementById('auth-screen').classList.add('show');
+  document.getElementById('tb-hub').textContent='';
+  document.getElementById('tech-card').style.display='none';
+  document.getElementById('hub-card').style.display='none';
+  document.getElementById('duty-card').style.display='none';
+  document.getElementById('log-card').style.display='none';
+  showAuthForm();
+}
+
+// ── Permissions ──
+async function loadAndApplyPermissions(session){
+  try{
+    var f={};
+    if(session.user.app_metadata&&session.user.app_metadata.is_superadmin){
+      f['tech-app']=true;f['rsa-admin']=true;
+    }else{
+      var{data:r1}=await sb.from('user_groups').select('group_id').eq('user_id',session.user.id);
+      if(r1&&r1.length){
+        var{data:r2}=await sb.from('group_features').select('feature_key').in('group_id',r1.map(function(r){return r.group_id;}));
+        (r2||[]).forEach(function(r){f[r.feature_key]=true;});
+      }
+      if(!f['tech-app']){window.location.href='index.html';return false;}
+    }
+    window.FP_FEATURES=f;
+    return true;
+  }catch(e){console.warn('[RSATech] perm check failed',e);return true;}
+}
+
+// ── Boot ──
+function logPageView(email){
+  try{fetch(SB_URL+'/rest/v1/page_events',{method:'POST',headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_email:email,page:'rsa-tech.html'})});}catch(_){}
+}
+
+async function activateSession(session){
+  _currentUserId=session.user.id;
+  _currentEmail=session.user.email||'';
+  K=session.access_token||ANON_KEY;
+  var ok=await loadAndApplyPermissions(session);
+  if(!ok)return;
+  logPageView(_currentEmail);
+  document.getElementById('auth-screen').classList.remove('show');
+  document.getElementById('logout-btn').style.display='block';
+  startGPS();
+  await initTechPWA();
+}
+
+async function bootPage(){
+  try{
+    var{data:{session}}=await sb.auth.getSession();
+    if(session)await activateSession(session);
+    else document.getElementById('auth-screen').classList.add('show');
+  }catch(e){
+    console.warn('[RSATech] boot error',e);
+    document.getElementById('auth-screen').classList.add('show');
+  }
+}
+bootPage();
+sb.auth.onAuthStateChange(async function(event,session){
+  if(event==='SIGNED_IN'&&session)await activateSession(session);
+  else if(event==='SIGNED_OUT'){
+    _currentUserId=null;
+    document.getElementById('logout-btn').style.display='none';
+    document.getElementById('auth-screen').classList.add('show');
+    stopGPS();
+  }
+});
+
+// ── Init ──
+async function initTechPWA(){
+  await loadTechRecord();
+  await loadDutyLog();
+  renderTechCard();
+  renderDutyCard();
+  renderDutyLog();
+}
+
+async function loadTechRecord(){
+  if(!_currentEmail)return;
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?email=ilike.'+encodeURIComponent(_currentEmail)+'&select=id,name,city,working_location,employee_id,is_active&limit=1',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    var rows=res.ok?await res.json():[];
+    _techRecord=rows&&rows[0]?rows[0]:null;
+  }catch(e){_techRecord=null;}
+}
+
+async function loadDutyLog(){
+  if(!_currentUserId)return;
+  var today=getIstDate();
+  // Fetch duty log for today (IST) — query logged_at >= today 00:00 IST in UTC
+  var todayUtc=new Date(today+'T00:00:00+05:30').toISOString();
+  var tomorrowUtc=new Date(today+'T23:59:59+05:30').toISOString();
+  try{
+    var res=await fetch(
+      SB_URL+'/rest/v1/rsa_duty_log?user_id=eq.'+_currentUserId
+      +'&logged_at=gte.'+encodeURIComponent(todayUtc)
+      +'&logged_at=lte.'+encodeURIComponent(tomorrowUtc)
+      +'&select=id,action,lat,lng,accuracy,logged_at&order=logged_at.asc',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}}
+    );
+    _dutyLog=res.ok?await res.json():[];
+  }catch(e){_dutyLog=[];}
+  // Determine on-duty state from last entry
+  if(_dutyLog.length){
+    var last=_dutyLog[_dutyLog.length-1];
+    _onDuty=(last.action==='start');
+  }else{
+    _onDuty=false;
+  }
+}
+
+// ── Render ──
+function renderTechCard(){
+  var tc=document.getElementById('tech-card');
+  var nf=document.getElementById('not-found-card');
+  var hc=document.getElementById('hub-card');
+  if(!_techRecord){
+    tc.style.display='none';
+    nf.style.display='block';
+    hc.style.display='none';
+    document.getElementById('tb-hub').textContent='';
+    return;
+  }
+  nf.style.display='none';
+  tc.style.display='block';
+  document.getElementById('tc-name').textContent=_techRecord.name||'—';
+  var meta=document.getElementById('tc-meta');
+  var pills=[];
+  if(_techRecord.employee_id)pills.push('<span class="tech-pill">'+_esc(_techRecord.employee_id)+'</span>');
+  if(_techRecord.city&&_techRecord.city!=='HO')pills.push('<span class="tech-pill city">'+_esc(_techRecord.city)+'</span>');
+  if(_techRecord.working_location)pills.push('<span class="tech-pill">'+_esc(_techRecord.working_location)+'</span>');
+  meta.innerHTML=pills.join('');
+
+  // Hub card
+  var loc=_techRecord.working_location||'';
+  if(loc&&loc!=='HO'){
+    hc.style.display='block';
+    document.getElementById('hc-name').textContent=loc;
+    document.getElementById('tb-hub').textContent=loc;
+  }else{
+    hc.style.display='none';
+    document.getElementById('tb-hub').textContent='HO';
+  }
+}
+
+function renderDutyCard(){
+  var dc=document.getElementById('duty-card');
+  dc.style.display=_techRecord?'block':'none';
+  if(!_techRecord)return;
+
+  var badge=document.getElementById('duty-badge');
+  var since=document.getElementById('duty-since');
+  var btn=document.getElementById('duty-btn');
+
+  if(_onDuty){
+    badge.className='duty-badge on';
+    badge.textContent='● On Duty';
+    var last=_dutyLog[_dutyLog.length-1];
+    since.textContent='since '+fmtTime(last.logged_at);
+    btn.className='duty-btn end';
+    btn.textContent='⏹ End Duty';
+  }else{
+    badge.className='duty-badge off';
+    badge.textContent='○ Off Duty';
+    if(_dutyLog.length){
+      var last=_dutyLog[_dutyLog.length-1];
+      since.textContent='ended '+fmtTime(last.logged_at);
+    }else{
+      since.textContent='';
+    }
+    btn.className='duty-btn start';
+    btn.textContent='▶ Start Duty';
+  }
+  // Enable only if GPS is ready
+  btn.disabled=!_gpsPos;
+}
+
+function renderDutyLog(){
+  var lc=document.getElementById('log-card');
+  lc.style.display=_techRecord?'block':'none';
+  if(!_techRecord)return;
+  document.getElementById('log-title').textContent='Today\'s Log — '+getIstDate();
+  var el=document.getElementById('log-entries');
+  if(!_dutyLog.length){el.innerHTML='<div class="log-empty">No duty activity today</div>';return;}
+  var html='';
+  _dutyLog.forEach(function(e){
+    var isStart=(e.action==='start');
+    var gpsStr=(e.lat&&e.lng)?('GPS '+e.lat.toFixed(4)+', '+e.lng.toFixed(4)+(e.accuracy?' ±'+Math.round(e.accuracy)+'m':'')):'No GPS';
+    html+='<div class="log-entry">'
+      +'<div class="log-dot '+e.action+'"></div>'
+      +'<div class="log-info">'
+      +'<div class="log-action">'+(isStart?'▶ Started Duty':'⏹ Ended Duty')+'</div>'
+      +'<div class="log-time">'+fmtTime(e.logged_at)+'</div>'
+      +'<div class="log-gps">'+_esc(gpsStr)+'</div>'
+      +'</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+// ── Hub navigation ──
+function navigateToHub(){
+  if(!_techRecord||!_techRecord.working_location)return;
+  var q=encodeURIComponent(_techRecord.working_location+' Bangalore Bounce hub');
+  window.open('https://www.google.com/maps/search/?api=1&query='+q,'_blank');
+}
+
+// ── Duty toggle ──
+async function toggleDuty(){
+  var btn=document.getElementById('duty-btn');
+  btn.disabled=true;
+  var action=_onDuty?'end':'start';
+  var body={
+    user_id:_currentUserId,
+    action:action,
+    logged_at:new Date().toISOString()
+  };
+  if(_techRecord)body.tech_id=_techRecord.id;
+  if(_gpsPos){body.lat=_gpsPos.lat;body.lng=_gpsPos.lng;body.accuracy=_gpsPos.accuracy;}
+
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_duty_log',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var rows=await res.json();
+    var saved=rows&&rows[0]?rows[0]:body;
+    _dutyLog.push(saved);
+    _onDuty=(action==='start');
+    showToast(action==='start'?'✅ Duty started':'👋 Duty ended');
+  }catch(e){
+    console.error('[RSATech] toggleDuty error',e);
+    showToast('Failed to save — please retry');
+  }
+  renderDutyCard();
+  renderDutyLog();
+}
+
+// ── Tab switching ──
+function switchTab(tab){
+  document.querySelectorAll('.tab:not(.disabled)').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  var t=document.getElementById('tab-'+tab);
+  var p=document.getElementById('panel-'+tab);
+  if(t)t.classList.add('active');
+  if(p)p.classList.add('active');
+}
+
+// ── SW update banner ──
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('rsa-tech-sw.js').catch(function(){});
+  navigator.serviceWorker.addEventListener('message',function(e){
+    if(e.data&&e.data.type==='SW_UPDATED'){
+      document.getElementById('sw-banner').classList.add('show');
+    }
+  });
+}
+</script>
+</body>
+</html>
