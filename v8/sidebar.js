@@ -32,6 +32,7 @@
     { label:'RSA Operations', items:[
       { href:'./fw-map.html',      icon:'🗺️', label:'FW Pending Map',         feature:'fw-map' },
       { href:'./rsa.html',         icon:'🦺', label:'RSA Warroom',            feature:'rsa-warroom' },
+      { href:'./rsa-tech.html',    icon:'📱', label:'RSA Tech App',           feature:'tech-app' },
     ]},
     { label:'Recovery Operations', feature:'trace-ho', items:[
       { href:'./trace-ho.html',    icon:'🎯', label:'Trace',                  feature:'trace-ho' },
