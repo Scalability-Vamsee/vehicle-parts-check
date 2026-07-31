@@ -431,6 +431,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       <div class="tp-tab active" id="at-tab-vehicles" onclick="switchAdminTab('vehicles')">🚲 Vehicles</div>
       <div class="tp-tab" id="at-tab-roster" onclick="switchAdminTab('roster')">📅 Roster</div>
       <div class="tp-tab" id="at-tab-directory" onclick="switchAdminTab('directory')">👤 Directory</div>
+      <div class="tp-tab" id="at-tab-ledger" onclick="switchAdminTab('ledger')">🔧 Spares</div>
     </div>
     <!-- Vehicles tab: table left + form right -->
     <div id="at-body-vehicles" style="display:flex;gap:20px;align-items:flex-start">
@@ -454,6 +455,14 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
         <button class="tb-btn" onclick="rosterNextWeek()">Next week ›</button>
         <button class="tb-btn" onclick="loadRosterTab(true)" style="margin-left:auto">↻ Refresh</button>
       </div>
+      <!-- Attendance download -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:#F8FAFC;border-radius:8px;border:1px solid #E5E7EB">
+        <span style="font-size:.72rem;font-weight:600;color:#6B7280;white-space:nowrap">Download Attendance</span>
+        <input type="date" id="att-from" style="font-size:.73rem;border:1px solid #D1D5DB;border-radius:5px;padding:3px 6px;outline:none;font-family:'Inter',sans-serif">
+        <span style="font-size:.72rem;color:#9CA3AF">to</span>
+        <input type="date" id="att-to" style="font-size:.73rem;border:1px solid #D1D5DB;border-radius:5px;padding:3px 6px;outline:none;font-family:'Inter',sans-serif">
+        <button onclick="downloadAttendanceReport()" style="font-size:.72rem;padding:4px 11px;background:#0F172A;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif">⬇ CSV</button>
+      </div>
       <!-- Template grid: hidden (backend only) -->
       <div id="roster-template-wrap" style="display:none"></div>
       <!-- Day-level schedule grid -->
@@ -469,6 +478,61 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       </div>
       <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
         <div id="dir-table-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
+      </div>
+    </div>
+    <!-- Spare Ledger tab -->
+    <div id="at-body-ledger" style="display:none">
+      <!-- Sub-nav -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="display:flex;gap:2px;background:#F1F5F9;border-radius:8px;padding:2px">
+          <button class="view-tab-btn active" id="lt-tab-stock" onclick="switchLedgerTab('stock')">📦 Stock</button>
+          <button class="view-tab-btn" id="lt-tab-log" onclick="switchLedgerTab('log')">📋 Log</button>
+        </div>
+        <button class="tb-btn" onclick="loadLedgerTab(true)" style="margin-left:auto">↻ Refresh</button>
+        <button id="lt-add-btn" class="tb-btn" onclick="showLedgerAddForm()" style="background:#6366F1;color:#fff;border-color:#6366F1">+ Entry</button>
+      </div>
+      <!-- Add entry form -->
+      <div id="lt-add-form" style="display:none;background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6366F1;margin-bottom:10px">New Entry</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 110px 80px 130px 1fr;gap:8px;align-items:end">
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Tech *</div>
+            <select id="lt-sel-tech" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none"><option value="">— select —</option></select></div>
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Part *</div>
+            <select id="lt-sel-part" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none">
+              <option value="">— select —</option>
+              <option value="M-0000906XX-00">Handle Lock Assembly</option>
+              <option value="E-0000790XX-01 B2B">Throttle Assembly</option>
+              <option value="1200000435">Fuse (ATN-PA 7.5A)</option>
+              <option value="1600000048">Fuse (ATM-PA60A/58V)</option>
+              <option value="Tags">Tags</option>
+            </select></div>
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Type *</div>
+            <select id="lt-sel-type" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none">
+              <option value="in">In ↑</option>
+              <option value="out">Out ↓</option>
+              <option value="adjustment">Adj ±</option>
+            </select></div>
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Qty *</div>
+            <input type="number" id="lt-inp-qty" min="1" placeholder="0" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none"></div>
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Date</div>
+            <input type="date" id="lt-inp-date" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none"></div>
+          <div><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">JC ID</div>
+            <input type="text" id="lt-inp-jc" placeholder="JC-…" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none"></div>
+        </div>
+        <div style="margin-top:8px"><div style="font-size:.68rem;color:#6B7280;margin-bottom:3px">Note</div>
+          <input type="text" id="lt-inp-note" placeholder="Optional note" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif;outline:none"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button onclick="saveLedgerEntry()" style="font-size:.74rem;padding:5px 14px;background:#6366F1;color:#fff;border:none;border-radius:7px;cursor:pointer;font-family:'Inter',sans-serif">Save Entry</button>
+          <button onclick="cancelLedgerAdd()" style="font-size:.74rem;padding:5px 12px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:7px;cursor:pointer;font-family:'Inter',sans-serif">Cancel</button>
+        </div>
+      </div>
+      <!-- Stock view -->
+      <div id="lt-body-stock">
+        <div id="lt-stock-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
+      </div>
+      <!-- Log view -->
+      <div id="lt-body-log" style="display:none">
+        <div id="lt-log-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
       </div>
     </div>
   </div>
@@ -1525,7 +1589,7 @@ function openAdminPanel(){showView('admin');}
 function closeAdminPanel(){showView('map');}
 function switchAdminTab(tab){
   _adminTab=tab;
-  ['vehicles','roster','directory'].forEach(function(t){
+  ['vehicles','roster','directory','ledger'].forEach(function(t){
     document.getElementById('at-tab-'+t).classList.toggle('active',t===tab);
     var bd=document.getElementById('at-body-'+t);
     if(bd)bd.style.display=t===tab?(t==='vehicles'?'flex':'block'):'none';
@@ -1533,6 +1597,7 @@ function switchAdminTab(tab){
   if(tab==='vehicles')loadAdminVehicles();
   if(tab==='roster')loadRosterTab();
   if(tab==='directory')loadDirectoryTab();
+  if(tab==='ledger')loadLedgerTab();
 }
 
 // ── Roster tab ──
@@ -1797,7 +1862,7 @@ async function loadDirectoryTab(force){
   if(_dirTechs.length&&!force){renderDirectory();return;}
   document.getElementById('dir-table-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div>';
   try{
-    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,employee_id,joining_date,is_active&order=city,name',
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,email,employee_id,joining_date,is_active&order=city,name',
       {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     _dirTechs=res.ok?await res.json():[];
   }catch(e){_dirTechs=[];}
@@ -1820,7 +1885,7 @@ function renderDirectory(){
 
   out+='<div style="overflow-x:auto"><table class="dir-table"><thead><tr>'
     +'<th class="dir-th">Name</th><th class="dir-th">City</th><th class="dir-th">Phone</th>'
-    +'<th class="dir-th">Emp ID</th><th class="dir-th">Joining Date</th>'
+    +'<th class="dir-th">Email</th><th class="dir-th">Emp ID</th><th class="dir-th">Joining Date</th>'
     +'<th class="dir-th">Status</th><th class="dir-th" style="width:90px"></th>'
     +'</tr></thead><tbody>';
 
@@ -1830,6 +1895,7 @@ function renderDirectory(){
       +'<td class="dir-td"><input type="text" id="dir-add-name" placeholder="Name *" style="'+_DIS+'"></td>'
       +'<td class="dir-td">'+citySelect('dir-add-city','BLR')+'</td>'
       +'<td class="dir-td"><input type="text" id="dir-add-phone" placeholder="Phone" style="'+_DIS+'"></td>'
+      +'<td class="dir-td"><input type="email" id="dir-add-email" placeholder="Email" style="'+_DIS+'"></td>'
       +'<td class="dir-td"><input type="text" id="dir-add-empid" placeholder="Emp ID" style="'+_DIS+'"></td>'
       +'<td class="dir-td"><input type="date" id="dir-add-jd" style="'+_DIS+'"></td>'
       +'<td class="dir-td"><span style="font-size:.72rem;color:#16A34A">● Active</span></td>'
@@ -1847,6 +1913,7 @@ function renderDirectory(){
         +'<td class="dir-td"><input type="text" id="dir-e-name-'+tech.id+'" value="'+_esc(tech.name)+'" style="'+_DIS+'"></td>'
         +'<td class="dir-td">'+citySelect('dir-e-city-'+tech.id,tech.city)+'</td>'
         +'<td class="dir-td"><input type="text" id="dir-e-phone-'+tech.id+'" value="'+_esc(tech.phone||'')+'" style="'+_DIS+'" placeholder="Phone"></td>'
+        +'<td class="dir-td"><input type="email" id="dir-e-email-'+tech.id+'" value="'+_esc(tech.email||'')+'" style="'+_DIS+'" placeholder="Email"></td>'
         +'<td class="dir-td"><input type="text" id="dir-e-empid-'+tech.id+'" value="'+_esc(tech.employee_id||'')+'" style="'+_DIS+'" placeholder="Emp ID"></td>'
         +'<td class="dir-td"><input type="date" id="dir-e-jd-'+tech.id+'" value="'+(tech.joining_date||'')+'" style="'+_DIS+'"></td>'
         +'<td class="dir-td"><span style="font-size:.72rem;color:'+(tech.is_active?'#16A34A':'#9CA3AF')+'">● '+(tech.is_active?'Active':'Inactive')+'</span></td>'
@@ -1860,6 +1927,7 @@ function renderDirectory(){
         +'<td class="dir-td"><strong style="font-size:.8rem">'+_esc(tech.name)+'</strong></td>'
         +'<td class="dir-td">'+_esc(tech.city||'')+'</td>'
         +'<td class="dir-td" style="color:#6B7280">'+_esc(tech.phone||'—')+'</td>'
+        +'<td class="dir-td" style="color:#6B7280;font-size:.75rem">'+_esc(tech.email||'—')+'</td>'
         +'<td class="dir-td" style="color:#6B7280">'+_esc(tech.employee_id||'—')+'</td>'
         +'<td class="dir-td">'+fmtJd(tech.joining_date)+'</td>'
         +'<td class="dir-td">'
@@ -1884,6 +1952,7 @@ async function saveDirAdd(){
   var body={name:name.trim(),
     city:(document.getElementById('dir-add-city')||{}).value||'BLR',
     phone:(document.getElementById('dir-add-phone')||{}).value.trim()||null,
+    email:(document.getElementById('dir-add-email')||{}).value.trim()||null,
     employee_id:(document.getElementById('dir-add-empid')||{}).value.trim()||null,
     joining_date:(document.getElementById('dir-add-jd')||{}).value||null,
     is_active:true};
@@ -1910,6 +1979,7 @@ async function saveDirRow(techId){
   var body={name:name.trim(),
     city:(document.getElementById('dir-e-city-'+techId)||{}).value||'BLR',
     phone:(document.getElementById('dir-e-phone-'+techId)||{}).value.trim()||null,
+    email:(document.getElementById('dir-e-email-'+techId)||{}).value.trim()||null,
     employee_id:(document.getElementById('dir-e-empid-'+techId)||{}).value.trim()||null,
     joining_date:(document.getElementById('dir-e-jd-'+techId)||{}).value||null};
   try{
@@ -1941,6 +2011,216 @@ async function toggleDirActive(techId,isActive){
     if(t)t.is_active=nv;
     renderDirectory();
   }catch(e){alert('Toggle failed — please retry');}
+}
+
+// ── Attendance download ──
+async function downloadAttendanceReport(){
+  var fromDate=(document.getElementById('att-from')||{}).value||'';
+  var toDate=(document.getElementById('att-to')||{}).value||'';
+  if(!fromDate||!toDate){alert('Select a date range first');return;}
+  if(fromDate>toDate){alert('From date must be before To date');return;}
+  var h={apikey:ANON_KEY,Authorization:'Bearer '+K};
+  var overrides=[];
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_day_overrides?select=tech_id,override_date,status,note&override_date=gte.'+fromDate+'&override_date=lte.'+toDate,{headers:h});
+    if(res.ok)overrides=await res.json();
+  }catch(e){}
+  var ovMap={};
+  overrides.forEach(function(o){ovMap[o.tech_id+'|'+o.override_date]=o;});
+  // All dates in range
+  var dates=[],cur=new Date(fromDate),end=new Date(toDate);
+  cur.setHours(0,0,0,0);end.setHours(0,0,0,0);
+  while(cur<=end){dates.push(_fmtDate(new Date(cur)));cur.setDate(cur.getDate()+1);}
+  var techs=_rosterTechs.filter(function(t){return t.city!=='HO';});
+  if(!techs.length)techs=_dirTechs.filter(function(t){return t.is_active&&t.city!=='HO';});
+  var dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var rows=[['Tech','City','Date','Day','Status','Note']];
+  dates.forEach(function(dateStr){
+    var d=new Date(dateStr);d.setHours(0,0,0,0);
+    var dow=d.getDay();
+    techs.forEach(function(tech){
+      var jd=tech.joining_date?new Date(tech.joining_date):null;
+      if(jd)jd.setHours(0,0,0,0);
+      if(jd&&d<jd){rows.push([tech.name,tech.city||'',dateStr,dayNames[dow],'NA','']);return;}
+      var ov=ovMap[tech.id+'|'+dateStr];
+      if(ov){rows.push([tech.name,tech.city||'',dateStr,dayNames[dow],ov.status,ov.note||'']);return;}
+      rows.push([tech.name,tech.city||'',dateStr,dayNames[dow],_getTemplateStatus(tech.id,dow),'']);
+    });
+  });
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='rsa-attendance-'+fromDate+'-to-'+toDate+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+// ── Spare Ledger tab ──
+var _RSA_PARTS=[
+  {code:'M-0000906XX-00',name:'Handle Lock Assembly'},
+  {code:'E-0000790XX-01 B2B',name:'Throttle Assembly'},
+  {code:'1200000435',name:'Fuse (ATN-PA 7.5A)'},
+  {code:'1600000048',name:'Fuse (ATM-PA60A/58V)'},
+  {code:'Tags',name:'Tags'}
+];
+var _ledgerEntries=[];
+var _ledgerTab='stock';
+
+function _partName(code){var p=_RSA_PARTS.find(function(x){return x.code===code;});return p?p.name:code;}
+
+async function loadLedgerTab(force){
+  if(!K||K===ANON_KEY)return;
+  if(_ledgerEntries.length&&!force){renderLedger();return;}
+  document.getElementById('lt-stock-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div>';
+  if(!_dirTechs.length)await loadDirectoryTab(false);
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_spare_ledger?select=id,tech_id,part_name,entry_type,quantity,entry_date,jc_id,note&order=entry_date.desc,created_at.desc',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    _ledgerEntries=res.ok?await res.json():[];
+  }catch(e){_ledgerEntries=[];}
+  // Populate tech select in add form
+  var sel=document.getElementById('lt-sel-tech');
+  if(sel){
+    var techs=_dirTechs.filter(function(t){return t.is_active&&t.city!=='HO';});
+    sel.innerHTML='<option value="">— select tech —</option>'+techs.map(function(t){return '<option value="'+t.id+'">'+_esc(t.name)+' ('+_esc(t.city||'')+')</option>';}).join('');
+  }
+  // Set default date on form
+  var di=document.getElementById('lt-inp-date');
+  if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);
+  renderLedger();
+}
+
+function renderLedger(){
+  if(_ledgerTab==='stock')renderLedgerStock();
+  else renderLedgerLog();
+}
+
+function switchLedgerTab(t){
+  _ledgerTab=t;
+  ['stock','log'].forEach(function(n){
+    var btn=document.getElementById('lt-tab-'+n);
+    if(btn)btn.classList.toggle('active',n===t);
+    var bd=document.getElementById('lt-body-'+n);
+    if(bd)bd.style.display=n===t?'block':'none';
+  });
+  renderLedger();
+}
+
+function renderLedgerStock(){
+  var techs=_rosterTechs.filter(function(t){return t.city!=='HO';});
+  if(!techs.length)techs=_dirTechs.filter(function(t){return t.is_active&&t.city!=='HO';});
+  // Aggregate: net stock = sum(in+adj) - sum(out) per tech × part
+  var sm={};
+  _ledgerEntries.forEach(function(e){
+    var k=e.tech_id+'|'+e.part_name;
+    if(!sm[k])sm[k]=0;
+    sm[k]+=(e.entry_type==='out'?-1:1)*e.quantity;
+  });
+  var html='<div style="overflow-x:auto"><table class="rtable"><thead><tr>'
+    +'<th style="text-align:left;padding:7px 10px;font-size:.75rem">Tech</th>';
+  _RSA_PARTS.forEach(function(p){
+    html+='<th style="font-size:.7rem;font-weight:600;color:#6B7280;white-space:nowrap;padding:7px 8px" title="'+_esc(p.code)+'">'+_esc(p.name)+'<br><span style="font-weight:400;color:#9CA3AF;font-size:.6rem">'+_esc(p.code)+'</span></th>';
+  });
+  html+='</tr></thead><tbody>';
+  techs.forEach(function(tech){
+    html+='<tr><td style="padding:7px 10px;font-size:.8rem;white-space:nowrap">'+_esc(tech.name)
+      +'<span style="font-size:.65rem;color:#9CA3AF;margin-left:5px">'+_esc(tech.city||'')+'</span></td>';
+    _RSA_PARTS.forEach(function(p){
+      var net=sm[tech.id+'|'+p.code]||0;
+      var col=net>0?'#16A34A':net<0?'#EF4444':'#9CA3AF';
+      var bg=net>0?'#F0FDF4':net<0?'#FEF2F2':'#F9FAFB';
+      html+='<td style="text-align:center;padding:5px 8px"><span style="font-size:.82rem;font-weight:700;color:'+col+';background:'+bg+';padding:2px 10px;border-radius:5px;display:inline-block;min-width:28px">'+net+'</span></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+  if(!techs.length)html='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">No technicians found — open Directory tab first</div>';
+  document.getElementById('lt-stock-wrap').innerHTML=html;
+}
+
+function renderLedgerLog(){
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtD(d){if(!d)return '—';var p=d.split('-');return parseInt(p[2])+' '+mo[parseInt(p[1])-1]+' '+p[0];}
+  var techMap={};
+  (_rosterTechs.length?_rosterTechs:_dirTechs).forEach(function(t){techMap[t.id]=t;});
+  if(!_ledgerEntries.length){
+    document.getElementById('lt-log-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">No entries yet — use "+ Entry" to log stock movements</div>';
+    return;
+  }
+  var tColors={in:'#16A34A',out:'#EF4444',adjustment:'#D97706'};
+  var tBg={in:'#F0FDF4',out:'#FEF2F2',adjustment:'#FFFBEB'};
+  var html='<div style="overflow-x:auto"><table class="dir-table"><thead><tr>'
+    +'<th class="dir-th">Date</th><th class="dir-th">Tech</th><th class="dir-th">Part</th>'
+    +'<th class="dir-th">Type</th><th class="dir-th">Qty</th><th class="dir-th">JC</th><th class="dir-th">Note</th>'
+    +'</tr></thead><tbody>';
+  _ledgerEntries.forEach(function(e){
+    var tech=techMap[e.tech_id];
+    var col=tColors[e.entry_type]||'#6B7280';
+    var bg=tBg[e.entry_type]||'#F9FAFB';
+    var sign=e.entry_type==='out'?'−':'+';
+    html+='<tr>'
+      +'<td class="dir-td" style="white-space:nowrap;color:#6B7280;font-size:.75rem">'+fmtD(e.entry_date)+'</td>'
+      +'<td class="dir-td" style="font-size:.78rem">'+(tech?_esc(tech.name)+'<span style="font-size:.62rem;color:#9CA3AF;margin-left:4px">'+_esc(tech.city||'')+'</span>':'—')+'</td>'
+      +'<td class="dir-td" style="font-size:.75rem">'+_esc(_partName(e.part_name))+'<br><span style="font-size:.62rem;color:#9CA3AF">'+_esc(e.part_name)+'</span></td>'
+      +'<td class="dir-td"><span style="font-size:.7rem;padding:2px 7px;border-radius:5px;background:'+bg+';color:'+col+';font-weight:600">'+e.entry_type+'</span></td>'
+      +'<td class="dir-td" style="text-align:center;font-size:.82rem;font-weight:700;color:'+col+'">'+sign+e.quantity+'</td>'
+      +'<td class="dir-td" style="font-size:.72rem;color:#6B7280">'+_esc(e.jc_id||'—')+'</td>'
+      +'<td class="dir-td" style="font-size:.72rem;color:#6B7280">'+_esc(e.note||'—')+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table></div>';
+  document.getElementById('lt-log-wrap').innerHTML=html;
+}
+
+function showLedgerAddForm(){
+  var f=document.getElementById('lt-add-form');
+  var btn=document.getElementById('lt-add-btn');
+  if(f)f.style.display='block';
+  if(btn)btn.style.display='none';
+  // Populate tech select if not already done
+  var sel=document.getElementById('lt-sel-tech');
+  if(sel&&sel.options.length<=1){
+    var techs=_dirTechs.filter(function(t){return t.is_active&&t.city!=='HO';});
+    sel.innerHTML='<option value="">— select tech —</option>'+techs.map(function(t){return '<option value="'+t.id+'">'+_esc(t.name)+' ('+_esc(t.city||'')+')</option>';}).join('');
+  }
+  var di=document.getElementById('lt-inp-date');
+  if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);
+  setTimeout(function(){var s=document.getElementById('lt-sel-tech');if(s)s.focus();},30);
+}
+
+function cancelLedgerAdd(){
+  var f=document.getElementById('lt-add-form');
+  var btn=document.getElementById('lt-add-btn');
+  if(f)f.style.display='none';
+  if(btn)btn.style.display='';
+}
+
+async function saveLedgerEntry(){
+  var techId=(document.getElementById('lt-sel-tech')||{}).value||'';
+  var partCode=(document.getElementById('lt-sel-part')||{}).value||'';
+  var entryType=(document.getElementById('lt-sel-type')||{}).value||'in';
+  var qty=parseInt((document.getElementById('lt-inp-qty')||{}).value)||0;
+  var jc=(document.getElementById('lt-inp-jc')||{}).value.trim()||null;
+  var note=(document.getElementById('lt-inp-note')||{}).value.trim()||null;
+  var date=(document.getElementById('lt-inp-date')||{}).value||new Date().toISOString().slice(0,10);
+  if(!techId){alert('Select a technician');return;}
+  if(!partCode){alert('Select a part');return;}
+  if(!qty||qty<=0){alert('Enter a valid quantity (greater than 0)');return;}
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_spare_ledger',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify({tech_id:techId,part_name:partCode,entry_type:entryType,quantity:qty,entry_date:date,jc_id:jc,note:note,entered_by:_currentUserId||undefined})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var rows=await res.json();
+    if(rows&&rows[0])_ledgerEntries.unshift(rows[0]);
+    // Reset form
+    ['lt-sel-tech','lt-sel-part','lt-inp-qty','lt-inp-jc','lt-inp-note'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('lt-sel-type').value='in';
+    cancelLedgerAdd();
+    renderLedger();
+  }catch(e){alert('Save failed — please retry');}
 }
 
 // ── Vehicles tab ──
