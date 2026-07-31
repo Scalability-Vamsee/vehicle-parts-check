@@ -129,16 +129,20 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .tp-leg-row{display:flex;align-items:center;gap:7px;font-size:.73rem;color:#374151;margin-bottom:4px}
 .tp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
-/* Admin panel */
-#admin-panel{position:absolute;top:0;right:0;bottom:0;width:340px;background:#fff;border-left:1px solid var(--border);z-index:510;display:none;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.1)}
-#admin-panel.open{display:flex}
-.av-table{width:100%;border-collapse:collapse;font-size:.76rem}
-.av-th{text-align:left;padding:5px 6px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9CA3AF;border-bottom:1.5px solid var(--border)}
-.av-tc{padding:6px 6px;border-bottom:1px solid #F3F4F6;vertical-align:middle;color:#1F2937}
-.av-reg{font-weight:700;font-size:.78rem;color:#1D4ED8}
+/* Admin panel — full-width tab view (not slide-in) */
+#admin-panel{flex:1;overflow-y:auto;display:none;background:#F8FAFC}
+#admin-panel.open{display:block}
+.admin-inner{max-width:1000px;margin:0 auto;padding:16px 20px}
+.av-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.av-th{text-align:left;padding:7px 10px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9CA3AF;border-bottom:1.5px solid var(--border);background:#F8FAFC}
+.av-tc{padding:8px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle;color:#1F2937}
+.av-reg{font-weight:700;font-size:.82rem;color:#1D4ED8}
 .av-unassign{background:none;border:none;color:#EF4444;cursor:pointer;font-size:.9rem;padding:2px 5px;border-radius:4px}
 .av-unassign:hover{background:#FEF2F2}
-.av-form{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:12px;border-top:1.5px solid var(--border)}
+/* View tabs (Map | Metrics | Admin) */
+.view-tab-btn{padding:4px 13px;border-radius:7px;font-size:.74rem;font-weight:600;border:none;background:transparent;color:#6B7280;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap}
+.view-tab-btn.active{background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.view-tab-btn:hover:not(.active){color:#374151;background:rgba(255,255,255,.6)}
 /* Dashboard view */
 #dashboard-view{flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:14px;background:#F8FAFC}
 .dv-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
@@ -229,10 +233,12 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
   </a>
   <span class="tb-sep">·</span>
   <span class="tb-title">🦺 RSA Warroom</span>
-  <button class="view-toggle-btn" id="view-map-btn" onclick="showView('map')" title="Map View">🗺 Map</button>
-  <button class="view-toggle-btn active" id="view-dash-btn" onclick="showView('dash')" style="display:none" title="Dashboard View">📊 Metrics</button>
+  <div style="display:flex;gap:2px;margin-left:8px;background:#F1F5F9;border-radius:10px;padding:3px">
+    <button class="view-tab-btn active" id="view-map-btn" onclick="showView('map')">🗺 Map</button>
+    <button class="view-tab-btn" id="view-dash-btn" onclick="showView('dash')">📊 Metrics</button>
+    <button class="view-tab-btn" id="view-admin-btn" data-feature="rsa-admin" onclick="showView('admin')">⚙ Admin</button>
+  </div>
   <div class="tb-right">
-    <button class="tb-btn" data-feature="rsa-admin" onclick="openAdminPanel()" title="RSA Admin">⚙ Admin</button>
     <button class="tb-btn" id="logout-btn" style="display:none" onclick="signOut()">Sign out</button>
   </div>
 </div>
@@ -389,35 +395,31 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
   </div>
 </div>
 
-<!-- Admin panel -->
+<!-- Admin view — full-width tab (not slide-in) -->
 <div id="admin-panel">
-  <div class="tp-header">
-    <span class="tp-title">⚙ RSA Admin</span>
-    <button class="tp-close" onclick="closeAdminPanel()">✕</button>
-  </div>
-  <div class="tp-tabs">
-    <div class="tp-tab active" id="at-tab-vehicles" onclick="switchAdminTab('vehicles')">Vehicles</div>
-    <div class="tp-tab" id="at-tab-roster" onclick="switchAdminTab('roster')">Roster</div>
-    <div class="tp-tab" id="at-tab-directory" onclick="switchAdminTab('directory')">Directory</div>
-  </div>
-  <!-- Vehicles tab -->
-  <div class="tp-body" id="at-body-vehicles" style="gap:0">
-    <div id="at-veh-list"><div style="color:#9CA3AF;font-size:.8rem">Loading…</div></div>
-    <div class="av-form">
-      <div class="tp-label">Assign New Bike</div>
-      <select id="av-tech-select" class="tp-input"></select>
-      <input type="text" id="av-reg" class="tp-input" placeholder="Reg number (e.g. KA05AR1234)" style="text-transform:uppercase"/>
-      <input type="text" id="av-chassis" class="tp-input" placeholder="Chassis / VIN number" style="text-transform:uppercase"/>
-      <button class="tp-btn" id="av-assign-btn" onclick="assignVehicle()">Assign</button>
+  <div class="admin-inner">
+    <div class="tp-tabs" style="margin-bottom:16px">
+      <div class="tp-tab active" id="at-tab-vehicles" onclick="switchAdminTab('vehicles')">🚲 Vehicles</div>
+      <div class="tp-tab" id="at-tab-roster" onclick="switchAdminTab('roster')">📅 Roster</div>
+      <div class="tp-tab" id="at-tab-directory" onclick="switchAdminTab('directory')">👤 Directory</div>
     </div>
-  </div>
-  <!-- Roster tab (stub) -->
-  <div class="tp-body" id="at-body-roster" style="display:none">
-    <div style="color:#9CA3AF;font-size:.8rem;text-align:center;margin-top:24px">Roster UI coming soon (RSA-2)</div>
-  </div>
-  <!-- Directory tab (stub) -->
-  <div class="tp-body" id="at-body-directory" style="display:none">
-    <div style="color:#9CA3AF;font-size:.8rem;text-align:center;margin-top:24px">Tech directory coming soon</div>
+    <!-- Vehicles tab: table left + form right -->
+    <div id="at-body-vehicles" style="display:flex;gap:20px;align-items:flex-start">
+      <div style="flex:1;min-width:0;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div id="at-veh-list"><div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div></div>
+      </div>
+      <div style="width:260px;flex-shrink:0;background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF">Assign New Bike</div>
+        <select id="av-tech-select" class="tp-input"></select>
+        <input type="text" id="av-reg" class="tp-input" placeholder="Reg number (e.g. KA05AR1234)" style="text-transform:uppercase"/>
+        <input type="text" id="av-chassis" class="tp-input" placeholder="Chassis / VIN number" style="text-transform:uppercase"/>
+        <button class="tp-btn" id="av-assign-btn" onclick="assignVehicle()">Assign</button>
+      </div>
+    </div>
+    <!-- Roster tab (stub) -->
+    <div id="at-body-roster" style="display:none;padding-top:40px;text-align:center;color:#9CA3AF;font-size:.85rem">Roster UI coming soon (RSA-2)</div>
+    <!-- Directory tab (stub) -->
+    <div id="at-body-directory" style="display:none;padding-top:40px;text-align:center;color:#9CA3AF;font-size:.85rem">Tech directory coming soon</div>
   </div>
 </div>
 
@@ -1321,33 +1323,24 @@ document.addEventListener('click',function(e){
   if(panel.classList.contains('show')&&!panel.contains(e.target)&&!e.target.closest('.layers-toggle'))panel.classList.remove('show');
 });
 
-// ── View toggle (Map ↔ Dashboard) ──
+// ── View toggle (Map / Metrics / Admin) ──
 var _currentView='map';
 function showView(v){
   _currentView=v;
   var mapWrap=document.getElementById('map-wrap');
   var dashView=document.getElementById('dashboard-view');
+  var adminView=document.getElementById('admin-panel');
   var filterBar=document.getElementById('filter-bar');
-  var mapBtn=document.getElementById('view-map-btn');
-  var dashBtn=document.getElementById('view-dash-btn');
-  if(v==='map'){
-    mapWrap.style.display=''; // flex:1 from map-wrap CSS
-    dashView.style.display='none';
-    filterBar.style.display='';
-    mapBtn.style.display='none';
-    dashBtn.style.display='flex';
-    dashBtn.classList.remove('active');
-    mapBtn.classList.add('active');
-  }else{
-    mapWrap.style.display='none';
-    dashView.style.display='flex';
-    filterBar.style.display='none';
-    mapBtn.style.display='flex';
-    dashBtn.style.display='none';
-    mapBtn.classList.remove('active');
-    dashBtn.classList.add('active');
-    renderDashboard();
-  }
+  ['map','dash','admin'].forEach(function(n){
+    var btn=document.getElementById('view-'+n+'-btn');
+    if(btn)btn.classList.toggle('active',n===v);
+  });
+  mapWrap.style.display=v==='map'?'':'none';
+  filterBar.style.display=v==='map'?'':'none';
+  dashView.style.display=v==='dash'?'flex':'none';
+  adminView.classList.toggle('open',v==='admin');
+  if(v==='dash')renderDashboard();
+  if(v==='admin'&&_adminTab==='vehicles')loadAdminVehicles();
 }
 
 // ── Dashboard rendering ──
@@ -1473,18 +1466,14 @@ async function signOut(){await sbClient.auth.signOut();}
 
 // ── RSA Admin Panel ──
 var _adminTab='vehicles';
-function openAdminPanel(){
-  // Close track panel if open
-  document.getElementById('track-panel').classList.remove('open');
-  document.getElementById('admin-panel').classList.add('open');
-  if(_adminTab==='vehicles')loadAdminVehicles();
-}
-function closeAdminPanel(){document.getElementById('admin-panel').classList.remove('open');}
+function openAdminPanel(){showView('admin');}
+function closeAdminPanel(){showView('map');}
 function switchAdminTab(tab){
   _adminTab=tab;
   ['vehicles','roster','directory'].forEach(function(t){
     document.getElementById('at-tab-'+t).classList.toggle('active',t===tab);
-    document.getElementById('at-body-'+t).style.display=t===tab?'flex':'none';
+    var bd=document.getElementById('at-body-'+t);
+    if(bd)bd.style.display=t===tab?(t==='vehicles'?'flex':'block'):'none';
   });
   if(tab==='vehicles')loadAdminVehicles();
 }
@@ -1513,9 +1502,9 @@ async function loadAdminVehicles(){
         '<td class="av-tc" style="color:#6B7280;font-size:.72rem">'+x.city+'</td>'+
         (a
           ?'<td class="av-tc"><span class="av-reg">'+(a.reg_number||'—')+'</span></td>'+
-            '<td class="av-tc" style="color:#9CA3AF;font-size:.66rem" title="'+a.chassis_number+'">…'+a.chassis_number.slice(-6)+'</td>'+
-            '<td class="av-tc"><button class="av-unassign" onclick="unassignVehicle(\''+a.id+'\')">✕</button></td>'
-          :'<td class="av-tc" colspan="3" style="color:#D1D5DB;font-size:.73rem;font-style:italic">No bike</td>'
+            '<td class="av-tc" style="color:#6B7280;font-size:.76rem;font-family:monospace">'+a.chassis_number+'</td>'+
+            '<td class="av-tc"><button class="av-unassign" onclick="unassignVehicle(\''+a.id+'\')">✕ Unassign</button></td>'
+          :'<td class="av-tc" colspan="3" style="color:#D1D5DB;font-size:.73rem;font-style:italic">No bike assigned</td>'
         )+'</tr>';
     }).join('');
     el.innerHTML='<table class="av-table"><thead><tr>'+
