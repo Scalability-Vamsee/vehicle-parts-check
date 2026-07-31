@@ -7,8 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#111827"/>
+<meta name="apple-mobile-web-app-title" content="FPI Hunter"/>
 <title>FPI Hunter · FleetPro</title>
 <link rel="icon" type="image/jpeg" href="/v8/logo.jpg">
+<link rel="apple-touch-icon" href="/v8/icon-192.png"/>
 <link rel="manifest" href="trace-hunter-manifest.json"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -142,9 +144,24 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 @media(min-width:768px){
   .tc-actions .tc-action{font-size:.75rem;}
 }
+/* ── Sidebar layout ── */
+#ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;}
+#ov.show{display:block}
+#sb{position:fixed;top:0;left:0;bottom:0;width:260px;background:#1A1A2E;z-index:2000;transform:translateX(-100%);transition:transform .25s ease;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+#sb.open{transform:translateX(0)}
+/* ── Hamburger ── */
+#hbg{width:36px;height:36px;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;border-radius:8px;flex-shrink:0;}
+#hbg span{display:block;width:18px;height:2px;background:#fff;border-radius:2px;}
+/* ── PWA install banner ── */
+#pwa-install-bar{display:none;background:linear-gradient(90deg,#0F172A,#1E3A5F);color:#fff;padding:10px 16px;align-items:center;gap:12px;font-size:.8rem;}
+#pwa-install-bar.show{display:flex;}
+#pwa-install-btn{background:#E8191C;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
+#pwa-install-dismiss{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem;margin-left:auto;flex-shrink:0;padding:0 4px;}
 </style>
 </head>
 <body>
+<div id="ov"></div>
+<nav id="sb"><!-- injected by sidebar.js --></nav>
 
 <!-- Auth -->
 <div id="auth-screen">
@@ -176,6 +193,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
 <!-- Topbar -->
 <header id="topbar">
+  <button id="hbg" onclick="toggleSidebar()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div style="display:flex;flex-direction:column;">
     <div class="tb-title">🎯 FPI Hunter</div>
     <div class="tb-sub">Trace & Hunter</div>
@@ -184,6 +202,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   <span id="tb-sync"></span>
   <button id="logout-btn" onclick="signOut()">Sign out</button>
 </header>
+
+<!-- PWA Install Banner -->
+<div id="pwa-install-bar">
+  <span>📲</span>
+  <span style="flex:1;">Install <b>FPI Hunter</b> as an app — works offline, opens instantly</span>
+  <button id="pwa-install-btn" onclick="triggerPwaInstall()">Install</button>
+  <button id="pwa-install-dismiss" onclick="dismissPwaInstall()" aria-label="Dismiss">✕</button>
+</div>
 
 <!-- Tabs -->
 <div id="tabs">
@@ -250,6 +276,38 @@ var sb=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageK
 // Service worker registration
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('trace-hunter-sw.js').catch(function(){});
+}
+
+// ── PWA Install Prompt ──
+var _pwaInstallEvent=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  _pwaInstallEvent=e;
+  if(!localStorage.getItem('pwa_install_dismissed')){
+    var bar=document.getElementById('pwa-install-bar');
+    if(bar)bar.classList.add('show');
+  }
+});
+window.addEventListener('appinstalled',function(){
+  var bar=document.getElementById('pwa-install-bar');
+  if(bar)bar.classList.remove('show');
+  _pwaInstallEvent=null;
+});
+function triggerPwaInstall(){
+  if(!_pwaInstallEvent)return;
+  _pwaInstallEvent.prompt();
+  _pwaInstallEvent.userChoice.then(function(c){
+    if(c.outcome==='accepted'){
+      var bar=document.getElementById('pwa-install-bar');
+      if(bar)bar.classList.remove('show');
+    }
+    _pwaInstallEvent=null;
+  });
+}
+function dismissPwaInstall(){
+  var bar=document.getElementById('pwa-install-bar');
+  if(bar)bar.classList.remove('show');
+  localStorage.setItem('pwa_install_dismissed','1');
 }
 
 // ── State ──
@@ -750,5 +808,6 @@ function showToast(msg){
   _toastTimer=setTimeout(function(){el.classList.remove('show');},3000);
 }
 </script>
+<script src="./sidebar.js"></script>
 </body>
 </html>

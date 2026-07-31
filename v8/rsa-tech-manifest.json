@@ -1,6 +1,6 @@
 {
-  "name": "RSA Tech — FleetPro",
-  "short_name": "RSA Tech",
+  "name": "Fleet Pro",
+  "short_name": "Fleet Pro",
   "description": "RSA Technician PWA — duty tracking and ticket management",
   "start_url": "/v8/rsa-tech.html",
   "scope": "/v8/",
