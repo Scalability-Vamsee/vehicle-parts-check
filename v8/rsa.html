@@ -1785,80 +1785,162 @@ function rosterNextWeek(){
 }
 
 // ── Directory tab ──
+var _dirEditId=null;   // tech ID in row-edit mode
+var _dirAddMode=false; // add-new-tech form open
+var _DIS='font-size:.75rem;border:1px solid #C7D2FE;border-radius:4px;padding:3px 6px;font-family:Inter,sans-serif;outline:none;width:100%;box-sizing:border-box';
+var _DSV='font-size:.7rem;padding:2px 8px;background:#6366F1;color:#fff;border:none;border-radius:5px;cursor:pointer';
+var _DCN='font-size:.7rem;padding:2px 6px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:5px;cursor:pointer';
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 async function loadDirectoryTab(force){
   if(!K||K===ANON_KEY)return;
   if(_dirTechs.length&&!force){renderDirectory();return;}
   document.getElementById('dir-table-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div>';
   try{
-    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,joining_date,is_active&order=city,name',
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,employee_id,joining_date,is_active&order=city,name',
       {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     _dirTechs=res.ok?await res.json():[];
   }catch(e){_dirTechs=[];}
   renderDirectory();
 }
+
 function renderDirectory(){
-  if(!_dirTechs.length){
-    document.getElementById('dir-table-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">No technicians found</div>';
-    return;
-  }
   var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function fmtJd(d){if(!d)return '—';var p=d.split('-');return parseInt(p[2])+' '+mo[parseInt(p[1])-1]+' '+p[0];}
-  var html='<table class="dir-table"><thead><tr>'
-    +'<th class="dir-th">Name</th><th class="dir-th">City</th>'
-    +'<th class="dir-th">Phone</th><th class="dir-th">Joining Date</th><th class="dir-th">Active</th>'
+  var cityOpts=['BLR','NCR','HYD'];
+  function citySelect(id,cur){
+    return '<select id="'+id+'" style="'+_DIS+'">'+cityOpts.map(function(c){return '<option'+(cur===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>';
+  }
+
+  // Toolbar
+  var out='<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #F3F4F6">'
+    +'<span style="font-size:.75rem;color:#6B7280">'+_dirTechs.length+' technician'+(_dirTechs.length!==1?'s':'')+'</span>'
+    +(!_dirAddMode?'<button onclick="showDirAddForm()" style="'+_DSV+';padding:4px 12px">+ Add Tech</button>':'')
+    +'</div>';
+
+  out+='<div style="overflow-x:auto"><table class="dir-table"><thead><tr>'
+    +'<th class="dir-th">Name</th><th class="dir-th">City</th><th class="dir-th">Phone</th>'
+    +'<th class="dir-th">Emp ID</th><th class="dir-th">Joining Date</th>'
+    +'<th class="dir-th">Status</th><th class="dir-th" style="width:90px"></th>'
     +'</tr></thead><tbody>';
+
+  // Add-form row
+  if(_dirAddMode){
+    out+='<tr style="background:#F0FDF4">'
+      +'<td class="dir-td"><input type="text" id="dir-add-name" placeholder="Name *" style="'+_DIS+'"></td>'
+      +'<td class="dir-td">'+citySelect('dir-add-city','BLR')+'</td>'
+      +'<td class="dir-td"><input type="text" id="dir-add-phone" placeholder="Phone" style="'+_DIS+'"></td>'
+      +'<td class="dir-td"><input type="text" id="dir-add-empid" placeholder="Emp ID" style="'+_DIS+'"></td>'
+      +'<td class="dir-td"><input type="date" id="dir-add-jd" style="'+_DIS+'"></td>'
+      +'<td class="dir-td"><span style="font-size:.72rem;color:#16A34A">● Active</span></td>'
+      +'<td class="dir-td" style="white-space:nowrap">'
+        +'<button onclick="saveDirAdd()" style="'+_DSV+'">Add</button> '
+        +'<button onclick="cancelDirAdd()" style="'+_DCN+'">✕</button>'
+      +'</td></tr>';
+  }
+
+  // Existing rows
   _dirTechs.forEach(function(tech){
-    var jdFormatted=fmtJd(tech.joining_date);
-    html+='<tr>'
-      +'<td class="dir-td"><strong style="font-size:.8rem">'+tech.name+'</strong></td>'
-      +'<td class="dir-td">'+tech.city+'</td>'
-      +'<td class="dir-td" style="color:#6B7280">'+(tech.phone||'—')+'</td>'
-      +'<td class="dir-td">'
-        +'<span id="dir-jd-disp-'+tech.id+'" style="cursor:pointer;text-decoration:underline dotted;color:#4F46E5" title="Click to edit" onclick="editJoiningDate(\''+tech.id+'\',\''+( tech.joining_date||'')+'\')">'+jdFormatted+'</span>'
-        +'<span id="dir-jd-edit-'+tech.id+'" style="display:none;gap:4px;align-items:center">'
-          +'<input type="date" id="dir-jd-inp-'+tech.id+'" value="'+(tech.joining_date||'')+'" style="font-size:.75rem;border:1px solid #C7D2FE;border-radius:5px;padding:2px 5px;font-family:Inter,sans-serif;outline:none">'
-          +'<button onclick="saveJoiningDate(\''+tech.id+'\')" style="font-size:.7rem;padding:2px 7px;background:#6366F1;color:#fff;border:none;border-radius:5px;cursor:pointer">Save</button>'
-          +'<button onclick="cancelJoiningDateEdit(\''+tech.id+'\')" style="font-size:.7rem;padding:2px 6px;background:#F3F4F6;color:#374151;border:none;border-radius:5px;cursor:pointer">✕</button>'
-        +'</span>'
-      +'</td>'
-      +'<td class="dir-td">'+(tech.is_active?'<span style="color:#16A34A;font-size:.75rem">●  Active</span>':'<span style="color:#9CA3AF;font-size:.75rem">● Inactive</span>')+'</td>'
-      +'</tr>';
+    var isEdit=(tech.id===_dirEditId);
+    if(isEdit){
+      out+='<tr style="background:#EEF2FF">'
+        +'<td class="dir-td"><input type="text" id="dir-e-name-'+tech.id+'" value="'+_esc(tech.name)+'" style="'+_DIS+'"></td>'
+        +'<td class="dir-td">'+citySelect('dir-e-city-'+tech.id,tech.city)+'</td>'
+        +'<td class="dir-td"><input type="text" id="dir-e-phone-'+tech.id+'" value="'+_esc(tech.phone||'')+'" style="'+_DIS+'" placeholder="Phone"></td>'
+        +'<td class="dir-td"><input type="text" id="dir-e-empid-'+tech.id+'" value="'+_esc(tech.employee_id||'')+'" style="'+_DIS+'" placeholder="Emp ID"></td>'
+        +'<td class="dir-td"><input type="date" id="dir-e-jd-'+tech.id+'" value="'+(tech.joining_date||'')+'" style="'+_DIS+'"></td>'
+        +'<td class="dir-td"><span style="font-size:.72rem;color:'+(tech.is_active?'#16A34A':'#9CA3AF')+'">● '+(tech.is_active?'Active':'Inactive')+'</span></td>'
+        +'<td class="dir-td" style="white-space:nowrap">'
+          +'<button onclick="saveDirRow(\''+tech.id+'\')" style="'+_DSV+'">Save</button> '
+          +'<button onclick="cancelDirEdit()" style="'+_DCN+'">✕</button>'
+        +'</td></tr>';
+    }else{
+      var activeCls=tech.is_active?'color:#16A34A':'color:#9CA3AF';
+      out+='<tr>'
+        +'<td class="dir-td"><strong style="font-size:.8rem">'+_esc(tech.name)+'</strong></td>'
+        +'<td class="dir-td">'+_esc(tech.city||'')+'</td>'
+        +'<td class="dir-td" style="color:#6B7280">'+_esc(tech.phone||'—')+'</td>'
+        +'<td class="dir-td" style="color:#6B7280">'+_esc(tech.employee_id||'—')+'</td>'
+        +'<td class="dir-td">'+fmtJd(tech.joining_date)+'</td>'
+        +'<td class="dir-td">'
+          +'<button onclick="toggleDirActive(\''+tech.id+'\','+tech.is_active+')" title="Click to toggle" style="font-size:.7rem;padding:2px 8px;border-radius:5px;cursor:pointer;border:1px solid '+(tech.is_active?'#86EFAC':'#D1D5DB')+';background:'+(tech.is_active?'#F0FDF4':'#F9FAFB')+';'+activeCls+'">● '+(tech.is_active?'Active':'Inactive')+'</button>'
+        +'</td>'
+        +'<td class="dir-td">'
+          +'<button onclick="editDirRow(\''+tech.id+'\')" style="font-size:.7rem;padding:2px 10px;border-radius:5px;cursor:pointer;border:1px solid #E5E7EB;background:#F9FAFB;color:#374151">Edit</button>'
+        +'</td></tr>';
+    }
   });
-  html+='</tbody></table>';
-  document.getElementById('dir-table-wrap').innerHTML=html;
+  out+='</tbody></table></div>';
+  document.getElementById('dir-table-wrap').innerHTML=out;
+  if(_dirAddMode)setTimeout(function(){var el=document.getElementById('dir-add-name');if(el)el.focus();},30);
 }
-function editJoiningDate(techId,current){
-  var disp=document.getElementById('dir-jd-disp-'+techId);
-  var edit=document.getElementById('dir-jd-edit-'+techId);
-  if(disp)disp.style.display='none';
-  if(edit)edit.style.display='inline-flex';
+
+function showDirAddForm(){_dirAddMode=true;_dirEditId=null;renderDirectory();}
+function cancelDirAdd(){_dirAddMode=false;renderDirectory();}
+
+async function saveDirAdd(){
+  var name=(document.getElementById('dir-add-name')||{}).value||'';
+  if(!name.trim()){alert('Name is required');return;}
+  var body={name:name.trim(),
+    city:(document.getElementById('dir-add-city')||{}).value||'BLR',
+    phone:(document.getElementById('dir-add-phone')||{}).value.trim()||null,
+    employee_id:(document.getElementById('dir-add-empid')||{}).value.trim()||null,
+    joining_date:(document.getElementById('dir-add-jd')||{}).value||null,
+    is_active:true};
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var rows=await res.json();
+    if(rows&&rows[0]){_dirTechs.push(rows[0]);_rosterTechs.push(rows[0]);}
+    _dirAddMode=false;
+    renderDirectory();
+  }catch(e){alert('Add failed — please retry');}
 }
-function cancelJoiningDateEdit(techId){
-  var t=_dirTechs.find(function(x){return x.id===techId;});
-  var disp=document.getElementById('dir-jd-disp-'+techId);
-  var edit=document.getElementById('dir-jd-edit-'+techId);
-  if(edit)edit.style.display='none';
-  if(disp)disp.style.display='';
-}
-async function saveJoiningDate(techId){
-  var inp=document.getElementById('dir-jd-inp-'+techId);
-  if(!inp)return;
-  var val=inp.value||null;
+
+function editDirRow(techId){_dirEditId=techId;_dirAddMode=false;renderDirectory();}
+function cancelDirEdit(){_dirEditId=null;renderDirectory();}
+
+async function saveDirRow(techId){
+  var name=(document.getElementById('dir-e-name-'+techId)||{}).value||'';
+  if(!name.trim()){alert('Name is required');return;}
+  var body={name:name.trim(),
+    city:(document.getElementById('dir-e-city-'+techId)||{}).value||'BLR',
+    phone:(document.getElementById('dir-e-phone-'+techId)||{}).value.trim()||null,
+    employee_id:(document.getElementById('dir-e-empid-'+techId)||{}).value.trim()||null,
+    joining_date:(document.getElementById('dir-e-jd-'+techId)||{}).value||null};
   try{
     var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?id=eq.'+techId,{
       method:'PATCH',
       headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({joining_date:val})
+      body:JSON.stringify(body)
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
-    // Update local cache
     var t=_dirTechs.find(function(x){return x.id===techId;});
-    if(t)t.joining_date=val;
-    // Also update roster techs cache so NA logic picks up the change immediately
+    if(t)Object.assign(t,body);
     var rt=_rosterTechs.find(function(x){return x.id===techId;});
-    if(rt)rt.joining_date=val;
+    if(rt){rt.name=body.name;rt.city=body.city;rt.joining_date=body.joining_date;}
+    _dirEditId=null;
     renderDirectory();
   }catch(e){alert('Save failed — please retry');}
+}
+
+async function toggleDirActive(techId,isActive){
+  var nv=!isActive;
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?id=eq.'+techId,{
+      method:'PATCH',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({is_active:nv})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    var t=_dirTechs.find(function(x){return x.id===techId;});
+    if(t)t.is_active=nv;
+    renderDirectory();
+  }catch(e){alert('Toggle failed — please retry');}
 }
 
 // ── Vehicles tab ──
