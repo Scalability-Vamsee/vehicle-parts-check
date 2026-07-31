@@ -1831,7 +1831,7 @@ function editJoiningDate(techId,current){
   var disp=document.getElementById('dir-jd-disp-'+techId);
   var edit=document.getElementById('dir-jd-edit-'+techId);
   if(disp)disp.style.display='none';
-  if(edit){edit.style.display='flex';}
+  if(edit)edit.style.display='inline-flex';
 }
 function cancelJoiningDateEdit(techId){
   var t=_dirTechs.find(function(x){return x.id===techId;});
