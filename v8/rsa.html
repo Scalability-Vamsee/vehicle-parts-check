@@ -143,6 +143,21 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .view-tab-btn{padding:4px 13px;border-radius:7px;font-size:.74rem;font-weight:600;border:none;background:transparent;color:#6B7280;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap}
 .view-tab-btn.active{background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .view-tab-btn:hover:not(.active){color:#374151;background:rgba(255,255,255,.6)}
+/* Roster tab */
+.roster-sec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.roster-sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9CA3AF;margin-bottom:12px}
+.rtable{width:100%;border-collapse:collapse}
+.rtable th{text-align:center;padding:7px 6px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9CA3AF;border-bottom:1.5px solid var(--border);background:#F8FAFC}
+.rtable td{text-align:center;padding:5px 4px;border-bottom:1px solid #F3F4F6;vertical-align:middle}
+.rtable td:first-child{text-align:left;font-size:.8rem;font-weight:600;color:#1F2937;padding:6px 10px;min-width:120px}
+.rt-badge{display:inline-block;padding:2px 9px;border-radius:6px;font-size:.68rem;font-weight:700;cursor:pointer;border:1.5px solid;transition:opacity .15s;user-select:none}
+.rt-badge.w{background:#F0FDF4;border-color:#86EFAC;color:#16A34A}
+.rt-badge.off{background:#F3F4F6;border-color:#D1D5DB;color:#9CA3AF}
+.rt-badge:hover{opacity:.7}
+.ov-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F3F4F6}
+.ov-row:last-child{border-bottom:none}
+.ov-note{flex:1;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:.76rem;font-family:'Inter',sans-serif;outline:none;transition:opacity .15s}
+.ov-note:focus{border-color:#6366F1}
 /* Dashboard view */
 #dashboard-view{flex:1;overflow-y:auto;padding:16px;display:none;flex-direction:column;gap:14px;background:#F8FAFC}
 .dv-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
@@ -416,8 +431,26 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
         <button class="tp-btn" id="av-assign-btn" onclick="assignVehicle()">Assign</button>
       </div>
     </div>
-    <!-- Roster tab (stub) -->
-    <div id="at-body-roster" style="display:none;padding-top:40px;text-align:center;color:#9CA3AF;font-size:.85rem">Roster UI coming soon (RSA-2)</div>
+    <!-- Roster tab -->
+    <div id="at-body-roster" style="display:none">
+      <!-- Week navigation (for override section) -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <button class="tb-btn" onclick="rosterPrevWeek()">‹ Prev week</button>
+        <span id="roster-week-label" style="font-size:.78rem;font-weight:700;color:#0F172A;min-width:180px;text-align:center"></span>
+        <button class="tb-btn" onclick="rosterNextWeek()">Next week ›</button>
+        <button class="tb-btn" onclick="loadRosterTab(true)" style="margin-left:auto">↻ Refresh</button>
+      </div>
+      <!-- Template: default weekly pattern -->
+      <div class="roster-sec">
+        <div class="roster-sec-title">Default Weekly Pattern <span style="font-size:.63rem;font-weight:500;text-transform:none;letter-spacing:0;color:#9CA3AF">(click a cell to toggle W / W/O)</span></div>
+        <div id="roster-template-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:8px">Loading…</div></div>
+      </div>
+      <!-- Overrides: per-week leave -->
+      <div class="roster-sec">
+        <div class="roster-sec-title">Leave Override — selected week</div>
+        <div id="roster-override-wrap"><div style="color:#9CA3AF;font-size:.8rem;padding:8px">Loading…</div></div>
+      </div>
+    </div>
     <!-- Directory tab (stub) -->
     <div id="at-body-directory" style="display:none;padding-top:40px;text-align:center;color:#9CA3AF;font-size:.85rem">Tech directory coming soon</div>
   </div>
@@ -1480,6 +1513,158 @@ function switchAdminTab(tab){
     if(bd)bd.style.display=t===tab?(t==='vehicles'?'flex':'block'):'none';
   });
   if(tab==='vehicles')loadAdminVehicles();
+  if(tab==='roster')loadRosterTab();
+}
+
+// ── Roster tab ──
+var _rosterTemplate=[];   // [{id,tech_id,day_of_week,is_working}]
+var _rosterOverrides=[];  // [{id,tech_id,is_on_leave,note}] for selected week
+var _rosterWeekStart=''; // YYYY-MM-DD (Monday)
+var _rosterTechs=[];     // [{id,name,city}]
+var _ROSTER_DAYS=[{d:1,l:'Mon'},{d:2,l:'Tue'},{d:3,l:'Wed'},{d:4,l:'Thu'},{d:5,l:'Fri'},{d:6,l:'Sat'},{d:0,l:'Sun'}];
+
+function _fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _getMondayStr(d){var day=d.getDay(),diff=day===0?-6:1-day,m=new Date(d);m.setDate(d.getDate()+diff);return _fmtDate(m);}
+function _rosterWeekLabel(mon){
+  var p=mon.split('-'),m=new Date(+p[0],+p[1]-1,+p[2]),sun=new Date(m);sun.setDate(sun.getDate()+6);
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return m.getDate()+' '+mo[m.getMonth()]+' – '+sun.getDate()+' '+mo[sun.getMonth()]+' '+sun.getFullYear();
+}
+
+async function loadRosterTab(force){
+  if(!K||K===ANON_KEY)return;
+  if(!_rosterWeekStart)_rosterWeekStart=_getMondayStr(new Date());
+  document.getElementById('roster-week-label').textContent=_rosterWeekLabel(_rosterWeekStart);
+  var h={apikey:ANON_KEY,Authorization:'Bearer '+K};
+  // Load techs (once)
+  if(!_rosterTechs.length||force){
+    try{var r=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city&is_active=eq.true&order=city,name',{headers:h});_rosterTechs=r.ok?await r.json():[];}
+    catch(e){_rosterTechs=[];}
+  }
+  // Load template (once, unless force)
+  var tplLoad=(_rosterTemplate.length&&!force)
+    ?Promise.resolve()
+    :fetch(SB_URL+'/rest/v1/rsa_roster_template?select=id,tech_id,day_of_week,is_working&order=tech_id,day_of_week',{headers:h})
+       .then(function(r){return r.ok?r.json():[];}).then(function(d){_rosterTemplate=d;}).catch(function(){_rosterTemplate=[];});
+  // Load overrides for current week (always fresh)
+  var ovLoad=fetch(SB_URL+'/rest/v1/rsa_roster_overrides?select=id,tech_id,is_on_leave,note&week_start=eq.'+_rosterWeekStart,{headers:h})
+    .then(function(r){return r.ok?r.json():[];}).then(function(d){_rosterOverrides=d;}).catch(function(){_rosterOverrides=[];});
+  await Promise.all([tplLoad,ovLoad]);
+  renderRosterTemplate();
+  renderRosterOverrides();
+}
+
+function renderRosterTemplate(){
+  var techs=_rosterTechs.filter(function(t){return t.city!=='HO';});
+  var html='<table class="rtable"><thead><tr><th style="text-align:left;padding:7px 10px">Tech</th>';
+  _ROSTER_DAYS.forEach(function(d){html+='<th>'+d.l+'</th>';});
+  html+='</tr></thead><tbody>';
+  techs.forEach(function(tech){
+    html+='<tr><td>'+tech.name+'<span style="font-size:.65rem;color:#9CA3AF;margin-left:5px">'+tech.city+'</span></td>';
+    _ROSTER_DAYS.forEach(function(day){
+      var entry=_rosterTemplate.find(function(r){return r.tech_id===tech.id&&r.day_of_week===day.d;});
+      var iw=entry?entry.is_working:true;
+      var eid=entry&&entry.id?entry.id:'null';
+      html+='<td><span class="rt-badge '+(iw?'w':'off')+'" onclick="toggleTemplateDay(\''+tech.id+'\','+day.d+',\''+eid+'\')">'+(iw?'W':'W/O')+'</span></td>';
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('roster-template-wrap').innerHTML=html;
+}
+
+async function toggleTemplateDay(techId,dow,entryId){
+  var entry=_rosterTemplate.find(function(r){return r.tech_id===techId&&r.day_of_week===dow;});
+  var cur=entry?entry.is_working:true;
+  var nv=!cur;
+  // Optimistic update
+  if(entry)entry.is_working=nv;
+  else _rosterTemplate.push({id:null,tech_id:techId,day_of_week:dow,is_working:nv});
+  renderRosterTemplate();
+  try{
+    var h={apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json'};
+    if(entryId&&entryId!=='null'){
+      await fetch(SB_URL+'/rest/v1/rsa_roster_template?id=eq.'+entryId,
+        {method:'PATCH',headers:Object.assign({},h,{'Prefer':'return=minimal'}),
+         body:JSON.stringify({is_working:nv,updated_at:new Date().toISOString()})});
+    }else{
+      var res=await fetch(SB_URL+'/rest/v1/rsa_roster_template',
+        {method:'POST',headers:Object.assign({},h,{'Prefer':'return=representation'}),
+         body:JSON.stringify({tech_id:techId,day_of_week:dow,is_working:nv})});
+      if(res.ok){
+        var rows=await res.json();
+        if(rows&&rows[0]){
+          var idx=_rosterTemplate.findIndex(function(r){return r.tech_id===techId&&r.day_of_week===dow;});
+          if(idx>=0)_rosterTemplate[idx].id=rows[0].id;
+          renderRosterTemplate(); // re-render to bind real ID to onclick
+        }
+      }
+    }
+  }catch(e){
+    // Roll back
+    if(entry)entry.is_working=cur;
+    else _rosterTemplate=_rosterTemplate.filter(function(r){return !(r.tech_id===techId&&r.day_of_week===dow);});
+    renderRosterTemplate();
+    alert('Save failed — please retry');
+  }
+}
+
+function renderRosterOverrides(){
+  var html='';
+  _rosterTechs.forEach(function(tech){
+    var ov=_rosterOverrides.find(function(r){return r.tech_id===tech.id;})||{};
+    var il=ov.is_on_leave||false;
+    var note=(ov.note||'').replace(/"/g,'&quot;');
+    html+='<div class="ov-row">'
+      +'<span style="font-size:.8rem;font-weight:600;color:#1F2937;width:130px;flex-shrink:0">'+tech.name+'</span>'
+      +'<span style="font-size:.65rem;color:#9CA3AF;width:32px;flex-shrink:0">'+tech.city+'</span>'
+      +'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.76rem;color:#374151;white-space:nowrap">'
+      +'<input type="checkbox" id="ov-chk-'+tech.id+'" style="accent-color:#6366F1;width:14px;height:14px"'+(il?' checked':'')
+      +' onchange="upsertRosterOverride(\''+tech.id+'\')"> On Leave</label>'
+      +'<input type="text" class="ov-note" id="ov-note-'+tech.id+'" placeholder="Note (optional)" value="'+note
+      +'" style="opacity:'+(il?'1':'0.3')+'" onblur="upsertRosterOverride(\''+tech.id+'\')">'
+      +'</div>';
+  });
+  document.getElementById('roster-override-wrap').innerHTML=html
+    ||'<div style="color:#9CA3AF;font-size:.8rem;padding:8px">No techs found</div>';
+}
+
+async function upsertRosterOverride(techId){
+  var chk=document.getElementById('ov-chk-'+techId);
+  var noteEl=document.getElementById('ov-note-'+techId);
+  if(!chk)return;
+  var il=chk.checked;
+  var note=(noteEl?noteEl.value.trim():'')||null;
+  if(noteEl)noteEl.style.opacity=il?'1':'0.3';
+  try{
+    await fetch(SB_URL+'/rest/v1/rsa_roster_overrides',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json',
+               'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({tech_id:techId,week_start:_rosterWeekStart,is_on_leave:il,note:note})
+    });
+    var idx=_rosterOverrides.findIndex(function(r){return r.tech_id===techId;});
+    if(idx>=0){_rosterOverrides[idx].is_on_leave=il;_rosterOverrides[idx].note=note||'';}
+    else _rosterOverrides.push({tech_id:techId,week_start:_rosterWeekStart,is_on_leave:il,note:note||''});
+  }catch(e){console.warn('[roster] override save error:',e);}
+}
+
+function rosterPrevWeek(){
+  var p=_rosterWeekStart.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);
+  d.setDate(d.getDate()-7);_rosterWeekStart=_fmtDate(d);_rosterOverrides=[];
+  document.getElementById('roster-week-label').textContent=_rosterWeekLabel(_rosterWeekStart);
+  fetch(SB_URL+'/rest/v1/rsa_roster_overrides?select=id,tech_id,is_on_leave,note&week_start=eq.'+_rosterWeekStart,
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.ok?r.json():[]; }).then(function(d){_rosterOverrides=d;renderRosterOverrides();}).catch(function(){renderRosterOverrides();});
+}
+
+function rosterNextWeek(){
+  var p=_rosterWeekStart.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);
+  d.setDate(d.getDate()+7);_rosterWeekStart=_fmtDate(d);_rosterOverrides=[];
+  document.getElementById('roster-week-label').textContent=_rosterWeekLabel(_rosterWeekStart);
+  fetch(SB_URL+'/rest/v1/rsa_roster_overrides?select=id,tech_id,is_on_leave,note&week_start=eq.'+_rosterWeekStart,
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.ok?r.json():[]; }).then(function(d){_rosterOverrides=d;renderRosterOverrides();}).catch(function(){renderRosterOverrides();});
 }
 
 // ── Vehicles tab ──
