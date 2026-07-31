@@ -720,12 +720,38 @@ var RSA_BIKES=[];
 async function loadRsaBikes(){
   if(!K||K===ANON_KEY)return;
   try{
-    var res=await fetch(SB_URL+'/rest/v1/rsa_vehicle_assignments?select=chassis_number,reg_number,rsa_technicians(name)&is_active=eq.true',
+    var res=await fetch(SB_URL+'/rest/v1/rsa_vehicle_assignments?select=chassis_number,reg_number,tech_id,rsa_technicians(id,name)&is_active=eq.true',
       {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     if(!res.ok)return;
     var rows=await res.json();
     RSA_BIKES=(Array.isArray(rows)?rows:[]).map(function(r){
-      return {chassis:r.chassis_number,name:(r.rsa_technicians&&r.rsa_technicians.name)||r.chassis_number,reg:r.reg_number||null};
+      return {
+        chassis:r.chassis_number,
+        name:(r.rsa_technicians&&r.rsa_technicians.name)||r.chassis_number,
+        reg:r.reg_number||null,
+        techId:r.tech_id||(r.rsa_technicians&&r.rsa_technicians.id)||null,
+        offDuty:false
+      };
+    });
+    // Check today's roster: override takes priority, then weekly template
+    var today=new Date().toLocaleDateString('en-CA');
+    var dow=new Date().getDay(); // 0=Sun…6=Sat
+    var overrides={},template={};
+    try{
+      var r2=await fetch(SB_URL+'/rest/v1/rsa_day_overrides?override_date=eq.'+today+'&select=tech_id,status',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+      if(r2.ok)(await r2.json()||[]).forEach(function(o){overrides[o.tech_id]=o.status;});
+      var r3=await fetch(SB_URL+'/rest/v1/rsa_roster_template?day_of_week=eq.'+dow+'&select=tech_id,is_working',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+      if(r3.ok)(await r3.json()||[]).forEach(function(t){template[t.tech_id]=t.is_working;});
+    }catch(_){}
+    RSA_BIKES.forEach(function(b){
+      if(!b.techId)return;
+      if(overrides.hasOwnProperty(b.techId)){
+        b.offDuty=(overrides[b.techId]!=='W'); // W/O or Leave → hide
+      }else if(template.hasOwnProperty(b.techId)){
+        b.offDuty=!template[b.techId]; // is_working=false → hide
+      }
     });
   }catch(e){console.warn('[rsa] RSA bikes load error:',e);}
 }
@@ -1291,6 +1317,7 @@ async function loadRsaLocations(){
     rows.forEach(function(b,idx){
       if(!b.lat||!b.lng)return;
       var info=RSA_BIKES.find(function(r){return r.chassis===b.chassis_number;})||{};
+      if(info.offDuty)return; // W/O or Leave today — hide from map
       var name=info.name||b.chassis_number;
       var pingTs=b.baas_location_time?b.baas_location_time.replace(' ','T').replace(/(Z|[+-]\d{2}(:?\d{2})?)$/,'')+'Z':null;
       var pingStr=pingTs?new Date(pingTs).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}):'--';
