@@ -589,16 +589,20 @@ var _lastCitySel=null;
 var _gpsMode='ticket'; // 'ticket' = Bass_Lat from Metabase | 'live' = bike_location_cache
 var _liveGpsMap={}; // reg_number → {lat,lng,ts}
 
-// RSA team
-var RSA_BIKES=[
-  {chassis:'P6EBE1JYK25000288',name:'Nishanth'},
-  {chassis:'P6EBE1JYK25000072',name:'Pavan'},
-  {chassis:'P6EBE1JYH25000416',name:'Bhoja'},
-  {chassis:'P6EBE1RYG25000038',name:'Akhil'},
-  {chassis:'P6EBE1FCM24000029',name:'Nagendra'},
-  {chassis:'P6EBE1RCL24000005',name:'Tara Chand'},
-  {chassis:'P6EBE1PBC26000599',name:'Karan Luitel'}
-];
+// RSA team bikes — loaded from rsa_vehicle_assignments (DB-driven; admin panel is source of truth)
+var RSA_BIKES=[];
+async function loadRsaBikes(){
+  if(!K||K===ANON_KEY)return;
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/rsa_vehicle_assignments?select=chassis_number,reg_number,rsa_technicians(name)&is_active=eq.true',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    if(!res.ok)return;
+    var rows=await res.json();
+    RSA_BIKES=(Array.isArray(rows)?rows:[]).map(function(r){
+      return {chassis:r.chassis_number,name:(r.rsa_technicians&&r.rsa_technicians.name)||r.chassis_number,reg:r.reg_number||null};
+    });
+  }catch(e){console.warn('[rsa] RSA bikes load error:',e);}
+}
 
 // ── GPS mode toggle ──
 // 'ticket' = Bass_Lat/Bass_Lng stored at ticket sync time
@@ -1586,7 +1590,7 @@ async function loadAndApplyPermissions(userId){
     _authReady=true;
     loadAndApplyPermissions(session.user.id);
     // No triggerSync on load — cron handles every 2 min; only manual Refresh triggers sync
-    setTimeout(function(){fetchAndLoad(false);loadRsaLocations();loadHubs();},800);
+    setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
   }else{_authReady=true;showAuthScreen();}
 
   sbClient.auth.onAuthStateChange(async function(event,session){
@@ -1597,7 +1601,7 @@ async function loadAndApplyPermissions(userId){
       document.getElementById('logout-btn').style.display='block';
       _authReady=true;
       loadAndApplyPermissions(session.user.id);
-      setTimeout(function(){fetchAndLoad(false);loadRsaLocations();loadHubs();},800);
+      setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
     }else if(event==='SIGNED_OUT'){
       K=ANON_KEY;
       showAuthScreen();
