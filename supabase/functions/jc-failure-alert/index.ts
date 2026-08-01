@@ -149,5 +149,5 @@ Deno.serve(async () => {
     newFailures.map(r => ({ job_card_id: parseInt(r.id), status: r.status }))
   );
 
-  return new Response(`Alerted: ${newFailures.length} failures (${intripCount} in-trip)`, { status: 200 });
+  return new Response(`Alerted: ${newFailures.length} failures (${intripCount} running repair)`, { status: 200 });
 });
