@@ -476,8 +476,8 @@ async function loadTopIndofastStations(){
         +'<div style="font-size:11px;color:#6B7280;margin-bottom:8px">'+s.short_address+' · '+s.cabinets+' cabinets · '+s.city+'</div>'
         +(s.stat_date
           ?'<div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Yesterday ('+dateStr+')</div>'
-           +'<div style="font-size:12px;margin-bottom:2px">🔋 Total swaps: <b>'+s.total_bikes_visited+'</b></div>'
-           +'<div style="font-size:12px">🏠 Home bikes: <b>'+s.home_bikes+'</b>'
+           +'<div style="font-size:12px;margin-bottom:2px">⚡ Unique Bikes: <b>'+s.total_bikes_visited+'</b></div>'
+           +'<div style="font-size:12px">📍 Primary here: <b>'+s.home_bikes+'</b>'
            +(pct?' <span style="color:'+(pct>=70?'#16a34a':'#D97706')+';">('+pct+'%)</span>':'')+'</div>'
           :'<div style="font-size:11px;color:#9CA3AF">Stats sync at 8 AM daily</div>')
         +'</div>';
