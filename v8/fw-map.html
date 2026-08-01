@@ -703,10 +703,10 @@ function applyPending(pending,fromCache,cacheTs){
   var withRider=pending.filter(function(b){return b.rider_phone;}).length;
   if(fromCache&&cacheTs){
     var age=Math.round((Date.now()-cacheTs)/60000);
-    document.getElementById('updated-at').textContent='Cached '+(age<1?'just now':age+'m ago');
+    document.getElementById('updated-at').textContent='Data as of '+(age<1?'just now':age+'m ago');
   }else{
     var now=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
-    document.getElementById('updated-at').textContent='Updated '+now+(withRider?' ('+withRider+' with rider)':'');
+    document.getElementById('updated-at').textContent='Data as of '+now+(withRider?' ('+withRider+' with rider)':'');
   }
 }
 

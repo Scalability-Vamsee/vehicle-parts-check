@@ -124,6 +124,102 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 #pwa-install-bar.show{display:flex;}
 #pwa-install-btn{background:#E8191C;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
 #pwa-install-dismiss{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem;margin-left:auto;flex-shrink:0;padding:0 4px;}
+
+/* ── City bar (Tickets panel, browser-only) ── */
+.city-bar{display:flex;gap:8px;margin-bottom:12px;}
+.city-btn{flex:1;padding:9px 0;border:1.5px solid var(--border);border-radius:10px;background:#fff;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .12s;}
+.city-btn.active{background:var(--dark);color:#fff;border-color:var(--dark);}
+
+/* ── Ticket alert banner ── */
+.tk-alert{background:#FEF3C7;border:1px solid #F59E0B;border-radius:12px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;animation:pulse-border 1.5s ease-in-out 3;}
+@keyframes pulse-border{0%,100%{box-shadow:none;}50%{box-shadow:0 0 0 3px rgba(245,158,11,.3);}}
+.tk-alert-text{flex:1;font-size:.82rem;font-weight:700;color:#92400E;}
+.tk-alert-close{background:none;border:none;cursor:pointer;color:#92400E;font-size:1rem;padding:0 2px;}
+
+/* ── Ticket subtabs ── */
+.subtab-bar{display:flex;background:#F9FAFB;border-bottom:1px solid var(--border);margin:-14px -14px 14px;flex-shrink:0;}
+.subtab{flex:1;padding:10px 4px;text-align:center;font-size:.72rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;position:relative;}
+.subtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.stbadge{display:inline-block;background:var(--red);color:#fff;font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle;min-width:16px;text-align:center;}
+
+/* ── Ticket card ── */
+.tkt-card{background:var(--card);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;}
+.tkt-card.active-ticket{border-color:var(--accent);box-shadow:0 0 0 2px rgba(59,130,246,.12);}
+.tkt-card.pending-card{border-left:4px solid var(--amber);}
+.tkt-card.done-card{opacity:.75;}
+.tkt-header{padding:12px 14px 8px;display:flex;align-items:flex-start;gap:6px;}
+.tkt-info{flex:1;min-width:0;}
+.tkt-num{font-size:.62rem;font-weight:700;color:var(--muted);margin-bottom:2px;display:flex;align-items:center;gap:6px;}
+.tkt-cat{font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tkt-age{font-size:.62rem;color:var(--muted);white-space:nowrap;text-align:right;}
+.dist-badge{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+.dist-badge.near{background:#DCFCE7;color:#15803D;}
+.dist-badge.far{background:#F3F4F6;color:var(--muted);}
+.tkt-meta{display:flex;gap:8px;flex-wrap:wrap;padding:0 14px 8px;font-size:.72rem;color:var(--muted);}
+.tkt-meta b{color:var(--text);}
+.tkt-fault{font-size:.75rem;color:#374151;padding:8px 14px;border-top:1px solid #F3F4F6;line-height:1.4;}
+
+/* ── Step progress ── */
+.step-bar{padding:10px 14px 0;display:flex;align-items:center;}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;}
+.step-dot.done{background:#16A34A;color:#fff;}
+.step-dot.curr{background:var(--accent);color:#fff;box-shadow:0 0 0 3px rgba(59,130,246,.22);}
+.step-dot.todo{background:#E5E7EB;color:#9CA3AF;}
+.step-line{flex:1;height:2px;background:#E5E7EB;}
+.step-line.done{background:#16A34A;}
+.step-labels{padding:3px 14px 8px;display:flex;justify-content:space-between;font-size:.56rem;color:var(--muted);}
+
+/* ── Elapsed timer ── */
+.tkt-timer{padding:4px 14px 8px;font-size:.72rem;font-weight:700;display:flex;align-items:center;gap:5px;}
+.tkt-timer.ok{color:var(--accent);}
+.tkt-timer.warn{color:var(--amber);}
+.tkt-timer.urgent{color:var(--red);}
+
+/* ── Ticket action buttons ── */
+.tkt-actions{padding:0 14px 14px;display:flex;flex-direction:column;gap:7px;}
+.tkt-btn{width:100%;padding:14px;font-size:.9rem;font-weight:700;border:none;border-radius:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .12s;}
+.tkt-btn:active{opacity:.82;}
+.tkt-btn.primary{background:var(--accent);color:#fff;}
+.tkt-btn.green{background:#16A34A;color:#fff;}
+.tkt-btn.red-btn{background:var(--red);color:#fff;}
+.tkt-btn.amber-btn{background:var(--amber);color:#fff;}
+.tkt-btn.outline{background:#F3F4F6;color:var(--text);border:1.5px solid var(--border);}
+.tkt-btn:disabled{opacity:.38;cursor:not-allowed;}
+.tkt-btn.near-glow{box-shadow:0 0 0 3px rgba(22,163,74,.3);}
+
+/* ── Home ticket summary card ── */
+.htkt-active{border-left:4px solid var(--accent);}
+.htkt-reg{font-size:1rem;font-weight:800;}
+.htkt-state{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);}
+.htkt-elapsed{font-size:.68rem;color:var(--muted);margin-top:2px;}
+.htkt-queue{display:flex;align-items:center;gap:12px;padding:6px 0;}
+.htkt-qnum{font-size:1.8rem;font-weight:800;color:var(--amber);line-height:1;}
+.htkt-qinfo{flex:1;}
+.htkt-qlabel{font-size:.8rem;font-weight:700;}
+.htkt-qsub{font-size:.68rem;color:var(--muted);}
+.htkt-link{font-size:.78rem;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;padding:8px 0 0;display:block;width:100%;text-align:left;}
+
+/* ── Photo modal ── */
+#photo-modal{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9500;display:none;align-items:flex-end;}
+#photo-modal.show{display:flex;}
+.photo-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:500px;margin:0 auto;}
+.photo-sheet h3{font-size:1rem;font-weight:800;margin-bottom:4px;}
+.photo-req{font-size:.72rem;color:var(--muted);margin-bottom:14px;}
+.photo-preview{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.photo-thumb{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1.5px solid var(--border);}
+.photo-add{width:72px;height:72px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;background:#F9FAFB;color:var(--muted);}
+
+/* ── End work modal ── */
+#end-modal,#transfer-modal{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9500;display:none;align-items:flex-end;}
+#end-modal.show,#transfer-modal.show{display:flex;}
+.end-sheet,.transfer-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-width:500px;margin:0 auto;max-height:88vh;overflow-y:auto;}
+.end-sheet h3,.transfer-sheet h3{font-size:1rem;font-weight:800;margin-bottom:14px;}
+.disp-option{display:flex;align-items:center;gap:12px;padding:11px 14px;border:1.5px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:all .1s;}
+.disp-option.selected{border-color:var(--accent);background:#EFF6FF;}
+.disp-label{font-size:.85rem;font-weight:600;}
+.modal-notes{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:12px;font-size:.85rem;margin-top:10px;font-family:inherit;min-height:64px;resize:none;outline:none;background:#F9FAFB;}
+.modal-notes:focus{border-color:var(--accent);background:#fff;}
+.modal-sel{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:13px 14px;font-size:.88rem;font-family:inherit;background:#F9FAFB;margin-bottom:10px;outline:none;-webkit-appearance:none;}
 </style>
 </head>
 <body>
@@ -180,7 +276,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <!-- ── Tab bar ── -->
 <div id="tabs">
   <div class="tab active" id="tab-home" onclick="switchTab('home')">🏠 Home</div>
-  <div class="tab disabled" id="tab-tickets" title="Coming — RSA-8">🎫 Tickets</div>
+  <div class="tab" id="tab-tickets" onclick="switchTab('tickets')">🎫 Tickets<span id="tab-tk-badge" style="display:none;margin-left:5px;background:#E8191C;color:#fff;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:10px;vertical-align:middle"></span></div>
   <div class="tab disabled" id="tab-fw" title="Coming — RSA-9">📡 FW Map</div>
 </div>
 
@@ -230,9 +326,98 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <div id="log-entries"><div class="log-empty">No duty activity today</div></div>
     </div>
 
+    <!-- My Tickets summary (active + queue) -->
+    <div class="card" id="home-tkt-card" style="display:none">
+      <div class="card-title">My Tickets</div>
+      <div id="home-tkt-content"><div class="log-empty" style="padding:8px 0">Loading…</div></div>
+    </div>
+
   </div><!-- /panel-home -->
 
+  <!-- ── Tickets panel ── -->
+  <div class="panel" id="panel-tickets">
+
+    <!-- City bar: visible in browser, hidden in standalone PWA -->
+    <div class="city-bar" id="tk-city-bar" style="display:none">
+      <button class="city-btn active" id="cb-blr" onclick="setTicketCity('BLR')">🌆 BLR</button>
+      <button class="city-btn" id="cb-ncr" onclick="setTicketCity('NCR')">🏙️ NCR</button>
+    </div>
+
+    <!-- New-ticket alert banner -->
+    <div class="tk-alert" id="tk-alert" style="display:none">
+      <span class="tk-alert-text" id="tk-alert-text">🔔 New ticket assigned!</span>
+      <button class="tk-alert-close" onclick="document.getElementById('tk-alert').style.display='none'">✕</button>
+    </div>
+
+    <!-- Subtabs: Pending / In Progress / Completed -->
+    <div class="subtab-bar">
+      <div class="subtab active" id="st-pending"    onclick="switchSubtab('pending')">Pending<span class="stbadge" id="sbadge-pending" style="display:none"></span></div>
+      <div class="subtab"        id="st-inprogress" onclick="switchSubtab('inprogress')">In Progress<span class="stbadge" id="sbadge-inprogress" style="display:none"></span></div>
+      <div class="subtab"        id="st-completed"  onclick="switchSubtab('completed')">Completed</div>
+    </div>
+
+    <div id="sub-pending"><div class="log-empty">Loading…</div></div>
+    <div id="sub-inprogress" style="display:none"></div>
+    <div id="sub-completed"  style="display:none"></div>
+
+  </div><!-- /panel-tickets -->
+
 </div><!-- /panels -->
+
+<!-- ── Photo upload modal ── -->
+<div id="photo-modal">
+  <div class="photo-sheet">
+    <h3 id="pm-title">Upload Evidence</h3>
+    <div class="photo-req" id="pm-req">At least 1 photo required</div>
+    <div class="photo-preview" id="pm-thumbs">
+      <div class="photo-add" onclick="document.getElementById('pm-file').click()">+</div>
+    </div>
+    <input type="file" id="pm-file" accept="image/*" style="display:none" onchange="onPhotoSelect(this)"/>
+    <button class="tkt-btn outline" style="margin-bottom:8px" onclick="document.getElementById('pm-file').click()">📷 Add Photo</button>
+    <button class="tkt-btn green" id="pm-submit" onclick="submitPhotos()">✅ Done</button>
+    <button class="tkt-btn outline" id="pm-skip" onclick="skipPhotos()" style="margin-top:6px">Skip (no photos)</button>
+  </div>
+</div>
+
+<!-- ── End work modal ── -->
+<div id="end-modal">
+  <div class="end-sheet">
+    <h3>End Work — Outcome</h3>
+    <div class="disp-option" data-value="fixed" onclick="selectDisp(this)">
+      <span class="disp-label">✅ Fixed — Bike resolved</span>
+    </div>
+    <div class="disp-option" data-value="parts_needed" onclick="selectDisp(this)">
+      <span class="disp-label">🔩 Parts Required</span>
+    </div>
+    <div class="disp-option" data-value="workshop" onclick="selectDisp(this)">
+      <span class="disp-label">🏭 Workshop Transfer</span>
+    </div>
+    <div class="disp-option" data-value="customer_issue" onclick="selectDisp(this)">
+      <span class="disp-label">👤 Customer Issue</span>
+    </div>
+    <textarea class="modal-notes" id="em-notes" placeholder="Notes (optional)"></textarea>
+    <button class="tkt-btn green" style="margin-top:14px" onclick="submitEndWork()">Next → Add Photos</button>
+    <button class="tkt-btn outline" style="margin-top:8px" onclick="document.getElementById('end-modal').classList.remove('show')">Cancel</button>
+  </div>
+</div>
+
+<!-- ── Transfer to HO modal ── -->
+<div id="transfer-modal">
+  <div class="transfer-sheet">
+    <h3>↗ Transfer to HO Team</h3>
+    <div style="font-size:.76rem;color:var(--muted);margin-bottom:14px">HO will reassign to another tech or book a porter to the nearest hub.</div>
+    <select class="modal-sel" id="tm-reason">
+      <option value="">Select reason…</option>
+      <option value="porter_needed">Porter / Pickup needed</option>
+      <option value="parts_unavailable">Parts not available roadside</option>
+      <option value="safety_issue">Safety issue — can't fix here</option>
+      <option value="cant_fix">Issue beyond current scope</option>
+    </select>
+    <textarea class="modal-notes" id="tm-notes" placeholder="Notes for HO team…"></textarea>
+    <button class="tkt-btn amber-btn" style="margin-top:14px" onclick="submitTransfer()">↗ Transfer</button>
+    <button class="tkt-btn outline" style="margin-top:8px" onclick="document.getElementById('transfer-modal').classList.remove('show')">Cancel</button>
+  </div>
+</div>
 
 <!-- ── Toast ── -->
 <div id="toast"></div>
@@ -321,9 +506,13 @@ async function sendMagicLink(){
 document.getElementById('auth-email').addEventListener('keydown',function(e){if(e.key==='Enter')sendMagicLink();});
 
 async function signOut(){
+  sendSwMessage({type:'CLEAR_AUTH'});
+  stopLocationTracking();
+  if(_ticketSubChannel){sb.removeChannel(_ticketSubChannel);_ticketSubChannel=null;}
   stopGPS();
   await sb.auth.signOut();
   _currentUserId=null;_techRecord=null;_dutyLog=[];_onDuty=false;
+  _myTickets=[];_ticketEventsCache={};_activeTicket=null;
   document.getElementById('logout-btn').style.display='none';
   document.getElementById('auth-screen').classList.add('show');
   document.getElementById('tb-hub').textContent='';
@@ -331,6 +520,7 @@ async function signOut(){
   document.getElementById('hub-card').style.display='none';
   document.getElementById('duty-card').style.display='none';
   document.getElementById('log-card').style.display='none';
+  document.getElementById('home-tkt-card').style.display='none';
   showAuthForm();
 }
 
@@ -399,6 +589,13 @@ async function initTechPWA(){
   renderTechCard();
   renderDutyCard();
   renderDutyLog();
+  // Tickets tab init
+  initTicketCity();
+  await loadMyTickets();
+  subscribeTickets();
+  startLocationTracking();
+  sendSwMessage({type:'SET_AUTH',token:K,techName:_techRecord?_techRecord.name:''});
+  if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
 }
 
 async function loadTechRecord(){
@@ -562,6 +759,680 @@ async function toggleDuty(){
   }
   renderDutyCard();
   renderDutyLog();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RSA-8 — Tickets tab
+// ════════════════════════════════════════════════════════════════════
+
+// State
+var _isPWA=window.matchMedia('(display-mode: standalone)').matches||!!window.navigator.standalone;
+var _ticketCity=null;
+var _myTickets=[];
+var _ticketEventsCache={}; // ticket_number → [{event_type,created_at,...}]
+var _activeTicket=null;    // the one ticket currently in-progress (accepted→working)
+var _ticketSubtab='pending';
+var _ticketSubChannel=null;
+var _locInterval=null;
+var _LOC_ACTIVE=10000;  // 10s when foreground
+var _LOC_BG=60000;      // 60s when backgrounded
+var _pendingPhotoUrls=[];
+var _photoCallback=null;
+var _photoRequired=false;
+var _endModalTktNo=null;
+var _transferModalTktNo=null;
+var _timerTick=null;
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+function haversineM(lat1,lng1,lat2,lng2){
+  var R=6371000,d2r=Math.PI/180;
+  var dLat=(lat2-lat1)*d2r, dLng=(lng2-lng1)*d2r;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)
+    +Math.cos(lat1*d2r)*Math.cos(lat2*d2r)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function elapsedStr(isoTs){
+  if(!isoTs)return '';
+  var m=Math.floor((Date.now()-new Date(isoTs).getTime())/60000);
+  if(m<1)return '<1m';
+  if(m<60)return m+'m';
+  var h=Math.floor(m/60);
+  return h+'h '+(m%60)+'m';
+}
+
+function distStr(m){
+  if(m==null)return null;
+  return m<1000?Math.round(m)+'m':(m/1000).toFixed(1)+'km';
+}
+
+function ticketAgeStr(isoTs){
+  if(!isoTs)return '';
+  return elapsedStr(isoTs)+' ago';
+}
+
+function playBuzzer(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type='square';
+    osc.frequency.setValueAtTime(660,ctx.currentTime);
+    osc.frequency.setValueAtTime(880,ctx.currentTime+0.15);
+    osc.frequency.setValueAtTime(660,ctx.currentTime+0.3);
+    gain.gain.setValueAtTime(0.22,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+    osc.start(); osc.stop(ctx.currentTime+0.5);
+  }catch(e){}
+}
+
+function playConfirmTone(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type='sine'; osc.frequency.value=880;
+    gain.gain.setValueAtTime(0.15,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.25);
+    osc.start(); osc.stop(ctx.currentTime+0.25);
+  }catch(e){}
+}
+
+function sendSwMessage(msg){
+  if('serviceWorker' in navigator&&navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage(msg);
+  }
+}
+
+// ── City / PWA mode ──────────────────────────────────────────────────
+
+function initTicketCity(){
+  if(_isPWA){
+    _ticketCity=_techRecord?(_techRecord.city||'BLR'):'BLR';
+    document.getElementById('tk-city-bar').style.display='none';
+  }else{
+    var techCity=_techRecord?_techRecord.city:null;
+    _ticketCity=null; // show all (or default to tech city)
+    document.getElementById('tk-city-bar').style.display='flex';
+    if(techCity)setTicketCity(techCity,false);
+    else setTicketCity('BLR',false);
+  }
+}
+
+function setTicketCity(city,reload){
+  _ticketCity=city;
+  document.querySelectorAll('.city-btn').forEach(function(b){
+    b.classList.toggle('active',b.id==='cb-'+city.toLowerCase());
+  });
+  if(reload!==false)loadMyTickets();
+}
+
+// ── Ticket data ──────────────────────────────────────────────────────
+
+async function loadMyTickets(){
+  if(!_techRecord||!_techRecord.name){renderTicketsPanel();renderHomeTicketCard();return;}
+  var url=SB_URL+'/rest/v1/rsa_tickets_live?technician_name=ilike.'+encodeURIComponent(_techRecord.name)
+    +'&order=created_at_ist.asc&limit=100';
+  if(_ticketCity)url+='&city=eq.'+_ticketCity;
+  try{
+    var res=await fetch(url,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    if(!res.ok)return;
+    _myTickets=await res.json();
+    // Batch-fetch all events for all my tickets
+    if(_myTickets.length){
+      var nos=_myTickets.map(function(t){return t.ticket_number;}).join(',');
+      var evRes=await fetch(SB_URL+'/rest/v1/ticket_events?ticket_number=in.('+nos+')&order=created_at.asc',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+      if(evRes.ok){
+        var allEvs=await evRes.json();
+        _ticketEventsCache={};
+        allEvs.forEach(function(ev){
+          if(!_ticketEventsCache[ev.ticket_number])_ticketEventsCache[ev.ticket_number]=[];
+          _ticketEventsCache[ev.ticket_number].push(ev);
+        });
+      }
+    }
+    // Find active ticket (has accepted event but not completed/transferred)
+    _activeTicket=null;
+    for(var i=0;i<_myTickets.length;i++){
+      var s=getTicketState(_myTickets[i].ticket_number);
+      if(['accepted','en_route','reached','in_progress'].indexOf(s)>=0){
+        _activeTicket=_myTickets[i]; break;
+      }
+    }
+    // Sort by distance from tech GPS (nearest first)
+    if(_gpsPos)sortTicketsByDistance();
+    renderTicketsPanel();
+    renderHomeTicketCard();
+    updateTabBadge();
+    // Tell SW which tickets are already acknowledged (avoid re-alerting)
+    var seenNos=_myTickets
+      .filter(function(t){return getTicketState(t.ticket_number)!=='pending';})
+      .map(function(t){return t.ticket_number;});
+    sendSwMessage({type:'MARK_SEEN',tickets:seenNos});
+  }catch(e){console.warn('[RSATech] loadMyTickets error',e);}
+}
+
+function sortTicketsByDistance(){
+  if(!_gpsPos)return;
+  _myTickets.sort(function(a,b){
+    var la=a.display_lat||a.live_lat||a.lat, lo=a.display_lng||a.live_lng||a.lng;
+    var lb=b.display_lat||b.live_lat||b.lat, lo2=b.display_lng||b.live_lng||b.lng;
+    var da=(la&&lo)?haversineM(_gpsPos.lat,_gpsPos.lng,la,lo):Infinity;
+    var db=(lb&&lo2)?haversineM(_gpsPos.lat,_gpsPos.lng,lb,lo2):Infinity;
+    return da-db;
+  });
+}
+
+function getTicketState(ticketNo){
+  var evs=_ticketEventsCache[ticketNo];
+  if(!evs||!evs.length)return 'pending';
+  var last=evs[evs.length-1].event_type;
+  if(last==='accepted')return 'accepted';
+  if(last==='en_route')return 'en_route';
+  if(last==='reached')return 'reached';
+  if(last==='work_started')return 'in_progress';
+  if(last==='completed')return 'completed';
+  if(last==='transferred_to_ho')return 'transferred';
+  return 'pending';
+}
+
+function getEventAt(ticketNo,evType){
+  var evs=_ticketEventsCache[ticketNo];
+  if(!evs)return null;
+  for(var i=0;i<evs.length;i++){if(evs[i].event_type===evType)return evs[i];}
+  return null;
+}
+
+// ── Post event ───────────────────────────────────────────────────────
+
+async function postEvent(ticketNo,evType,extras){
+  if(!_techRecord)return false;
+  var body={
+    ticket_number:ticketNo,
+    technician_id:_techRecord.id,
+    technician_name:_techRecord.name,
+    event_type:evType,
+    created_at:new Date().toISOString()
+  };
+  if(_gpsPos){body.lat=_gpsPos.lat;body.lng=_gpsPos.lng;}
+  if(extras)Object.keys(extras).forEach(function(k){body[k]=extras[k];});
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/ticket_events',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok)return false;
+    var rows=await res.json();
+    if(!_ticketEventsCache[ticketNo])_ticketEventsCache[ticketNo]=[];
+    _ticketEventsCache[ticketNo].push(rows&&rows[0]?rows[0]:body);
+    return true;
+  }catch(e){return false;}
+}
+
+// ── Actions ──────────────────────────────────────────────────────────
+
+async function acceptTicket(ticketNo){
+  if(_activeTicket&&_activeTicket.ticket_number!==ticketNo){
+    showToast('Finish your current ticket first'); return;
+  }
+  var btn=document.getElementById('tbt-accept-'+ticketNo);
+  if(btn)btn.disabled=true;
+  var ok=await postEvent(ticketNo,'accepted');
+  if(ok){
+    playConfirmTone();
+    showToast('✅ Ticket accepted');
+    await loadMyTickets();
+    switchTab('tickets');
+    switchSubtab('inprogress');
+  }else{
+    showToast('❌ Failed — retry');
+    if(btn)btn.disabled=false;
+  }
+}
+
+async function navigateTicket(ticketNo){
+  var t=_myTickets.find(function(x){return x.ticket_number===ticketNo;});
+  if(!t)return;
+  var lat=t.display_lat||t.live_lat||t.lat;
+  var lng=t.display_lng||t.live_lng||t.lng;
+  var mapsUrl=lat&&lng
+    ?'https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng
+    :'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((t.reg_number||'bike')+' Bangalore');
+  window.open(mapsUrl,'_blank');
+  var ok=await postEvent(ticketNo,'en_route');
+  if(ok){showToast('🗺️ En route — be safe!');await loadMyTickets();}
+}
+
+async function reachedTicket(ticketNo){
+  var t=_myTickets.find(function(x){return x.ticket_number===ticketNo;});
+  var bikeLL=t&&(t.display_lat||t.live_lat||t.lat)?{lat:t.display_lat||t.live_lat||t.lat,lng:t.display_lng||t.live_lng||t.lng}:null;
+  var distNote='';
+  if(bikeLL&&_gpsPos){
+    var dm=haversineM(_gpsPos.lat,_gpsPos.lng,bikeLL.lat,bikeLL.lng);
+    if(dm>500)distNote=' (still ~'+distStr(dm)+' from bike GPS)';
+  }
+  openPhotoModal('Location Evidence — Reached Bike'+distNote,true,async function(urls){
+    var ok=await postEvent(ticketNo,'reached',{evidence_urls:urls.length?urls:null});
+    if(ok){showToast('📍 Reached logged'+distNote);await loadMyTickets();}
+    else showToast('❌ Failed — retry');
+  });
+}
+
+async function startWorkTicket(ticketNo){
+  var btn=document.getElementById('tbt-start-'+ticketNo);
+  if(btn)btn.disabled=true;
+  var ok=await postEvent(ticketNo,'work_started');
+  if(ok){showToast('🔧 Work started');await loadMyTickets();}
+  else{showToast('❌ Failed — retry');if(btn)btn.disabled=false;}
+}
+
+function endWorkTicket(ticketNo){
+  _endModalTktNo=ticketNo;
+  document.querySelectorAll('.disp-option').forEach(function(el){el.classList.remove('selected');});
+  document.getElementById('em-notes').value='';
+  document.getElementById('end-modal').classList.add('show');
+}
+
+function selectDisp(el){
+  document.querySelectorAll('.disp-option').forEach(function(x){x.classList.remove('selected');});
+  el.classList.add('selected');
+}
+
+async function submitEndWork(){
+  var sel=document.querySelector('.disp-option.selected');
+  if(!sel){showToast('Select an outcome first');return;}
+  var dispVal=sel.dataset.value;
+  var notes=document.getElementById('em-notes').value.trim();
+  var tktNo=_endModalTktNo;
+  document.getElementById('end-modal').classList.remove('show');
+  openPhotoModal('End Work Evidence (optional)',false,async function(urls){
+    var ok=await postEvent(tktNo,'completed',{
+      resolution_type:dispVal,
+      notes:notes||null,
+      evidence_urls:urls.length?urls:null
+    });
+    if(ok){
+      _activeTicket=null;
+      playConfirmTone();
+      showToast('✅ Ticket completed!');
+      await loadMyTickets();
+      switchSubtab('completed');
+    }else showToast('❌ Submit failed — retry');
+  });
+}
+
+function transferTicket(ticketNo){
+  _transferModalTktNo=ticketNo;
+  document.getElementById('tm-reason').value='';
+  document.getElementById('tm-notes').value='';
+  document.getElementById('transfer-modal').classList.add('show');
+}
+
+async function submitTransfer(){
+  var reason=document.getElementById('tm-reason').value;
+  var notes=document.getElementById('tm-notes').value.trim();
+  if(!reason){showToast('Select a reason first');return;}
+  document.getElementById('transfer-modal').classList.remove('show');
+  var ok=await postEvent(_transferModalTktNo,'transferred_to_ho',{
+    resolution_type:reason,
+    notes:notes||null
+  });
+  if(ok){
+    _activeTicket=null;
+    showToast('↗ Transferred to HO team');
+    await loadMyTickets();
+    switchSubtab('pending');
+  }else showToast('❌ Failed — retry');
+}
+
+// ── Photo upload ─────────────────────────────────────────────────────
+
+function openPhotoModal(title,required,callback){
+  _pendingPhotoUrls=[];
+  _photoCallback=callback;
+  _photoRequired=required;
+  document.getElementById('pm-title').textContent=title;
+  document.getElementById('pm-req').textContent=required?'📷 At least 1 photo required':'📷 Optional — add photos of work done';
+  document.getElementById('pm-skip').style.display=required?'none':'block';
+  renderPhotoThumbs();
+  document.getElementById('photo-modal').classList.add('show');
+}
+
+function renderPhotoThumbs(){
+  var el=document.getElementById('pm-thumbs');
+  var html='';
+  _pendingPhotoUrls.forEach(function(url){
+    html+='<img class="photo-thumb" src="'+url+'"/>';
+  });
+  if(_pendingPhotoUrls.length<5){
+    html+='<div class="photo-add" onclick="document.getElementById(\'pm-file\').click()">+</div>';
+  }
+  el.innerHTML=html;
+  // update submit button state
+  var sub=document.getElementById('pm-submit');
+  if(sub)sub.disabled=(_photoRequired&&_pendingPhotoUrls.length===0);
+}
+
+async function onPhotoSelect(input){
+  var file=input.files&&input.files[0];
+  if(!file)return;
+  input.value='';
+  try{
+    showToast('Uploading…');
+    var ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+    if(ext==='heic'||ext==='heif')ext='jpg';
+    var path='ticket-'+(_endModalTktNo||_transferModalTktNo||'na')+'/'+Date.now()+'.'+ext;
+    var up=await fetch(SB_URL+'/storage/v1/object/rsa-tech-evidence/'+path,{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':file.type||'image/jpeg','x-upsert':'true'},
+      body:file
+    });
+    if(!up.ok)throw new Error('Upload failed '+up.status);
+    var publicUrl=SB_URL+'/storage/v1/object/public/rsa-tech-evidence/'+path;
+    _pendingPhotoUrls.push(publicUrl);
+    renderPhotoThumbs();
+    showToast('Photo added ✓');
+  }catch(e){showToast('Upload failed — try again');}
+}
+
+async function submitPhotos(){
+  if(_photoRequired&&_pendingPhotoUrls.length===0){showToast('Add at least 1 photo');return;}
+  document.getElementById('photo-modal').classList.remove('show');
+  if(_photoCallback)_photoCallback(_pendingPhotoUrls.slice());
+}
+
+function skipPhotos(){
+  document.getElementById('photo-modal').classList.remove('show');
+  if(_photoCallback)_photoCallback([]);
+}
+
+// ── Render ───────────────────────────────────────────────────────────
+
+function renderTicketsPanel(){
+  var pending=[], inprog=[], done=[];
+  _myTickets.forEach(function(t){
+    var s=getTicketState(t.ticket_number);
+    if(s==='completed'||s==='transferred')done.push(t);
+    else if(s==='pending')pending.push(t);
+    else inprog.push(t);
+  });
+  renderSubList('sub-pending',pending,'pending');
+  renderSubList('sub-inprogress',inprog,'inprogress');
+  renderSubList('sub-completed',done,'completed');
+  // Badges
+  setBadge('sbadge-pending',pending.length);
+  setBadge('sbadge-inprogress',inprog.length);
+}
+
+function setBadge(id,n){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=n;
+  el.style.display=n>0?'inline-block':'none';
+}
+
+function updateTabBadge(){
+  var pending=_myTickets.filter(function(t){return getTicketState(t.ticket_number)==='pending';});
+  var inprog=_myTickets.filter(function(t){
+    var s=getTicketState(t.ticket_number);
+    return s==='accepted'||s==='en_route'||s==='reached'||s==='in_progress';
+  });
+  var n=pending.length+inprog.length;
+  var badge=document.getElementById('tab-tk-badge');
+  if(badge){badge.textContent=n;badge.style.display=n>0?'inline-block':'none';}
+}
+
+function renderSubList(containerId,tickets,subtype){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  if(!tickets.length){
+    var msgs={pending:'No pending tickets',inprogress:'No active tickets',completed:'No completed tickets today'};
+    el.innerHTML='<div class="log-empty">'+(_esc(msgs[subtype]||'—'))+'</div>';
+    return;
+  }
+  el.innerHTML=tickets.map(function(t){return buildTicketCard(t);}).join('');
+  // Start timer ticks
+  if(!_timerTick)_timerTick=setInterval(tickTimers,60000);
+}
+
+function buildTicketCard(t){
+  var tno=t.ticket_number;
+  var state=getTicketState(tno);
+  var bLat=t.display_lat||t.live_lat||t.lat, bLng=t.display_lng||t.live_lng||t.lng;
+  var distM=(_gpsPos&&bLat&&bLng)?haversineM(_gpsPos.lat,_gpsPos.lng,bLat,bLng):null;
+  var distLabel=distM!=null?distStr(distM):null;
+  var isNear=distM!=null&&distM<=2000;
+
+  // Card class
+  var cls='tkt-card';
+  if(state==='pending')cls+=' pending-card';
+  else if(state==='completed'||state==='transferred')cls+=' done-card';
+  else cls+=' active-ticket';
+
+  // Age
+  var ageStr=ticketAgeStr(t.created_at_ist);
+
+  // Distance badge
+  var distBadge=distLabel
+    ?'<span class="dist-badge '+(isNear?'near':'far')+'">📍 '+_esc(distLabel)+'</span>'
+    :'';
+
+  // Step progress (only for active states)
+  var stepBar='';
+  if(state!=='pending'&&state!=='completed'&&state!=='transferred'){
+    var steps=['accepted','en_route','reached','in_progress'];
+    var labels=['Accept','Navigate','Reach','Work'];
+    var curIdx={accepted:0,en_route:1,reached:2,in_progress:3}[state]||0;
+    var dots=steps.map(function(s,i){
+      var cls2=i<curIdx?'done':i===curIdx?'curr':'todo';
+      return '<div class="step-dot '+cls2+'">'+(i<curIdx?'✓':(i+1))+'</div>';
+    });
+    var lines=steps.slice(0,-1).map(function(s,i){
+      return '<div class="step-line'+(i<curIdx?' done':'')+'"></div>';
+    });
+    var dotsHtml='';
+    for(var i=0;i<dots.length;i++){dotsHtml+=dots[i];if(i<lines.length)dotsHtml+=lines[i];}
+    stepBar='<div class="step-bar">'+dotsHtml+'</div>'
+      +'<div class="step-labels">'+labels.map(function(l){return'<span>'+l+'</span>';}).join('')+'</div>';
+  }
+
+  // Elapsed timer
+  var timerHtml='';
+  if(state==='accepted'||state==='en_route'||state==='reached'||state==='in_progress'){
+    var accEv=getEventAt(tno,'accepted');
+    if(accEv){
+      var mins=Math.floor((Date.now()-new Date(accEv.created_at).getTime())/60000);
+      var tc=mins>=60?'urgent':mins>=30?'warn':'ok';
+      timerHtml='<div class="tkt-timer '+tc+'">⏱ <span data-elapsed-from="'+accEv.created_at+'">'+elapsedStr(accEv.created_at)+'</span> elapsed</div>';
+    }
+  }
+  if(state==='transferred'){
+    var trEv=getEventAt(tno,'transferred_to_ho');
+    timerHtml='<div class="tkt-timer ok">↗ Transferred to HO'+( trEv?' · '+elapsedStr(trEv.created_at)+' ago':'')+'</div>';
+  }
+  if(state==='completed'){
+    var cEv=getEventAt(tno,'completed');
+    timerHtml='<div class="tkt-timer ok">✅ Completed'+(cEv?' · '+elapsedStr(cEv.created_at)+' ago':'')+'</div>';
+  }
+
+  // Action buttons
+  var actions='';
+  if(state==='pending'){
+    var disabled=(_activeTicket&&_activeTicket.ticket_number!==tno)?'disabled title="Finish current ticket first"':'';
+    actions='<div class="tkt-actions">'
+      +'<button class="tkt-btn primary" id="tbt-accept-'+_esc(tno)+'" onclick="acceptTicket(\''+_esc(tno)+'\')" '+disabled+'>⚡ Accept Ticket</button>'
+      +'</div>';
+  }else if(state==='accepted'){
+    actions='<div class="tkt-actions">'
+      +'<button class="tkt-btn primary" onclick="navigateTicket(\''+_esc(tno)+'\')">🗺️ Navigate to Bike</button>'
+      +'<button class="tkt-btn outline" onclick="transferTicket(\''+_esc(tno)+'\')">↗ Transfer to HO</button>'
+      +'</div>';
+  }else if(state==='en_route'){
+    var nearCls=isNear?' near-glow':'';
+    var nearTip=isNear?' ✓ You\'re here!':'(tap when at bike location)';
+    actions='<div class="tkt-actions">'
+      +'<button class="tkt-btn green'+nearCls+'" onclick="reachedTicket(\''+_esc(tno)+'\')">📷 Reached Location'+nearTip+'</button>'
+      +'<button class="tkt-btn outline" onclick="navigateTicket(\''+_esc(tno)+'\')">🗺️ Re-navigate</button>'
+      +'<button class="tkt-btn outline" onclick="transferTicket(\''+_esc(tno)+'\')">↗ Transfer to HO</button>'
+      +'</div>';
+  }else if(state==='reached'){
+    actions='<div class="tkt-actions">'
+      +'<button class="tkt-btn green" id="tbt-start-'+_esc(tno)+'" onclick="startWorkTicket(\''+_esc(tno)+'\')">🔧 Start Work</button>'
+      +'<button class="tkt-btn outline" onclick="transferTicket(\''+_esc(tno)+'\')">↗ Transfer to HO</button>'
+      +'</div>';
+  }else if(state==='in_progress'){
+    actions='<div class="tkt-actions">'
+      +'<button class="tkt-btn red-btn" onclick="endWorkTicket(\''+_esc(tno)+'\')">✅ End Work</button>'
+      +'<button class="tkt-btn outline" onclick="transferTicket(\''+_esc(tno)+'\')">↗ Transfer to HO</button>'
+      +'</div>';
+  }
+
+  return '<div class="'+cls+'">'
+    +'<div class="tkt-header">'
+    +'<div class="tkt-info">'
+    +'<div class="tkt-num">'+_esc(tno)+(t.city?' · '+_esc(t.city):'')+distBadge+'</div>'
+    +'<div class="tkt-cat">'+_esc(t.category||t.fault_details||'Ticket')+'</div>'
+    +'</div>'
+    +'<div class="tkt-age">'+_esc(ageStr)+'</div>'
+    +'</div>'
+    +'<div class="tkt-meta"><span>🚲 <b>'+_esc(t.reg_number||'—')+'</b></span>'
+    +(t.customer_name?'<span>👤 '+_esc(t.customer_name)+'</span>':'')
+    +'</div>'
+    +(t.fault_details&&t.fault_details!==t.category?'<div class="tkt-fault">'+_esc(t.fault_details)+'</div>':'')
+    +stepBar+timerHtml+actions
+    +'</div>';
+}
+
+function tickTimers(){
+  document.querySelectorAll('[data-elapsed-from]').forEach(function(el){
+    el.textContent=elapsedStr(el.dataset.elapsedFrom);
+  });
+}
+
+function renderHomeTicketCard(){
+  var card=document.getElementById('home-tkt-card');
+  var content=document.getElementById('home-tkt-content');
+  if(!card||!content)return;
+  card.style.display=_techRecord?'block':'none';
+  if(!_techRecord)return;
+
+  var pending=_myTickets.filter(function(t){return getTicketState(t.ticket_number)==='pending';});
+  var inprog=_myTickets.filter(function(t){
+    var s=getTicketState(t.ticket_number);
+    return s==='accepted'||s==='en_route'||s==='reached'||s==='in_progress';
+  });
+
+  var html='';
+
+  if(_activeTicket){
+    var state=getTicketState(_activeTicket.ticket_number);
+    var stateLabels={accepted:'Accepted — navigate to bike',en_route:'En Route 🗺️',reached:'Reached location',in_progress:'Work in progress 🔧'};
+    var accEv=getEventAt(_activeTicket.ticket_number,'accepted');
+    html+='<div class="card" style="padding:10px 12px;margin-bottom:10px;border-left:4px solid var(--accent)">'
+      +'<div class="htkt-reg">'+_esc(_activeTicket.reg_number||'—')+'</div>'
+      +'<div class="htkt-state">'+_esc(stateLabels[state]||state)+'</div>'
+      +(accEv?'<div class="htkt-elapsed">⏱ '+elapsedStr(accEv.created_at)+' elapsed</div>':'')
+      +'</div>';
+  }
+
+  if(pending.length>0){
+    html+='<div class="htkt-queue">'
+      +'<div class="htkt-qnum">'+pending.length+'</div>'
+      +'<div class="htkt-qinfo">'
+      +'<div class="htkt-qlabel">ticket'+(pending.length>1?'s':'')+' waiting</div>'
+      +'<div class="htkt-qsub">Nearest: '+(pending[0]&&pending[0].reg_number?_esc(pending[0].reg_number):'—')+'</div>'
+      +'</div></div>';
+  }
+
+  if(!_activeTicket&&!pending.length&&inprog.length===0){
+    html='<div style="font-size:.78rem;color:var(--green);font-weight:600;padding:8px 0">✅ All clear — no open tickets</div>';
+  }
+
+  if(_myTickets.length>0){
+    html+='<button class="htkt-link" onclick="switchTab(\'tickets\')">View all tickets →</button>';
+  }
+  content.innerHTML=html||'<div class="log-empty" style="padding:8px 0">No tickets assigned</div>';
+}
+
+// ── Subtab switching ─────────────────────────────────────────────────
+
+function switchSubtab(sub){
+  _ticketSubtab=sub;
+  ['pending','inprogress','completed'].forEach(function(s){
+    var tab=document.getElementById('st-'+s);
+    var panel=document.getElementById('sub-'+s);
+    if(tab)tab.classList.toggle('active',s===sub);
+    if(panel)panel.style.display=s===sub?'block':'none';
+  });
+}
+
+// ── New-ticket alert banner ──────────────────────────────────────────
+
+function showTicketAlert(msg){
+  var el=document.getElementById('tk-alert');
+  var txt=document.getElementById('tk-alert-text');
+  if(el&&txt){txt.textContent=msg;el.style.display='flex';}
+  // Auto-hide after 8s
+  setTimeout(function(){if(el)el.style.display='none';},8000);
+}
+
+// ── Realtime subscription for new ticket assignments ─────────────────
+
+function subscribeTickets(){
+  if(!_techRecord)return;
+  if(_ticketSubChannel)sb.removeChannel(_ticketSubChannel);
+  _ticketSubChannel=sb.channel('rsa-my-tickets-'+_techRecord.id)
+    .on('postgres_changes',{
+      event:'*',schema:'public',table:'rsa_tickets_cache',
+      filter:'technician_name=eq.'+_techRecord.name
+    },async function(payload){
+      var isNew=(payload.eventType==='INSERT')||
+        (payload.eventType==='UPDATE'&&(!payload.old||!payload.old.technician_name)&&payload.new&&payload.new.technician_name);
+      await loadMyTickets();
+      if(isNew){
+        playBuzzer();
+        var reg=(payload.new&&payload.new.reg_number)||'';
+        var cat=(payload.new&&payload.new.category)||'';
+        showTicketAlert('🔔 New ticket: '+reg+(cat?' — '+cat:''));
+        // Switch to tickets tab if not already there
+        if(document.getElementById('panel-tickets')){
+          switchTab('tickets');switchSubtab('pending');
+        }
+      }
+    })
+    .subscribe();
+}
+
+// ── Location tracking (10s active / 60s background) ─────────────────
+
+function startLocationTracking(){
+  stopLocationTracking();
+  _locInterval=setInterval(sendTechLocation,_LOC_ACTIVE);
+  document.addEventListener('visibilitychange',_onVisChange);
+}
+
+function stopLocationTracking(){
+  if(_locInterval){clearInterval(_locInterval);_locInterval=null;}
+  document.removeEventListener('visibilitychange',_onVisChange);
+}
+
+function _onVisChange(){
+  if(_locInterval)clearInterval(_locInterval);
+  _locInterval=setInterval(sendTechLocation,document.hidden?_LOC_BG:_LOC_ACTIVE);
+}
+
+async function sendTechLocation(){
+  if(!_techRecord||!_gpsPos||!_onDuty)return;
+  try{
+    await fetch(SB_URL+'/rest/v1/rsa_tech_live_locations',{
+      method:'POST',
+      headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({tech_id:_techRecord.id,lat:_gpsPos.lat,lng:_gpsPos.lng,accuracy:_gpsPos.accuracy})
+    });
+  }catch(e){}
 }
 
 // ── Tab switching ──
