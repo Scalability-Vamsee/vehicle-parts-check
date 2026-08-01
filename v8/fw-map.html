@@ -270,7 +270,7 @@ body.pinned #main{margin-left:var(--sb-width)}
         <div class="layer-row"><label><input type="checkbox" id="lyr-ze" onchange="toggleLayer('ze')"/><div class="layer-dot" style="background:#850CA7"></div>Zepto</label><span class="layer-badge">196</span></div>
         <div class="layer-row"><label><input type="checkbox" id="lyr-bl" onchange="toggleLayer('bl')"/><div class="layer-dot" style="background:#F0C000"></div>Blinkit</label><span class="layer-badge">104</span></div>
         <div class="layer-row"><label><input type="checkbox" id="lyr-yu" onchange="toggleLayer('yu')"/><div class="layer-dot" style="background:#16a34a"></div>Yuma Charge</label><span class="layer-badge">113</span></div>
-        <div class="layer-row"><label><input type="checkbox" id="lyr-in" onchange="toggleLayer('in')" checked/><div class="layer-dot" style="background:#0891b2"></div>Indofast Charge</label><span class="layer-badge">423</span></div>
+        <div class="layer-row"><label><input type="checkbox" id="lyr-in" onchange="toggleLayer('in')"/><div class="layer-dot" style="background:#0891b2"></div>Indofast Charge</label><span class="layer-badge">423</span></div>
       </div>
     </div>
   </div>
@@ -383,7 +383,7 @@ var _allMcu=[];
 var _fwModes=new Set(['mcu']); // MCU 60A on by default; DIU toggleable
 var _riderMap={};
 var _currentPanelBike=null;
-var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:true};
+var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
 var _topInStations=[]; // top 10 Indofast stations loaded from indofast_top_stations
 
 // Layer dot colors for popup headers
