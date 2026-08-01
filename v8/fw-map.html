@@ -319,6 +319,7 @@ var markerGroup=L.layerGroup().addTo(leafMap);
 var hubMarkerGroup=L.layerGroup(); // off by default (lyr-hubs unchecked)
 var rsaMarkerGroup=L.layerGroup().addTo(leafMap);
 var layerGroups={sw:L.layerGroup(),fk:L.layerGroup(),ze:L.layerGroup(),bl:L.layerGroup(),yu:L.layerGroup(),in:L.layerGroup()};
+var topInMarkerGroup=L.layerGroup(); // top 10 Indofast stations (5 BLR + 5 NCR), shown when MCU active
 
 // RSA team bikes — loaded from rsa_vehicle_assignments (DB-driven; admin panel is source of truth)
 var RSA_BIKES=[];
@@ -383,6 +384,7 @@ var _fwModes=new Set(['mcu']); // MCU 60A on by default; DIU toggleable
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:true};
+var _topInStations=[]; // top 10 Indofast stations loaded from indofast_top_stations
 
 // Layer dot colors for popup headers
 var LAYER_COLORS={sw:'#FC8019',fk:'#2874F0',ze:'#850CA7',bl:'#F0C000',yu:'#16a34a',in:'#0891b2'};
@@ -447,6 +449,47 @@ function makeDsIcon(key){
   var b=DS_BRANDS[key]||{label:key.toUpperCase(),color:'#888',text:'#fff'};
   var html='<div style="width:22px;height:22px;border-radius:6px;background:'+b.color+';border:1.5px solid rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-size:11px;font-weight:800;color:'+b.text+';box-shadow:0 1px 3px rgba(0,0,0,.25)">'+b.label+'</div>';
   return L.divIcon({className:'',html:html,iconSize:[22,22],iconAnchor:[11,11]});
+}
+
+// Red ⚡ icon for top Indofast stations (larger, prominent)
+function makeTopInIcon(){
+  var html='<div style="width:26px;height:26px;border-radius:50%;background:#DC2626;border:2.5px solid #fff;box-shadow:0 0 0 2px #DC2626,0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1">⚡</div>';
+  return L.divIcon({className:'',html:html,iconSize:[26,26],iconAnchor:[13,13]});
+}
+
+// Load top 10 Indofast stations from DB and render on map
+async function loadTopIndofastStations(){
+  if(!K||K===ANON_KEY)return;
+  try{
+    var res=await fetch(SB_URL+'/rest/v1/indofast_top_stations?select=*&order=city,rank',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    if(!res.ok)return;
+    _topInStations=await res.json();
+    topInMarkerGroup.clearLayers();
+    _topInStations.forEach(function(s){
+      if(!s.lat||!s.lng)return;
+      var pct=s.total_bikes_visited>0?Math.round(s.home_bikes/s.total_bikes_visited*100):0;
+      var dateStr=s.stat_date?new Date(s.stat_date).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'—';
+      var popup='<div style="font-family:Inter,sans-serif;font-size:13px;min-width:210px">'
+        +'<div style="font-weight:700;color:#DC2626;margin-bottom:3px">⚡ Top Indofast Station</div>'
+        +'<div style="font-weight:600;margin-bottom:2px">'+s.location+'</div>'
+        +'<div style="font-size:11px;color:#6B7280;margin-bottom:8px">'+s.short_address+' · '+s.cabinets+' cabinets · '+s.city+'</div>'
+        +(s.stat_date
+          ?'<div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px">Yesterday ('+dateStr+')</div>'
+           +'<div style="font-size:12px;margin-bottom:2px">🔋 Total swaps: <b>'+s.total_bikes_visited+'</b></div>'
+           +'<div style="font-size:12px">🏠 Home bikes: <b>'+s.home_bikes+'</b>'
+           +(pct?' <span style="color:'+(pct>=70?'#16a34a':'#D97706')+';">('+pct+'%)</span>':'')+'</div>'
+          :'<div style="font-size:11px;color:#9CA3AF">Stats sync at 8 AM daily</div>')
+        +'</div>';
+      L.marker([s.lat,s.lng],{icon:makeTopInIcon(),zIndexOffset:1000})
+        .bindPopup(popup)
+        .addTo(topInMarkerGroup);
+    });
+    // Visible only when MCU mode is active
+    if(_fwModes.has('mcu')){
+      if(!leafMap.hasLayer(topInMarkerGroup))leafMap.addLayer(topInMarkerGroup);
+    }
+  }catch(e){console.warn('loadTopIndofastStations:',e);}
 }
 
 function parseCSV(text){
@@ -648,6 +691,9 @@ function toggleFwMode(mode){
   document.getElementById('search-input').value='';
   rebuildHubFilter();
   renderFiltered();
+  // Top Indofast stations visible only in MCU mode
+  if(_fwModes.has('mcu'))leafMap.addLayer(topInMarkerGroup);
+  else leafMap.removeLayer(topInMarkerGroup);
 }
 
 function applyPending(pending,fromCache,cacheTs){
@@ -894,7 +940,7 @@ var _authReady=false;
     hideAuthScreen();
     document.getElementById('logout-btn').style.display='block';
     _authReady=true;
-    setTimeout(function(){setMapHeight();loadMapData();loadHubMarkers();loadRsaBikes().then(loadRsaLocations);triggerSyncFireAndForget();},100);
+    setTimeout(function(){setMapHeight();loadMapData();loadHubMarkers();loadRsaBikes().then(loadRsaLocations);triggerSyncFireAndForget();loadTopIndofastStations();},100);
     loadUserPermissions(session.user.id).then(function(features){
       window.FP_FEATURES=features;
       if(!fpCan('fw-map')){window.location.href='./index.html';return;}
@@ -919,7 +965,7 @@ var _authReady=false;
       hideAuthScreen();
       document.getElementById('logout-btn').style.display='block';
       document.getElementById('logout-btn').title='Signed in as '+CURRENT_USER_EMAIL;
-      setTimeout(function(){setMapHeight();loadMapData();loadHubMarkers();loadRsaBikes().then(loadRsaLocations);triggerSyncFireAndForget();},100);
+      setTimeout(function(){setMapHeight();loadMapData();loadHubMarkers();loadRsaBikes().then(loadRsaLocations);triggerSyncFireAndForget();loadTopIndofastStations();},100);
     }else if(event==='SIGNED_OUT'){K=ANON_KEY;window.FP_FEATURES=undefined;document.getElementById('logout-btn').style.display='none';if(_authReady)showAuthScreen();}
     else if(event==='TOKEN_REFRESHED'&&session){K=session.access_token;}
   });
