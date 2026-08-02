@@ -199,6 +199,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .htkt-qsub{font-size:.68rem;color:var(--muted);}
 .htkt-link{font-size:.78rem;font-weight:700;color:var(--accent);background:none;border:none;cursor:pointer;font-family:inherit;padding:8px 0 0;display:block;width:100%;text-align:left;}
 
+/* ── FW Map tab ── */
+.fw-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
+.fw-reg{font-size:.85rem;font-weight:700;color:#0F172A;}
+.fw-type-badge{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;}
+.fw-badge-mcu{background:#FFF7ED;color:#C2410C;border:1px solid #FED7AA;}
+.fw-badge-diu{background:#F5F3FF;color:#6D28D9;border:1px solid #DDD6FE;}
+.fw-meta{display:flex;gap:10px;font-size:.72rem;color:var(--muted);flex-wrap:wrap;margin-top:4px;}
+.fw-filter-btn{padding:4px 10px;border-radius:16px;font-size:.7rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--muted);font-family:'Inter',sans-serif;transition:all .15s;}
+.fw-filter-btn.active{background:#0F172A;color:#fff;border-color:#0F172A;}
+#fw-map-panel{margin:-14px -14px -14px;display:none;}
+#fw-map{height:calc(100vh - 150px);border-radius:0 0 10px 10px;}
+
 /* ── Photo modal ── */
 #photo-modal{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9500;display:none;align-items:flex-end;}
 #photo-modal.show{display:flex;}
@@ -277,7 +289,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 <div id="tabs">
   <div class="tab active" id="tab-home" onclick="switchTab('home')">🏠 Home</div>
   <div class="tab" id="tab-tickets" onclick="switchTab('tickets')">🎫 Tickets<span id="tab-tk-badge" style="display:none;margin-left:5px;background:#E8191C;color:#fff;font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:10px;vertical-align:middle"></span></div>
-  <div class="tab disabled" id="tab-fw" title="Coming — RSA-9">📡 FW Map</div>
+  <div class="tab" id="tab-fw" onclick="switchTab('fw');onFWTabOpen()">📡 FW Map</div>
 </div>
 
 <!-- ── Panels ── -->
@@ -361,6 +373,27 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <div id="sub-completed"  style="display:none"></div>
 
   </div><!-- /panel-tickets -->
+
+  <!-- ── FW Map panel ── -->
+  <div class="panel" id="panel-fw">
+    <!-- Subtab bar -->
+    <div class="subtab-bar" style="margin:-14px -14px 14px">
+      <div class="subtab active" id="fwst-list" onclick="switchFWSubtab('list')">📋 List</div>
+      <div class="subtab" id="fwst-map" onclick="switchFWSubtab('map')">🗺️ Map</div>
+    </div>
+    <!-- List sub-panel -->
+    <div id="fw-list-panel">
+      <div id="fw-filter-bar" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="fw-filter-btn active" id="fwf-all" onclick="setFWFilter('all')">All</button>
+        <button class="fw-filter-btn" id="fwf-mcu" onclick="setFWFilter('mcu')">MCU 60A</button>
+        <button class="fw-filter-btn" id="fwf-diu" onclick="setFWFilter('diu')">DIU / FW</button>
+      </div>
+      <div id="fw-count" style="font-size:.72rem;color:var(--muted);margin-bottom:8px"></div>
+      <div id="fw-list-content"><div class="log-empty">Tap this tab to load</div></div>
+    </div>
+    <!-- Map sub-panel -->
+    <div id="fw-map-panel"><div id="fw-map"></div></div>
+  </div><!-- /panel-fw -->
 
 </div><!-- /panels -->
 
@@ -1433,6 +1466,183 @@ async function sendTechLocation(){
       body:JSON.stringify({tech_id:_techRecord.id,lat:_gpsPos.lat,lng:_gpsPos.lng,accuracy:_gpsPos.accuracy})
     });
   }catch(e){}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RSA-9 — FW Map tab
+// ════════════════════════════════════════════════════════════════════
+
+var _fwBikes=[];      // combined MCU + DIU, sorted nearest-first
+var _fwFilter='all';  // 'all' | 'mcu' | 'diu'
+var _fwSubtab='list';
+var _fwMap=null;
+var _fwMarkers=[];
+var _fwTechMarker=null;
+var _fwLoaded=false;
+var SB_URL_FW='https://clkfvmmlgwcvntxnolsv.supabase.co'; // same project
+
+function onFWTabOpen(){
+  // Load on first open; subsequent opens use cached data (refresh button reloads)
+  if(!_fwLoaded)loadFWBikes();
+}
+
+async function loadFWBikes(){
+  var fwEl=document.getElementById('fw-list-content');
+  var cntEl=document.getElementById('fw-count');
+  if(fwEl)fwEl.innerHTML='<div class="log-empty">Loading…</div>';
+  if(cntEl)cntEl.textContent='';
+  if(!K)return;
+  var hdrs={apikey:ANON_KEY,Authorization:'Bearer '+K};
+  try{
+    var cols='chassis_number,reg_number,hub,lat,lng,loc_time,current_soc,vehicle_status';
+    var fwURL=SB_URL+'/rest/v1/fw_bikes_live?select='+cols+'&limit=3000';
+    var mcuURL=SB_URL+'/rest/v1/mcu_bikes_live?select='+cols+'&limit=3000';
+    var [fwRes,mcuRes]=await Promise.all([fetch(fwURL,{headers:hdrs}),fetch(mcuURL,{headers:hdrs})]);
+    var fwData=(fwRes.ok?await fwRes.json():[]).map(function(b){return Object.assign({},b,{fw_type:'diu'});});
+    var mcuData=(mcuRes.ok?await mcuRes.json():[]).map(function(b){return Object.assign({},b,{fw_type:'mcu'});});
+    _fwBikes=fwData.concat(mcuData);
+    if(_gpsPos){
+      _fwBikes.sort(function(a,b){
+        var da=(a.lat&&a.lng)?haversineM(_gpsPos.lat,_gpsPos.lng,a.lat,a.lng):Infinity;
+        var db=(b.lat&&b.lng)?haversineM(_gpsPos.lat,_gpsPos.lng,b.lat,b.lng):Infinity;
+        return da-db;
+      });
+    }
+    _fwLoaded=true;
+    renderFWList();
+    if(_fwSubtab==='map')_renderFWMapPins();
+  }catch(e){
+    if(fwEl)fwEl.innerHTML='<div class="log-empty">Load failed — tap to retry</div>';
+    console.warn('[RSA-9] loadFWBikes error',e);
+  }
+}
+
+function _filteredFW(){
+  if(_fwFilter==='mcu')return _fwBikes.filter(function(b){return b.fw_type==='mcu';});
+  if(_fwFilter==='diu')return _fwBikes.filter(function(b){return b.fw_type==='diu';});
+  return _fwBikes;
+}
+
+function setFWFilter(f){
+  _fwFilter=f;
+  ['all','mcu','diu'].forEach(function(x){
+    var btn=document.getElementById('fwf-'+x);
+    if(btn)btn.classList.toggle('active',x===f);
+  });
+  renderFWList();
+  if(_fwSubtab==='map')_renderFWMapPins();
+}
+
+function renderFWList(){
+  var el=document.getElementById('fw-list-content');
+  var cntEl=document.getElementById('fw-count');
+  if(!el)return;
+  var bikes=_filteredFW();
+  var mcu=_fwBikes.filter(function(b){return b.fw_type==='mcu';}).length;
+  var diu=_fwBikes.filter(function(b){return b.fw_type==='diu';}).length;
+  if(cntEl)cntEl.textContent=bikes.length+' bikes (MCU: '+mcu+' · DIU/FW: '+diu+')';
+  if(!bikes.length){el.innerHTML='<div class="log-empty">No pending bikes</div>';return;}
+  el.innerHTML=bikes.map(function(b){
+    var distM=(_gpsPos&&b.lat&&b.lng)?haversineM(_gpsPos.lat,_gpsPos.lng,b.lat,b.lng):null;
+    var distLabel=distM!=null?distStr(distM):null;
+    var isNear=distM!=null&&distM<=2000;
+    var gpsAge=b.loc_time?(elapsedStr(b.loc_time)+' ago'):'No GPS';
+    var isMcu=b.fw_type==='mcu';
+    var typeCls=isMcu?'fw-badge-mcu':'fw-badge-diu';
+    var typeLabel=isMcu?'MCU 60A':'DIU/FW';
+    return '<div class="fw-card">'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<div class="fw-reg">'+_esc(b.reg_number||b.chassis_number||'—')+'</div>'
+      +'<span class="fw-type-badge '+typeCls+'">'+typeLabel+'</span>'
+      +(distLabel?'<span class="dist-badge '+(isNear?'near':'far')+'" style="margin-left:auto">📍 '+_esc(distLabel)+'</span>':'')
+      +'</div>'
+      +'<div class="fw-meta">'
+      +(b.hub?'<span>🏠 '+_esc(b.hub)+'</span>':'')
+      +(b.current_soc!=null?'<span>🔋 '+b.current_soc+'%</span>':'')
+      +(b.vehicle_status?'<span>'+_esc(b.vehicle_status)+'</span>':'')
+      +'<span>GPS '+_esc(gpsAge)+'</span>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function switchFWSubtab(sub){
+  _fwSubtab=sub;
+  ['list','map'].forEach(function(s){
+    var tab=document.getElementById('fwst-'+s);
+    var panel=document.getElementById('fw-'+s+'-panel');
+    if(tab)tab.classList.toggle('active',s===sub);
+    if(panel)panel.style.display=s===sub?'block':'none';
+  });
+  if(sub==='map')renderFWMap();
+}
+
+function renderFWMap(){
+  if(!window.L){
+    _loadLeaflet(function(){_initFWMap();});
+    return;
+  }
+  if(!_fwMap){_initFWMap();}
+  else _renderFWMapPins();
+}
+
+function _loadLeaflet(cb){
+  if(window.L){cb();return;}
+  var css=document.createElement('link');
+  css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(css);
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  s.onload=cb;document.head.appendChild(s);
+}
+
+function _initFWMap(){
+  var el=document.getElementById('fw-map');
+  if(!el)return;
+  var center=_gpsPos?[_gpsPos.lat,_gpsPos.lng]:[12.9716,77.5946];
+  _fwMap=L.map('fw-map',{zoomControl:true}).setView(center,13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{
+    attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'
+  }).addTo(_fwMap);
+  // Tech's own location — blue dot
+  if(_gpsPos){
+    _fwTechMarker=L.circleMarker([_gpsPos.lat,_gpsPos.lng],{
+      radius:9,color:'#1D4ED8',fillColor:'#3B82F6',fillOpacity:1,weight:2.5
+    }).addTo(_fwMap).bindPopup('<b>📍 You</b>');
+  }
+  _renderFWMapPins();
+  setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},250);
+}
+
+function _renderFWMapPins(){
+  if(!_fwMap)return;
+  // Clear old pins
+  _fwMarkers.forEach(function(m){_fwMap.removeLayer(m);});
+  _fwMarkers=[];
+  var bikes=_filteredFW().filter(function(b){
+    // India bbox guard (same pattern as trace-ho.html validLL)
+    return b.lat&&b.lng&&b.lat>=6.5&&b.lat<=37.5&&b.lng>=68&&b.lng<=97.5;
+  });
+  var bounds=[];
+  bikes.forEach(function(b){
+    var isMcu=b.fw_type==='mcu';
+    var col=isMcu?'#F97316':'#7C3AED'; // orange=MCU, purple=DIU
+    var m=L.circleMarker([b.lat,b.lng],{
+      radius:6,color:col,fillColor:col,fillOpacity:0.75,weight:1.5
+    }).bindPopup(
+      '<b>'+_esc(b.reg_number||'—')+'</b><br>'
+      +(isMcu?'<span style="color:#C2410C;font-weight:700">MCU 60A</span>':'<span style="color:#6D28D9;font-weight:700">DIU/FW</span>')
+      +(b.hub?'<br>'+_esc(b.hub):'')
+      +(b.current_soc!=null?'<br>SOC '+b.current_soc+'%':'')
+    );
+    m.addTo(_fwMap);
+    _fwMarkers.push(m);
+    bounds.push([b.lat,b.lng]);
+  });
+  if(bounds.length){
+    if(_gpsPos)bounds.push([_gpsPos.lat,_gpsPos.lng]);
+    try{_fwMap.fitBounds(bounds,{padding:[30,30],maxZoom:14});}catch(e){}
+  }
 }
 
 // ── Tab switching ──
