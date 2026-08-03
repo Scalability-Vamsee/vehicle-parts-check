@@ -914,7 +914,7 @@ async function loadMyTickets(){
     _myTickets=await res.json();
     // Batch-fetch all events for all my tickets
     if(_myTickets.length){
-      var nos=_myTickets.map(function(t){return t.ticket_number;}).join(',');
+      var nos=_myTickets.map(function(t){return '"'+t.ticket_number+'"';}).join(',');
       var evRes=await fetch(SB_URL+'/rest/v1/ticket_events?ticket_number=in.('+nos+')&order=created_at.asc',
         {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
       if(evRes.ok){
@@ -1186,6 +1186,14 @@ function skipPhotos(){
 // ── Render ───────────────────────────────────────────────────────────
 
 function renderTicketsPanel(){
+  // If no tech profile linked, show a clear message on every sub-tab
+  if(!_techRecord){
+    ['sub-pending','sub-inprogress','sub-completed'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el)el.innerHTML='<div class="log-empty">Your account is not linked to a tech profile — contact your HO admin.</div>';
+    });
+    return;
+  }
   var pending=[], inprog=[], done=[];
   _myTickets.forEach(function(t){
     var s=getTicketState(t.ticket_number);
