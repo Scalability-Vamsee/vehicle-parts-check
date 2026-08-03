@@ -155,6 +155,9 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .tsp-tat.warn{color:#F97316;}
 .tsp-tat.urgent{color:#EF4444;}
 .tsp-tech{font-size:.72rem;font-weight:600;color:#1D4ED8;margin-bottom:2px;}
+.tsp-search{padding:7px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tsp-search-input{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:5px 9px;font-size:.75rem;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;background:#F8FAFC;}
+.tsp-search-input:focus{border-color:#6366F1;background:#fff;}
 .tsp-tech.unassigned{color:#9CA3AF;font-weight:400;}
 .tsp-meta{font-size:.68rem;color:var(--muted);}
 .tsp-state-pill{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
@@ -454,16 +457,18 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       </div>
     </div>
   </div>
-</div>
-
-<!-- Tickets slide panel -->
-<div id="tickets-panel">
-  <div class="tsp-header">
-    <span class="tsp-title">🎫 Active Tickets</span>
-    <button onclick="closeTicketsPanel()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#6B7280;line-height:1">✕</button>
-  </div>
-  <div class="tsp-body" id="tsp-body">
-    <div class="log-empty">Loading…</div>
+  <!-- Tickets slide panel — INSIDE map-wrap so it clips to the map area -->
+  <div id="tickets-panel">
+    <div class="tsp-header">
+      <span class="tsp-title">🎫 Active Tickets</span>
+      <button onclick="closeTicketsPanel()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#6B7280;line-height:1">✕</button>
+    </div>
+    <div class="tsp-search">
+      <input class="tsp-search-input" id="tsp-search-input" type="text" placeholder="Search ticket / reg…" oninput="tspSearch()" autocomplete="off"/>
+    </div>
+    <div class="tsp-body" id="tsp-body">
+      <div class="log-empty">Loading…</div>
+    </div>
   </div>
 </div>
 
@@ -901,7 +906,8 @@ function ticketPopup(t){
     +'<br><b>TAT: '+fmtTat(tat)+'</b>'
     +'</div>'
     +'<div class="p-actions">'
-    +(lat&&lng?'<button class="p-btn dir" onclick="copyMapLink('+lat+','+lng+',this)">📍 Copy map link</button>':'')
+    +(lat&&lng?'<button class="p-btn dir" onclick="leafMap.setView(['+lat+','+lng+'],17,{animate:true})">🔍 Zoom in</button>':'')
+    +(lat&&lng?'<button class="p-btn dir" onclick="copyMapLink('+lat+','+lng+',this)">📍 Copy link</button>':'')
     +'<button class="p-btn trk" onclick="openTicketTrack(\''+t.ticket_number+'\')">🛤 Track</button>'
     +'</div>'
     +'</div>';
@@ -1115,9 +1121,12 @@ function searchZoom(){
     return (t.reg_number||'').toLowerCase().includes(q)||
            (t.ticket_number||'').toLowerCase().includes(q);
   });
-  if(!match||!match.lat||!match.lng)return;
-  leafMap.setView([match.lat,match.lng],16,{animate:true});
-  // Flash a highlight marker briefly
+  if(!match)return;
+  // Open popup (Leaflet auto-pans to keep it in view without forced zoom)
+  var m=_ticketMarkerMap[match.ticket_number];
+  if(m){m.openPopup();return;}
+  // Fallback if marker not in current filter — flash circle only
+  if(!match.lat||!match.lng)return;
   var hl=L.circleMarker([match.lat,match.lng],{radius:22,color:'#F59E0B',weight:3,fillOpacity:0,opacity:0.9}).addTo(leafMap);
   setTimeout(function(){leafMap.removeLayer(hl);},2000);
 }
@@ -1390,6 +1399,7 @@ function toggleLayersPanel(){document.getElementById('layers-panel').classList.t
 
 var _tspOpen=false;
 var _tspHighlighted=null;
+var _tspQuery='';
 
 function openTicketsPanel(){
   _tspOpen=true;
@@ -1401,6 +1411,13 @@ function closeTicketsPanel(){
   _tspOpen=false;
   document.getElementById('tickets-panel').classList.remove('open');
   _clearTspHighlight();
+  _tspQuery='';
+  var si=document.getElementById('tsp-search-input');if(si)si.value='';
+}
+
+function tspSearch(){
+  _tspQuery=(document.getElementById('tsp-search-input').value||'').trim().toLowerCase();
+  renderTspPanel();
 }
 
 // Q2: Click ticket → pan map + open popup + highlight card
@@ -1411,12 +1428,9 @@ function highlightTicketOnMap(ticketNo){
   var card=document.getElementById('tspcard-'+ticketNo);
   if(card)card.classList.add('highlighted');
   _tspHighlighted=ticketNo;
-  // Pan to marker and open popup
+  // Open popup without forcing zoom — user can zoom via the Zoom button inside popup
   var m=_ticketMarkerMap[ticketNo];
-  if(m){
-    leafMap.setView(m.getLatLng(),15,{animate:true});
-    setTimeout(function(){m.openPopup();},350);
-  }
+  if(m)m.openPopup();
 }
 
 function _clearTspHighlight(){
@@ -1445,6 +1459,15 @@ function renderTspPanel(){
     }
     return true;
   });
+
+  // Panel search filter
+  if(_tspQuery){
+    tickets=tickets.filter(function(t){
+      return (t.ticket_number||'').toLowerCase().includes(_tspQuery)||
+             (t.reg_number||'').toLowerCase().includes(_tspQuery)||
+             (t.technician_name||'').toLowerCase().includes(_tspQuery);
+    });
+  }
 
   // Q3: Sort by TAT descending (most elapsed first)
   tickets=tickets.slice().sort(function(a,b){
