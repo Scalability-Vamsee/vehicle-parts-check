@@ -88,7 +88,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .lp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
 /* Legend */
-#legend{position:absolute;bottom:24px;left:12px;z-index:400;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:10px 14px;font-size:.75rem}
+#legend{position:absolute;bottom:24px;right:12px;left:auto;z-index:400;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:10px 14px;font-size:.75rem}
 .leg-title{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9CA3AF;margin-bottom:7px}
 .leg-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;color:#374151}
 .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -129,35 +129,38 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .tp-leg-row{display:flex;align-items:center;gap:7px;font-size:.73rem;color:#374151;margin-bottom:4px}
 .tp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
-/* ── Tickets slide panel ── */
-#tickets-panel{position:absolute;top:0;right:0;bottom:0;width:320px;background:#fff;border-left:1px solid var(--border);z-index:500;display:none;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.08);}
+/* ── Tickets slide panel — LEFT side ── */
+#tickets-panel{position:absolute;top:0;left:0;bottom:0;width:300px;background:#fff;border-right:1px solid var(--border);z-index:500;display:none;flex-direction:column;box-shadow:4px 0 16px rgba(0,0,0,.08);}
 #tickets-panel.open{display:flex;}
-.tsp-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.tsp-title{font-size:.85rem;font-weight:800;color:#0F172A;}
-.tsp-body{flex:1;overflow-y:auto;padding:10px 12px;}
-.tsp-count{font-size:.7rem;color:var(--muted);margin-bottom:8px;}
-.tsp-card{border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px;background:#fff;transition:border-color .2s;}
-.tsp-card.state-transferred{border-left:3px solid #EF4444;order:-2;}
-.tsp-card.state-in_progress{border-left:3px solid #F97316;order:-1;}
-.tsp-card.state-reached{border-left:3px solid #F59E0B;}
-.tsp-card.state-en_route{border-left:3px solid #3B82F6;}
-.tsp-card.state-accepted{border-left:3px solid #6366F1;}
+.tsp-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#F8FAFC;}
+.tsp-title{font-size:.82rem;font-weight:800;color:#0F172A;}
+.tsp-body{flex:1;overflow-y:auto;padding:8px 10px;}
+.tsp-count{font-size:.68rem;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.tsp-card{border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:6px;background:#fff;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+.tsp-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1);border-color:#94A3B8;}
+.tsp-card.highlighted{box-shadow:0 0 0 2px #3B82F6;border-color:#3B82F6;}
+.tsp-card.tat-urgent{border-left:3px solid #EF4444;background:#FFF5F5;}
+.tsp-card.tat-warn{border-left:3px solid #F97316;}
+.tsp-card.tat-ok{border-left:3px solid #22C55E;}
 .tsp-card.reassigned-flash{animation:reassign-pulse 1.5s 3;}
 @keyframes reassign-pulse{0%,100%{background:#fff;}50%{background:#FEF3C7;}}
-.tsp-reg{font-size:.83rem;font-weight:700;color:#0F172A;}
-.tsp-tech{font-size:.72rem;color:#374151;font-weight:600;}
+.tsp-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.tsp-tno{font-size:.78rem;font-weight:800;color:#0F172A;}
+.tsp-status-pill{font-size:.58rem;font-weight:700;padding:2px 6px;border-radius:6px;flex-shrink:0;}
+.pill-NEW{background:#FEF2F2;color:#DC2626;}
+.pill-IN_PROGRESS{background:#FFF7ED;color:#C2410C;}
+.pill-DONE{background:#F0FDF4;color:#16A34A;}
+.tsp-tat{font-size:.7rem;font-weight:700;margin-left:auto;flex-shrink:0;}
+.tsp-tat.ok{color:#16A34A;}
+.tsp-tat.warn{color:#F97316;}
+.tsp-tat.urgent{color:#EF4444;}
+.tsp-tech{font-size:.72rem;font-weight:600;color:#1D4ED8;margin-bottom:2px;}
+.tsp-tech.unassigned{color:#9CA3AF;font-weight:400;}
+.tsp-meta{font-size:.68rem;color:var(--muted);}
 .tsp-state-pill{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
 .pill-transferred{background:#FEF2F2;color:#DC2626;}
 .pill-in_progress{background:#FFF7ED;color:#C2410C;}
-.pill-reached{background:#FFFBEB;color:#92400E;}
-.pill-en_route{background:#EFF6FF;color:#1D4ED8;}
-.pill-accepted{background:#EEF2FF;color:#4338CA;}
 .pill-pending{background:#F3F4F6;color:#6B7280;}
-.tsp-meta{font-size:.7rem;color:var(--muted);margin-top:3px;}
-.tsp-elapsed{font-size:.68rem;font-weight:600;margin-top:4px;}
-.tsp-elapsed.ok{color:var(--green);}
-.tsp-elapsed.warn{color:#F59E0B;}
-.tsp-elapsed.urgent{color:#EF4444;}
 
 /* Admin panel — full-width tab view (not slide-in) */
 #admin-panel{flex:1;overflow-y:auto;display:none;background:#F8FAFC}
@@ -749,6 +752,7 @@ function inferCity(t){
 
 var _all=[];
 var _filtered=[];
+var _ticketMarkerMap={};  // ticket_number → L.marker (for panel click-to-highlight)
 var _zoneFilter='ALL';
 var _isToday=true;
 var _lastCitySel=null;
@@ -986,12 +990,14 @@ function renderTickets(){
   });
 
   _filtered=filtered;
+  _ticketMarkerMap={};
   var bounds=[];
   filtered.forEach(function(t){
     if(!t.display_lat||!t.display_lng)return;
-    L.marker([t.display_lat,t.display_lng],{icon:makeTicketIcon(effStatus(t)),zIndexOffset:effStatus(t)==='NEW'?200:effStatus(t)==='IN_PROGRESS'?100:0})
+    var m=L.marker([t.display_lat,t.display_lng],{icon:makeTicketIcon(effStatus(t)),zIndexOffset:effStatus(t)==='NEW'?200:effStatus(t)==='IN_PROGRESS'?100:0})
       .bindPopup(ticketPopup(t),{maxWidth:260})
       .addTo(ticketGroup);
+    _ticketMarkerMap[t.ticket_number]=m;
     bounds.push([t.display_lat,t.display_lng]);
   });
 
@@ -1378,103 +1384,79 @@ async function loadRsaLocations(){
 function toggleLayersPanel(){document.getElementById('layers-panel').classList.toggle('show');}
 
 // ════════════════════════════════════════════════════════════════════
-// RSA Warroom — Tickets slide panel (read-only, filtered by city+date)
+// RSA Warroom — Tickets slide panel (left-side, open by default)
+// Uses _all (already loaded, city+date filtered) — no extra fetch
 // ════════════════════════════════════════════════════════════════════
 
 var _tspOpen=false;
-var _tspTickets=[];      // raw tickets from rsa_tickets_live
-var _tspEvents={};       // ticket_number → [{event_type,...}]
+var _tspHighlighted=null;
 
 function openTicketsPanel(){
   _tspOpen=true;
   document.getElementById('tickets-panel').classList.add('open');
-  loadTspTickets();
+  renderTspPanel();
 }
 
 function closeTicketsPanel(){
   _tspOpen=false;
   document.getElementById('tickets-panel').classList.remove('open');
+  _clearTspHighlight();
 }
 
-async function loadTspTickets(){
-  var body=document.getElementById('tsp-body');
-  if(body)body.innerHTML='<div class="log-empty">Loading…</div>';
-  if(!K)return;
-  var hdrs={apikey:ANON_KEY,Authorization:'Bearer '+K};
-
-  // Build query — filter by active city + date range
-  var url=SB_URL+'/rest/v1/rsa_tickets_live?select=ticket_number,reg_number,category,fault_details,technician_name,city,lat,lng,live_lat,live_lng,created_at_ist&order=created_at_ist.desc&limit=500';
-
-  // City filter
-  if(_cityActive&&_cityActive.length===1)url+='&city=eq.'+_cityActive[0];
-
-  // Date filter (from/to)
-  var df=document.getElementById('date-from');
-  var dt=document.getElementById('date-to');
-  if(df&&df.value)url+='&created_at_ist=gte.'+df.value;
-  if(dt&&dt.value)url+='&created_at_ist=lte.'+dt.value+'T23:59:59';
-
-  try{
-    var res=await fetch(url,{headers:hdrs});
-    if(!res.ok){if(body)body.innerHTML='<div class="log-empty">Load failed</div>';return;}
-    _tspTickets=await res.json();
-
-    // Exclude completed — HO only needs active
-    var activeNos=_tspTickets.map(function(t){return t.ticket_number;});
-    if(activeNos.length){
-      var evRes=await fetch(SB_URL+'/rest/v1/ticket_events?ticket_number=in.('+activeNos.join(',')+')'
-        +'&order=created_at.asc',{headers:hdrs});
-      if(evRes.ok){
-        var allEvs=await evRes.json();
-        _tspEvents={};
-        allEvs.forEach(function(ev){
-          if(!_tspEvents[ev.ticket_number])_tspEvents[ev.ticket_number]=[];
-          _tspEvents[ev.ticket_number].push(ev);
-        });
-      }
-    }
-    renderTspPanel();
-  }catch(e){if(body)body.innerHTML='<div class="log-empty">Load failed</div>';}
+// Q2: Click ticket → pan map + open popup + highlight card
+function highlightTicketOnMap(ticketNo){
+  // Clear previous highlight
+  _clearTspHighlight();
+  // Highlight card
+  var card=document.getElementById('tspcard-'+ticketNo);
+  if(card)card.classList.add('highlighted');
+  _tspHighlighted=ticketNo;
+  // Pan to marker and open popup
+  var m=_ticketMarkerMap[ticketNo];
+  if(m){
+    leafMap.setView(m.getLatLng(),15,{animate:true});
+    setTimeout(function(){m.openPopup();},350);
+  }
 }
 
-function _tspState(tno){
-  var evs=_tspEvents[tno];
-  if(!evs||!evs.length)return 'pending';
-  var last=evs[evs.length-1].event_type;
-  if(last==='accepted')return 'accepted';
-  if(last==='en_route')return 'en_route';
-  if(last==='reached')return 'reached';
-  if(last==='work_started')return 'in_progress';
-  if(last==='completed')return 'completed';
-  if(last==='transferred_to_ho')return 'transferred';
-  return 'pending';
+function _clearTspHighlight(){
+  if(_tspHighlighted){
+    var prev=document.getElementById('tspcard-'+_tspHighlighted);
+    if(prev)prev.classList.remove('highlighted');
+    _tspHighlighted=null;
+  }
 }
 
-var _tspStateOrder={transferred:0,in_progress:1,reached:2,en_route:3,accepted:4,pending:5,completed:99};
-
+// Q1: Use _all directly — perfectly in sync with map filters
+// Q3: Sort by TAT descending (oldest = most urgent first)
+// Q4: Red if >30 min, amber 10–30, green <10
+// Q5: Tech name from ticket data
+// Q6: Clear card layout
 function renderTspPanel(){
   var body=document.getElementById('tsp-body');
   if(!body)return;
 
-  // Filter out completed
-  var tickets=_tspTickets.filter(function(t){
-    var s=_tspState(t.ticket_number);
-    return s!=='completed';
+  // Get city-filtered tickets from _all (excludes DONE)
+  var tickets=(_all||[]).filter(function(t){
+    var s=effStatus(t);
+    if(s==='DONE')return false;
+    if(_cityActive&&_cityActive.length>0){
+      return _cityActive.indexOf((t.city||'').toUpperCase())>=0;
+    }
+    return true;
   });
 
-  // Sort by state priority
-  tickets.sort(function(a,b){
-    var sa=_tspStateOrder[_tspState(a.ticket_number)]||5;
-    var sb=_tspStateOrder[_tspState(b.ticket_number)]||5;
-    return sa-sb;
+  // Q3: Sort by TAT descending (most elapsed first)
+  tickets=tickets.slice().sort(function(a,b){
+    return (tatMins(b)||0)-(tatMins(a)||0);
   });
 
-  // Badge for transferred count
-  var transferred=tickets.filter(function(t){return _tspState(t.ticket_number)==='transferred';});
+  // Badge
+  var newCount=tickets.filter(function(t){return effStatus(t)==='NEW';}).length;
   var badge=document.getElementById('tsp-badge');
   if(badge){
-    badge.textContent=transferred.length;
-    badge.style.display=transferred.length>0?'inline-block':'none';
+    badge.textContent=newCount;
+    badge.style.display=newCount>0?'inline-block':'none';
   }
 
   if(!tickets.length){
@@ -1482,61 +1464,55 @@ function renderTspPanel(){
     return;
   }
 
-  var stateLabels={transferred:'Transferred',in_progress:'Working',reached:'Reached',en_route:'En Route',accepted:'Accepted',pending:'Pending'};
-  var pillCls={transferred:'pill-transferred',in_progress:'pill-in_progress',reached:'pill-reached',en_route:'pill-en_route',accepted:'pill-accepted',pending:'pill-pending'};
-
-  var html='<div class="tsp-count">'+tickets.length+' active'+( transferred.length?' · '+transferred.length+' need reassignment':'')+'</div>';
+  var html='<div class="tsp-count">'+tickets.length+' active · '+newCount+' new</div>';
 
   html+=tickets.map(function(t){
-    var state=_tspState(t.ticket_number);
-    var stateLabel=stateLabels[state]||state;
-    var pill=pillCls[state]||'pill-pending';
+    var st=effStatus(t);
+    var tat=tatMins(t);
+    var tatM=Math.floor(tat||0);
 
-    // Elapsed since accepted
-    var evs=_tspEvents[t.ticket_number]||[];
-    var accEv=evs.find(function(e){return e.event_type==='accepted';});
-    var elapsed='';
-    if(accEv&&state!=='pending'){
-      var mins=Math.floor((Date.now()-new Date(accEv.created_at).getTime())/60000);
-      var ec=mins>=60?'urgent':mins>=30?'warn':'ok';
-      var eStr=mins<1?'<1m':mins<60?mins+'m':Math.floor(mins/60)+'h '+(mins%60)+'m';
-      elapsed='<div class="tsp-elapsed '+ec+'">⏱ '+eStr+' elapsed</div>';
-    }
-    if(state==='transferred'){
-      var trEv=evs.slice().reverse().find(function(e){return e.event_type==='transferred_to_ho';});
-      var note=trEv&&trEv.notes?'<div class="tsp-meta" style="color:#DC2626">'+_esc(trEv.notes)+'</div>':'';
-      elapsed=note+'<div class="tsp-elapsed urgent">⚠ Needs reassignment</div>';
-    }
+    // Q4: Urgency class
+    var urgCls=tatM>=30?'tat-urgent':tatM>=10?'tat-warn':'tat-ok';
+    var tatTc=tatM>=30?'urgent':tatM>=10?'warn':'ok';
+    var tatStr=tatM<1?'<1m':tatM<60?tatM+'m':Math.floor(tatM/60)+'h '+(tatM%60)+'m';
 
-    return '<div class="tsp-card state-'+state+'" id="tspcard-'+_esc(t.ticket_number)+'">'
-      +'<div style="display:flex;align-items:center;gap:6px">'
-      +'<div class="tsp-reg">'+_esc(t.ticket_number)+'</div>'
-      +'<span class="tsp-state-pill '+pill+'">'+stateLabel+'</span>'
+    // Status pill
+    var pillKey=st.replace(' ','_');
+    var pillCls='pill-'+(pillKey||'NEW');
+
+    // Q5: Tech name
+    var hasTech=!!(t.technician_name);
+    var techHtml='<div class="tsp-tech'+(hasTech?'':' unassigned')+'">'
+      +(hasTech?'👤 '+_esc(t.technician_name):'Unassigned')+'</div>';
+
+    return '<div class="tsp-card '+urgCls+'" id="tspcard-'+_esc(t.ticket_number)+'" onclick="highlightTicketOnMap(\''+_esc(t.ticket_number)+'\')">'
+      +'<div class="tsp-top">'
+      +'<span class="tsp-tno">'+_esc(t.ticket_number)+'</span>'
+      +'<span class="tsp-status-pill '+pillCls+'">'+_esc(st)+'</span>'
+      +'<span class="tsp-tat '+tatTc+'">⏱ '+tatStr+'</span>'
       +'</div>'
-      +'<div class="tsp-tech">👤 '+_esc(t.technician_name||'Unassigned')+'</div>'
+      +techHtml
       +'<div class="tsp-meta">🚲 '+_esc(t.reg_number||'—')
       +(t.category?' · '+_esc(t.category):'')+'</div>'
-      +elapsed
       +'</div>';
   }).join('');
 
   body.innerHTML=html;
 }
 
-// Flash a card when ticket is reassigned
+// Flash a card (for future reassignment feature)
 function flashTspCard(ticketNo){
   var card=document.getElementById('tspcard-'+ticketNo);
   if(!card)return;
   card.classList.remove('reassigned-flash');
-  void card.offsetWidth; // reflow
+  void card.offsetWidth;
   card.classList.add('reassigned-flash');
-  // Scroll it into view at top
   card.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-// Called from loadMapData() after each refresh so the panel stays in sync
+// Called from renderTickets() after every data refresh
 function refreshTspIfOpen(){
-  if(_tspOpen)loadTspTickets();
+  if(_tspOpen)renderTspPanel();
 }
 
 // ── Track panel ──
@@ -2705,6 +2681,10 @@ async function loadAndApplyPermissions(userId){
   document.getElementById('s-ip').checked=true;
   document.getElementById('s-done').checked=false;
   updateDropdownLabel('ms-status','All ');
+  // Zone clusters on by default
+  document.getElementById('lyr-clusters').checked=true;
+  renderClusters();
+  leafMap.addLayer(clusterGroup);
 })();
 
 (async function(){
@@ -2718,6 +2698,7 @@ async function loadAndApplyPermissions(userId){
     loadAndApplyPermissions(session.user.id);
     // No triggerSync on load — cron handles every 2 min; only manual Refresh triggers sync
     setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
+    openTicketsPanel();
   }else{_authReady=true;showAuthScreen();}
 
   sbClient.auth.onAuthStateChange(async function(event,session){
@@ -2729,6 +2710,7 @@ async function loadAndApplyPermissions(userId){
       _authReady=true;
       loadAndApplyPermissions(session.user.id);
       setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
+      openTicketsPanel();
     }else if(event==='SIGNED_OUT'){
       K=ANON_KEY;
       showAuthScreen();
