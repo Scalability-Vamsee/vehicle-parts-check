@@ -9,6 +9,7 @@ const DEDUP_SECONDS = 100;
 const RSA_TEAM = [
   { name: 'Nishanth', chassis: 'P6EBE1JYK25000288', reg: 'KA05AR5056' },
   { name: 'Pavan',    chassis: 'P6EBE1JYK25000072', reg: 'KA05AR3238' },
+  { name: 'Bhoja',    chassis: 'P6EBE1JYH25000416', reg: 'KA05AR0387' },
 ];
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
@@ -134,6 +135,8 @@ Deno.serve(async (req: Request) => {
         lat:                    r.Bass_Lat            ?? null,
         lng:                    r.Bass_Lng            ?? null,
         bass_location_time_ist: r.Bass_Location_Time_IST ?? null,
+        customer_name:          r.customerName        ?? null,
+        customer_phone:         r.customerPhone       ?? null,
         synced_at:              now,
       }));
 
@@ -164,6 +167,40 @@ Deno.serve(async (req: Request) => {
         .upsert(records.slice(i, i + BATCH), { onConflict: 'ticket_number' });
       if (error) throw new Error(`Upsert error: ${error.message}`);
     }
+
+    // 2.2: Backfill action_taken from ticket_events (resolution_type of last 'completed' event)
+    try {
+      const doneNos = records.filter((r: any) => r.status === 'DONE').map((r: any) => r.ticket_number);
+      if (doneNos.length > 0) {
+        // Fetch last completed event per ticket (order desc, get first per ticket)
+        const { data: evRows } = await sb
+          .from('ticket_events')
+          .select('ticket_number,resolution_type')
+          .in('ticket_number', doneNos)
+          .eq('event_type', 'completed')
+          .not('resolution_type', 'is', null)
+          .order('created_at', { ascending: false });
+
+        if (evRows && evRows.length > 0) {
+          // Dedupe: keep first (latest) per ticket
+          const seen = new Set<string>();
+          const updates: { ticket_number: string; action_taken: string }[] = [];
+          for (const ev of evRows) {
+            if (!seen.has(ev.ticket_number)) {
+              seen.add(ev.ticket_number);
+              updates.push({ ticket_number: ev.ticket_number, action_taken: ev.resolution_type });
+            }
+          }
+          // Batch update action_taken
+          for (const upd of updates) {
+            await sb.from('rsa_tickets_cache')
+              .update({ action_taken: upd.action_taken })
+              .eq('ticket_number', upd.ticket_number);
+          }
+          console.log(`action_taken backfill: ${updates.length} rows`);
+        }
+      }
+    } catch (e) { console.error('action_taken backfill error:', String(e)); }
 
     if (isScheduled && openTickets.length > 0) {
       try {

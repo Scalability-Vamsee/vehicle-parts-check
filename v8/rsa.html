@@ -1097,7 +1097,13 @@ function computeMetrics(data){
 
   // No Dispatch % — proxy for call resolution: DONE tickets with no tech assigned
   // (covers RESOLVED_ON_CALL + PORTER_BOOKED since neither has a technician_name)
-  var rcall=done.length?Math.round(done.filter(function(t){return !t.technician_name;}).length/done.length*100):null;
+  // When action_taken is populated (via ticket_events from rsa-tech), prefer that.
+  var doneAll=data.filter(function(t){return effStatus(t)==='DONE';});
+  var rcall=doneAll.length?Math.round(doneAll.filter(function(t){return !t.technician_name;}).length/doneAll.length*100):null;
+
+  // Fixed on Site % — from action_taken field (populated when tech uses rsa-tech.html)
+  var techDone=doneAll.filter(function(t){return !!t.action_taken;});
+  var fixedRate=techDone.length?Math.round(techDone.filter(function(t){return t.action_taken==='fixed';}).length/techDone.length*100):null;
 
   // Total Tickets — all tickets in current date/city range
   var total=data.length;
@@ -1106,7 +1112,18 @@ function computeMetrics(data){
   document.getElementById('cnt-avg-closure').textContent=fmtMin(avgClosure);
   document.getElementById('cnt-rcall').textContent=rcall!=null?rcall+'%':'—';
   document.getElementById('cnt-over1hr').textContent=over1hr!=null?over1hr+'%':'—';
-  document.getElementById('cnt-porter').textContent=total||'—';
+  // cnt-porter shows Fixed% if tech app data is available, else Total Tickets
+  if(fixedRate!=null){
+    document.getElementById('cnt-porter').textContent=fixedRate+'%';
+    var pt=document.querySelector('.sum-tile.porter .lbl');if(pt)pt.textContent='Fixed on Site %';
+    var pTile=document.querySelector('.sum-tile.porter');
+    if(pTile)pTile.title='% of DONE tech-handled tickets where bike was fixed on site (from RSA Tech app)';
+  }else{
+    document.getElementById('cnt-porter').textContent=total||'—';
+    var pt=document.querySelector('.sum-tile.porter .lbl');if(pt)pt.textContent='Total Tickets';
+    var pTile=document.querySelector('.sum-tile.porter');
+    if(pTile)pTile.title='Total tickets in selected date + city range';
+  }
 }
 
 // ── Dropdown Select All / Clear ──
@@ -1259,7 +1276,7 @@ var _syncTimer=null;
 
 async function readFromSupabase(from,to){
   var url=SB_URL+'/rest/v1/rsa_tickets_live'
-    +'?select=ticket_number,status,effective_status,category,reg_number,technician_name,fault_details,created_at_ist,inprogress_at_ist,resolved_at_ist,tat_minutes,city,lat,lng,display_lat,display_lng,customer_name,customer_phone'
+    +'?select=ticket_number,status,effective_status,category,reg_number,technician_name,fault_details,created_at_ist,inprogress_at_ist,resolved_at_ist,tat_minutes,city,lat,lng,display_lat,display_lng,customer_name,customer_phone,action_taken'
     +'&created_at_ist=gte.'+from
     +'&created_at_ist=lte.'+to+'T23%3A59%3A59'
     +'&limit=5000&order=created_at_ist.desc';

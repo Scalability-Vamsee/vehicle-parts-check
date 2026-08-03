@@ -1033,7 +1033,7 @@ async function navigateTicket(ticketNo){
   var lng=t.display_lng||t.live_lng||t.lng;
   var mapsUrl=lat&&lng
     ?'https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng
-    :'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((t.reg_number||'bike')+' Bangalore');
+    :'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((t.reg_number||'bike')+' '+(t.city||(_techRecord&&_techRecord.city)||'Bangalore'));
   window.open(mapsUrl,'_blank');
   var ok=await postEvent(ticketNo,'en_route');
   if(ok){showToast('🗺️ En route — be safe!');await loadMyTickets();}
@@ -1047,6 +1047,7 @@ async function reachedTicket(ticketNo){
     var dm=haversineM(_gpsPos.lat,_gpsPos.lng,bikeLL.lat,bikeLL.lng);
     if(dm>500)distNote=' (still ~'+distStr(dm)+' from bike GPS)';
   }
+  _endModalTktNo=ticketNo; // ensure photo path uses correct ticket folder
   openPhotoModal('Location Evidence — Reached Bike'+distNote,true,async function(urls){
     var ok=await postEvent(ticketNo,'reached',{evidence_urls:urls.length?urls:null});
     if(ok){showToast('📍 Reached logged'+distNote);await loadMyTickets();}
@@ -1417,11 +1418,16 @@ function showTicketAlert(msg){
 function subscribeTickets(){
   if(!_techRecord)return;
   if(_ticketSubChannel)sb.removeChannel(_ticketSubChannel);
+  // Note: Realtime filter only supports eq (no ilike) — filter client-side instead
+  // to avoid missed assignments when name casing differs between Metabase and DB
   _ticketSubChannel=sb.channel('rsa-my-tickets-'+_techRecord.id)
     .on('postgres_changes',{
-      event:'*',schema:'public',table:'rsa_tickets_cache',
-      filter:'technician_name=eq.'+_techRecord.name
+      event:'*',schema:'public',table:'rsa_tickets_cache'
     },async function(payload){
+      // Only react to rows assigned to this tech (case-insensitive)
+      var newTech=(payload.new&&payload.new.technician_name)||'';
+      var myName=(_techRecord&&_techRecord.name)||'';
+      if(!newTech||newTech.toLowerCase()!==myName.toLowerCase())return;
       var isNew=(payload.eventType==='INSERT')||
         (payload.eventType==='UPDATE'&&(!payload.old||!payload.old.technician_name)&&payload.new&&payload.new.technician_name);
       await loadMyTickets();
