@@ -38,9 +38,11 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .sum-tile.new{background:#FEF2F2;border-color:#FCA5A5;color:#DC2626}
 .sum-tile.ip{background:#FFF7ED;border-color:#FDB272;color:#EA580C}
 .sum-tile.done{background:#F0FDF4;border-color:#86EFAC;color:#16A34A}
-.sum-tile.avg-c{background:#F0F9FF;border-color:#BAE6FD;color:#0369A1}
 .sum-tile.avg-r{background:#FFF1F2;border-color:#FDA4AF;color:#BE123C}
+.sum-tile.avg-c{background:#F0F9FF;border-color:#BAE6FD;color:#0369A1}
+.sum-tile.rcall{background:#F0FDF4;border-color:#6EE7B7;color:#047857}
 .sum-tile.over{background:#FDF4FF;border-color:#E9D5FF;color:#7E22CE}
+.sum-tile.porter{background:#FFFBEB;border-color:#FCD34D;color:#92400E}
 .sum-tile .num{font-size:1.5rem;font-weight:900;line-height:1}
 .sum-tile .lbl{font-size:.62rem;font-weight:700;text-align:center;line-height:1.2}
 .sum-sep{width:1px;background:var(--border);align-self:stretch;margin:4px 0}
@@ -328,13 +330,21 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 
 <!-- Tiles (global filter scope) -->
 <div id="summary-bar">
+  <!-- Volume -->
   <div class="sum-tile new" onclick="flashStatus('NEW','#DC2626')" style="cursor:pointer" title="Click to highlight on map"><div class="num" id="cnt-new">—</div><div class="lbl">NEW</div></div>
   <div class="sum-tile ip" onclick="flashStatus('IN_PROGRESS','#EA580C')" style="cursor:pointer" title="Click to highlight on map"><div class="num" id="cnt-ip">—</div><div class="lbl">IN PROGRESS</div></div>
   <div class="sum-tile done" onclick="flashStatus('DONE','#16A34A')" style="cursor:pointer" title="Click to highlight on map"><div class="num" id="cnt-done">—</div><div class="lbl">DONE</div></div>
   <div class="sum-sep"></div>
-  <div class="sum-tile avg-c"><div class="num" id="cnt-avg-closure">—</div><div class="lbl">Avg Closure TAT</div></div>
-  <div class="sum-tile avg-r"><div class="num" id="cnt-avg-response">—</div><div class="lbl">Avg Response TAT</div></div>
-  <div class="sum-tile over"><div class="num" id="cnt-over1hr">—</div><div class="lbl">RSA &gt; 1hr %</div></div>
+  <!-- Speed -->
+  <div class="sum-tile avg-r" title="Avg time from ticket created → technician starts work"><div class="num" id="cnt-avg-response">—</div><div class="lbl">Response TAT</div></div>
+  <div class="sum-tile avg-c" title="Avg time from in-progress → resolved"><div class="num" id="cnt-avg-closure">—</div><div class="lbl">Closure TAT</div></div>
+  <div class="sum-sep"></div>
+  <!-- Quality / Efficiency -->
+  <div class="sum-tile rcall" title="% of DONE tickets resolved on call without dispatching anyone"><div class="num" id="cnt-rcall">—</div><div class="lbl">Resolved on Call</div></div>
+  <div class="sum-tile over" title="% of DONE tickets where closure TAT exceeded 1 hour"><div class="num" id="cnt-over1hr">—</div><div class="lbl">RSA &gt; 1hr %</div></div>
+  <div class="sum-sep"></div>
+  <!-- Cost -->
+  <div class="sum-tile porter" title="Porter bookings in date range (cost signal)"><div class="num" id="cnt-porter">—</div><div class="lbl">Porter Booked</div></div>
 </div>
 
 <!-- Map filters -->
@@ -1082,12 +1092,20 @@ function computeMetrics(data){
   },[]);
   var avgResp=respDiffs.length?respDiffs.reduce(function(s,v){return s+v;},0)/respDiffs.length:null;
 
-  // RSA >1hr% — % of DONE tickets that took >60 min (not all tickets)
+  // RSA >1hr% — % of DONE tickets that took >60 min
   var over1hr=done.length?Math.round(done.filter(function(t){return parseFloat(t.tat_minutes)>60;}).length/done.length*100):null;
 
-  document.getElementById('cnt-avg-closure').textContent=fmtMin(avgClosure);
+  // Resolved on Call % — DONE tickets where category = RESOLVED_ON_CALL
+  var rcall=done.length?Math.round(done.filter(function(t){return (t.category||'').toUpperCase()==='RESOLVED_ON_CALL';}).length/done.length*100):null;
+
+  // Porter Booked — count across all statuses (not just DONE)
+  var porter=data.filter(function(t){return (t.category||'').toUpperCase()==='PORTER_BOOKED';}).length;
+
   document.getElementById('cnt-avg-response').textContent=fmtMin(avgResp);
+  document.getElementById('cnt-avg-closure').textContent=fmtMin(avgClosure);
+  document.getElementById('cnt-rcall').textContent=rcall!=null?rcall+'%':'—';
   document.getElementById('cnt-over1hr').textContent=over1hr!=null?over1hr+'%':'—';
+  document.getElementById('cnt-porter').textContent=porter||'—';
 }
 
 // ── Dropdown Select All / Clear ──
@@ -1249,7 +1267,7 @@ async function readFromSupabase(from,to){
 }
 
 function resetTiles(){
-  ['cnt-new','cnt-ip','cnt-done','cnt-avg-closure','cnt-avg-response','cnt-over1hr'].forEach(function(id){
+  ['cnt-new','cnt-ip','cnt-done','cnt-avg-response','cnt-avg-closure','cnt-rcall','cnt-over1hr','cnt-porter'].forEach(function(id){
     document.getElementById(id).textContent='—';
   });
   ticketGroup.clearLayers();
