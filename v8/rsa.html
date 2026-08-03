@@ -340,11 +340,11 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
   <div class="sum-tile avg-c" title="Avg time from in-progress → resolved"><div class="num" id="cnt-avg-closure">—</div><div class="lbl">Closure TAT</div></div>
   <div class="sum-sep"></div>
   <!-- Quality / Efficiency -->
-  <div class="sum-tile rcall" title="% of DONE tickets resolved on call without dispatching anyone"><div class="num" id="cnt-rcall">—</div><div class="lbl">Resolved on Call</div></div>
+  <div class="sum-tile rcall" title="% of DONE tickets closed without any tech dispatch (call resolution + porter — proxy, since porter has no tech assigned)"><div class="num" id="cnt-rcall">—</div><div class="lbl">No Dispatch %</div></div>
   <div class="sum-tile over" title="% of DONE tickets where closure TAT exceeded 1 hour"><div class="num" id="cnt-over1hr">—</div><div class="lbl">RSA &gt; 1hr %</div></div>
   <div class="sum-sep"></div>
-  <!-- Cost -->
-  <div class="sum-tile porter" title="Porter bookings in date range (cost signal)"><div class="num" id="cnt-porter">—</div><div class="lbl">Porter Booked</div></div>
+  <!-- Volume total -->
+  <div class="sum-tile porter" title="Total tickets in selected date + city range"><div class="num" id="cnt-porter">—</div><div class="lbl">Total Tickets</div></div>
 </div>
 
 <!-- Map filters -->
@@ -1095,17 +1095,18 @@ function computeMetrics(data){
   // RSA >1hr% — % of DONE tickets that took >60 min
   var over1hr=done.length?Math.round(done.filter(function(t){return parseFloat(t.tat_minutes)>60;}).length/done.length*100):null;
 
-  // Resolved on Call % — DONE tickets where category = RESOLVED_ON_CALL
-  var rcall=done.length?Math.round(done.filter(function(t){return (t.category||'').toUpperCase()==='RESOLVED_ON_CALL';}).length/done.length*100):null;
+  // No Dispatch % — proxy for call resolution: DONE tickets with no tech assigned
+  // (covers RESOLVED_ON_CALL + PORTER_BOOKED since neither has a technician_name)
+  var rcall=done.length?Math.round(done.filter(function(t){return !t.technician_name;}).length/done.length*100):null;
 
-  // Porter Booked — count across all statuses (not just DONE)
-  var porter=data.filter(function(t){return (t.category||'').toUpperCase()==='PORTER_BOOKED';}).length;
+  // Total Tickets — all tickets in current date/city range
+  var total=data.length;
 
   document.getElementById('cnt-avg-response').textContent=fmtMin(avgResp);
   document.getElementById('cnt-avg-closure').textContent=fmtMin(avgClosure);
   document.getElementById('cnt-rcall').textContent=rcall!=null?rcall+'%':'—';
   document.getElementById('cnt-over1hr').textContent=over1hr!=null?over1hr+'%':'—';
-  document.getElementById('cnt-porter').textContent=porter||'—';
+  document.getElementById('cnt-porter').textContent=total||'—';
 }
 
 // ── Dropdown Select All / Clear ──
