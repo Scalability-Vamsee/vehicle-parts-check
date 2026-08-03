@@ -391,7 +391,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <button class="layers-toggle" id="gps-toggle" onclick="toggleGpsMode()" title="Toggle between GPS stored on ticket vs live location from cache">📍 Ticket GPS</button>
     <button class="layers-toggle" onclick="openTrackPanel()">🛤 Track</button>
     <button class="layers-toggle" onclick="toggleLayersPanel()">🗂 Layers</button>
-    <button class="layers-toggle" id="tickets-panel-btn" onclick="openTicketsPanel()">🎫 Tickets <span id="tsp-badge" style="display:none;background:#EF4444;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:8px;vertical-align:middle"></span></button>
+    <button class="layers-toggle" id="tickets-panel-btn" onclick="toggleTicketsPanel()">🎫 Tickets <span id="tsp-badge" style="display:none;background:#EF4444;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:8px;vertical-align:middle"></span></button>
   </div>
   <div id="layers-panel">
     <div class="lp-title">Map Layers</div>
@@ -906,11 +906,26 @@ function ticketPopup(t){
     +'<br><b>TAT: '+fmtTat(tat)+'</b>'
     +'</div>'
     +'<div class="p-actions">'
-    +(lat&&lng?'<button class="p-btn dir" onclick="leafMap.setView(['+lat+','+lng+'],17,{animate:true})">🔍 Zoom in</button>':'')
+    +(lat&&lng?'<button class="p-btn dir" id="pzoom-'+t.ticket_number+'" onclick="togglePopupZoom('+lat+','+lng+',\''+t.ticket_number+'\')">🔍 Zoom in</button>':'')
     +(lat&&lng?'<button class="p-btn dir" onclick="copyMapLink('+lat+','+lng+',this)">📍 Copy link</button>':'')
     +'<button class="p-btn trk" onclick="openTicketTrack(\''+t.ticket_number+'\')">🛤 Track</button>'
     +'</div>'
     +'</div>';
+}
+
+var _popupZoomed={};
+function togglePopupZoom(lat,lng,tno){
+  var btn=document.getElementById('pzoom-'+tno);
+  if(!btn)return;
+  if(_popupZoomed[tno]){
+    _popupZoomed[tno]=false;
+    btn.textContent='🔍 Zoom in';
+    leafMap.setZoom(Math.max(leafMap.getZoom()-4,11),{animate:true});
+  }else{
+    _popupZoomed[tno]=true;
+    btn.textContent='🔭 Zoom out';
+    leafMap.setView([lat,lng],17,{animate:true});
+  }
 }
 
 function copyMapLink(lat,lng,btn){
@@ -1401,15 +1416,23 @@ var _tspOpen=false;
 var _tspHighlighted=null;
 var _tspQuery='';
 
+function toggleTicketsPanel(){
+  if(_tspOpen)closeTicketsPanel();else openTicketsPanel();
+}
+
 function openTicketsPanel(){
   _tspOpen=true;
   document.getElementById('tickets-panel').classList.add('open');
+  var btn=document.getElementById('tickets-panel-btn');
+  if(btn)btn.style.background='#EEF2FF';
   renderTspPanel();
 }
 
 function closeTicketsPanel(){
   _tspOpen=false;
   document.getElementById('tickets-panel').classList.remove('open');
+  var btn=document.getElementById('tickets-panel-btn');
+  if(btn)btn.style.background='';
   _clearTspHighlight();
   _tspQuery='';
   var si=document.getElementById('tsp-search-input');if(si)si.value='';
