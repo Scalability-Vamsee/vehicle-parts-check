@@ -88,7 +88,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .lp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
 /* Legend */
-#legend{position:absolute;bottom:24px;right:12px;left:auto;z-index:400;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:10px 14px;font-size:.75rem}
+#legend{position:absolute;bottom:90px;left:10px;z-index:400;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:10px 14px;font-size:.75rem}
 .leg-title{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9CA3AF;margin-bottom:7px}
 .leg-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;color:#374151}
 .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
@@ -668,7 +668,8 @@ var K=ANON_KEY,CURRENT_USER_EMAIL='',_currentUserId=null,_authReady=false;
 var sbClient=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
 
 // Map
-var leafMap=L.map('map',{zoomControl:true}).setView([12.97,77.59],11);
+var leafMap=L.map('map',{zoomControl:false}).setView([12.97,77.59],11);
+L.control.zoom({position:'bottomleft'}).addTo(leafMap);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'}).addTo(leafMap);
 var ticketGroup=L.layerGroup().addTo(leafMap);
 var hubGroup=L.layerGroup().addTo(leafMap);
@@ -906,7 +907,7 @@ function ticketPopup(t){
     +'<br><b>TAT: '+fmtTat(tat)+'</b>'
     +'</div>'
     +'<div class="p-actions">'
-    +(lat&&lng?'<button class="p-btn dir" id="pzoom-'+t.ticket_number+'" onclick="togglePopupZoom('+lat+','+lng+',\''+t.ticket_number+'\')">🔍 Zoom in</button>':'')
+    +(lat&&lng?'<button class="p-btn dir" onclick="leafMap.setView(['+lat+','+lng+'],17,{animate:true})">🔍 Zoom in</button>':'')
     +(lat&&lng?'<button class="p-btn dir" onclick="copyMapLink('+lat+','+lng+',this)">📍 Copy link</button>':'')
     +'<button class="p-btn trk" onclick="openTicketTrack(\''+t.ticket_number+'\')">🛤 Track</button>'
     +'</div>'
@@ -1473,15 +1474,8 @@ function renderTspPanel(){
   var body=document.getElementById('tsp-body');
   if(!body)return;
 
-  // Get city-filtered tickets from _all (excludes DONE)
-  var tickets=(_all||[]).filter(function(t){
-    var s=effStatus(t);
-    if(s==='DONE')return false;
-    if(_cityActive&&_cityActive.length>0){
-      return _cityActive.indexOf((t.city||'').toUpperCase())>=0;
-    }
-    return true;
-  });
+  // Use _filtered — already respects city, status (incl. DONE), TAT, assignment filters
+  var tickets=(_filtered||_all||[]).slice();
 
   // Panel search filter
   if(_tspQuery){
@@ -1497,7 +1491,7 @@ function renderTspPanel(){
     return (tatMins(b)||0)-(tatMins(a)||0);
   });
 
-  // Badge
+  // Badge — count NEW tickets in current filtered view
   var newCount=tickets.filter(function(t){return effStatus(t)==='NEW';}).length;
   var badge=document.getElementById('tsp-badge');
   if(badge){
@@ -1506,7 +1500,7 @@ function renderTspPanel(){
   }
 
   if(!tickets.length){
-    body.innerHTML='<div class="log-empty">No active tickets for selected city / date</div>';
+    body.innerHTML='<div class="log-empty">No tickets match current filters</div>';
     return;
   }
 
