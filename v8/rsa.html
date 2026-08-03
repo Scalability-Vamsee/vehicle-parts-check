@@ -129,6 +129,36 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .tp-leg-row{display:flex;align-items:center;gap:7px;font-size:.73rem;color:#374151;margin-bottom:4px}
 .tp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
+/* ── Tickets slide panel ── */
+#tickets-panel{position:absolute;top:0;right:0;bottom:0;width:320px;background:#fff;border-left:1px solid var(--border);z-index:500;display:none;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.08);}
+#tickets-panel.open{display:flex;}
+.tsp-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.tsp-title{font-size:.85rem;font-weight:800;color:#0F172A;}
+.tsp-body{flex:1;overflow-y:auto;padding:10px 12px;}
+.tsp-count{font-size:.7rem;color:var(--muted);margin-bottom:8px;}
+.tsp-card{border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px;background:#fff;transition:border-color .2s;}
+.tsp-card.state-transferred{border-left:3px solid #EF4444;order:-2;}
+.tsp-card.state-in_progress{border-left:3px solid #F97316;order:-1;}
+.tsp-card.state-reached{border-left:3px solid #F59E0B;}
+.tsp-card.state-en_route{border-left:3px solid #3B82F6;}
+.tsp-card.state-accepted{border-left:3px solid #6366F1;}
+.tsp-card.reassigned-flash{animation:reassign-pulse 1.5s 3;}
+@keyframes reassign-pulse{0%,100%{background:#fff;}50%{background:#FEF3C7;}}
+.tsp-reg{font-size:.83rem;font-weight:700;color:#0F172A;}
+.tsp-tech{font-size:.72rem;color:#374151;font-weight:600;}
+.tsp-state-pill{font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:8px;margin-left:6px;}
+.pill-transferred{background:#FEF2F2;color:#DC2626;}
+.pill-in_progress{background:#FFF7ED;color:#C2410C;}
+.pill-reached{background:#FFFBEB;color:#92400E;}
+.pill-en_route{background:#EFF6FF;color:#1D4ED8;}
+.pill-accepted{background:#EEF2FF;color:#4338CA;}
+.pill-pending{background:#F3F4F6;color:#6B7280;}
+.tsp-meta{font-size:.7rem;color:var(--muted);margin-top:3px;}
+.tsp-elapsed{font-size:.68rem;font-weight:600;margin-top:4px;}
+.tsp-elapsed.ok{color:var(--green);}
+.tsp-elapsed.warn{color:#F59E0B;}
+.tsp-elapsed.urgent{color:#EF4444;}
+
 /* Admin panel — full-width tab view (not slide-in) */
 #admin-panel{flex:1;overflow-y:auto;display:none;background:#F8FAFC}
 #admin-panel.open{display:block}
@@ -355,6 +385,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <button class="layers-toggle" id="gps-toggle" onclick="toggleGpsMode()" title="Toggle between GPS stored on ticket vs live location from cache">📍 Ticket GPS</button>
     <button class="layers-toggle" onclick="openTrackPanel()">🛤 Track</button>
     <button class="layers-toggle" onclick="toggleLayersPanel()">🗂 Layers</button>
+    <button class="layers-toggle" id="tickets-panel-btn" onclick="openTicketsPanel()">🎫 Tickets <span id="tsp-badge" style="display:none;background:#EF4444;color:#fff;font-size:.6rem;font-weight:700;padding:1px 5px;border-radius:8px;vertical-align:middle"></span></button>
   </div>
   <div id="layers-panel">
     <div class="lp-title">Map Layers</div>
@@ -386,9 +417,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       <div>
         <div class="tp-label">Person</div>
         <select id="tp-person" class="tp-input">
-          <option value="Nishanth">Nishanth</option>
-          <option value="Pavan">Pavan</option>
-          <option value="Bhoja">Bhoja</option>
+          <option value="">Loading…</option>
         </select>
       </div>
       <div>
@@ -421,6 +450,17 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
         <div class="tp-leg-row"><div class="tp-dot" style="background:#22C55E"></div>DONE / Last point</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Tickets slide panel -->
+<div id="tickets-panel">
+  <div class="tsp-header">
+    <span class="tsp-title">🎫 Active Tickets</span>
+    <button onclick="closeTicketsPanel()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#6B7280;line-height:1">✕</button>
+  </div>
+  <div class="tsp-body" id="tsp-body">
+    <div class="log-empty">Loading…</div>
   </div>
 </div>
 
@@ -994,6 +1034,8 @@ function renderTickets(){
     document.getElementById('sync-time').textContent=(document.getElementById('sync-time').textContent||'')
       .replace(/ · \d+ no GPS/,'')+' · '+noLoc+' no GPS';
   }
+  // Keep tickets panel in sync if open
+  refreshTspIfOpen();
 }
 
 // ── Computed metrics — always from current dataset (matches map exactly) ──
@@ -1335,6 +1377,168 @@ async function loadRsaLocations(){
 // ── Layers panel ──
 function toggleLayersPanel(){document.getElementById('layers-panel').classList.toggle('show');}
 
+// ════════════════════════════════════════════════════════════════════
+// RSA Warroom — Tickets slide panel (read-only, filtered by city+date)
+// ════════════════════════════════════════════════════════════════════
+
+var _tspOpen=false;
+var _tspTickets=[];      // raw tickets from rsa_tickets_live
+var _tspEvents={};       // ticket_number → [{event_type,...}]
+
+function openTicketsPanel(){
+  _tspOpen=true;
+  document.getElementById('tickets-panel').classList.add('open');
+  loadTspTickets();
+}
+
+function closeTicketsPanel(){
+  _tspOpen=false;
+  document.getElementById('tickets-panel').classList.remove('open');
+}
+
+async function loadTspTickets(){
+  var body=document.getElementById('tsp-body');
+  if(body)body.innerHTML='<div class="log-empty">Loading…</div>';
+  if(!K)return;
+  var hdrs={apikey:ANON_KEY,Authorization:'Bearer '+K};
+
+  // Build query — filter by active city + date range
+  var url=SB_URL+'/rest/v1/rsa_tickets_live?select=ticket_number,reg_number,category,fault_details,technician_name,city,lat,lng,live_lat,live_lng,created_at_ist&order=created_at_ist.desc&limit=500';
+
+  // City filter
+  if(_cityActive&&_cityActive.length===1)url+='&city=eq.'+_cityActive[0];
+
+  // Date filter (from/to)
+  var df=document.getElementById('date-from');
+  var dt=document.getElementById('date-to');
+  if(df&&df.value)url+='&created_at_ist=gte.'+df.value;
+  if(dt&&dt.value)url+='&created_at_ist=lte.'+dt.value+'T23:59:59';
+
+  try{
+    var res=await fetch(url,{headers:hdrs});
+    if(!res.ok){if(body)body.innerHTML='<div class="log-empty">Load failed</div>';return;}
+    _tspTickets=await res.json();
+
+    // Exclude completed — HO only needs active
+    var activeNos=_tspTickets.map(function(t){return t.ticket_number;});
+    if(activeNos.length){
+      var evRes=await fetch(SB_URL+'/rest/v1/ticket_events?ticket_number=in.('+activeNos.join(',')+')'
+        +'&order=created_at.asc',{headers:hdrs});
+      if(evRes.ok){
+        var allEvs=await evRes.json();
+        _tspEvents={};
+        allEvs.forEach(function(ev){
+          if(!_tspEvents[ev.ticket_number])_tspEvents[ev.ticket_number]=[];
+          _tspEvents[ev.ticket_number].push(ev);
+        });
+      }
+    }
+    renderTspPanel();
+  }catch(e){if(body)body.innerHTML='<div class="log-empty">Load failed</div>';}
+}
+
+function _tspState(tno){
+  var evs=_tspEvents[tno];
+  if(!evs||!evs.length)return 'pending';
+  var last=evs[evs.length-1].event_type;
+  if(last==='accepted')return 'accepted';
+  if(last==='en_route')return 'en_route';
+  if(last==='reached')return 'reached';
+  if(last==='work_started')return 'in_progress';
+  if(last==='completed')return 'completed';
+  if(last==='transferred_to_ho')return 'transferred';
+  return 'pending';
+}
+
+var _tspStateOrder={transferred:0,in_progress:1,reached:2,en_route:3,accepted:4,pending:5,completed:99};
+
+function renderTspPanel(){
+  var body=document.getElementById('tsp-body');
+  if(!body)return;
+
+  // Filter out completed
+  var tickets=_tspTickets.filter(function(t){
+    var s=_tspState(t.ticket_number);
+    return s!=='completed';
+  });
+
+  // Sort by state priority
+  tickets.sort(function(a,b){
+    var sa=_tspStateOrder[_tspState(a.ticket_number)]||5;
+    var sb=_tspStateOrder[_tspState(b.ticket_number)]||5;
+    return sa-sb;
+  });
+
+  // Badge for transferred count
+  var transferred=tickets.filter(function(t){return _tspState(t.ticket_number)==='transferred';});
+  var badge=document.getElementById('tsp-badge');
+  if(badge){
+    badge.textContent=transferred.length;
+    badge.style.display=transferred.length>0?'inline-block':'none';
+  }
+
+  if(!tickets.length){
+    body.innerHTML='<div class="log-empty">No active tickets for selected city / date</div>';
+    return;
+  }
+
+  var stateLabels={transferred:'Transferred',in_progress:'Working',reached:'Reached',en_route:'En Route',accepted:'Accepted',pending:'Pending'};
+  var pillCls={transferred:'pill-transferred',in_progress:'pill-in_progress',reached:'pill-reached',en_route:'pill-en_route',accepted:'pill-accepted',pending:'pill-pending'};
+
+  var html='<div class="tsp-count">'+tickets.length+' active'+( transferred.length?' · '+transferred.length+' need reassignment':'')+'</div>';
+
+  html+=tickets.map(function(t){
+    var state=_tspState(t.ticket_number);
+    var stateLabel=stateLabels[state]||state;
+    var pill=pillCls[state]||'pill-pending';
+
+    // Elapsed since accepted
+    var evs=_tspEvents[t.ticket_number]||[];
+    var accEv=evs.find(function(e){return e.event_type==='accepted';});
+    var elapsed='';
+    if(accEv&&state!=='pending'){
+      var mins=Math.floor((Date.now()-new Date(accEv.created_at).getTime())/60000);
+      var ec=mins>=60?'urgent':mins>=30?'warn':'ok';
+      var eStr=mins<1?'<1m':mins<60?mins+'m':Math.floor(mins/60)+'h '+(mins%60)+'m';
+      elapsed='<div class="tsp-elapsed '+ec+'">⏱ '+eStr+' elapsed</div>';
+    }
+    if(state==='transferred'){
+      var trEv=evs.slice().reverse().find(function(e){return e.event_type==='transferred_to_ho';});
+      var note=trEv&&trEv.notes?'<div class="tsp-meta" style="color:#DC2626">'+_esc(trEv.notes)+'</div>':'';
+      elapsed=note+'<div class="tsp-elapsed urgent">⚠ Needs reassignment</div>';
+    }
+
+    return '<div class="tsp-card state-'+state+'" id="tspcard-'+_esc(t.ticket_number)+'">'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<div class="tsp-reg">'+_esc(t.ticket_number)+'</div>'
+      +'<span class="tsp-state-pill '+pill+'">'+stateLabel+'</span>'
+      +'</div>'
+      +'<div class="tsp-tech">👤 '+_esc(t.technician_name||'Unassigned')+'</div>'
+      +'<div class="tsp-meta">🚲 '+_esc(t.reg_number||'—')
+      +(t.category?' · '+_esc(t.category):'')+'</div>'
+      +elapsed
+      +'</div>';
+  }).join('');
+
+  body.innerHTML=html;
+}
+
+// Flash a card when ticket is reassigned
+function flashTspCard(ticketNo){
+  var card=document.getElementById('tspcard-'+ticketNo);
+  if(!card)return;
+  card.classList.remove('reassigned-flash');
+  void card.offsetWidth; // reflow
+  card.classList.add('reassigned-flash');
+  // Scroll it into view at top
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// Called from loadMapData() after each refresh so the panel stays in sync
+function refreshTspIfOpen(){
+  if(_tspOpen)loadTspTickets();
+}
+
 // ── Track panel ──
 var _trackLayer=L.layerGroup().addTo(leafMap);
 
@@ -1344,6 +1548,26 @@ function openTrackPanel(){
   var t=todayStr();
   if(!document.getElementById('tp-from').value)document.getElementById('tp-from').value=t;
   if(!document.getElementById('tp-to').value)document.getElementById('tp-to').value=t;
+  // Populate tech dropdown dynamically from rsa_technicians (respects city filter)
+  _populateTrackTechDropdown();
+}
+
+async function _populateTrackTechDropdown(){
+  var sel=document.getElementById('tp-person');
+  if(!sel||!K)return;
+  try{
+    var url=SB_URL+'/rest/v1/rsa_technicians?select=id,name,city&is_active=eq.true&order=name';
+    if(_cityActive&&_cityActive.length===1)url+='&city=eq.'+_cityActive[0];
+    var res=await fetch(url,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    if(!res.ok)return;
+    var techs=await res.json();
+    var prev=sel.value;
+    sel.innerHTML=techs.map(function(t){
+      return '<option value="'+_esc(t.name)+'">'+_esc(t.name)+(t.city&&_cityActive.length!==1?' ('+t.city+')':'')+'</option>';
+    }).join('');
+    // Restore previously selected value if still in list
+    if(prev&&[].slice.call(sel.options).some(function(o){return o.value===prev;}))sel.value=prev;
+  }catch(e){console.warn('[Track] tech dropdown load error',e);}
 }
 function closeTrackPanel(){
   document.getElementById('track-panel').classList.remove('open');
