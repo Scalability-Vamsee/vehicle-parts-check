@@ -917,7 +917,7 @@ function ticketPopup(t){
     +'<br><b>TAT: '+fmtTat(tat)+'</b>'
     +'</div>'
     +'<div class="p-actions">'
-    +(lat&&lng?'<button class="p-btn dir" onclick="leafMap.setView(['+lat+','+lng+'],17,{animate:true})">🔍 Zoom in</button>':'')
+    +(lat&&lng?'<button class="p-btn dir" id="pzoom-'+t.ticket_number+'" onclick="togglePopupZoom('+lat+','+lng+',\''+t.ticket_number+'\')">🔍 Zoom in</button>':'')
     +(lat&&lng?'<button class="p-btn dir" onclick="copyMapLink('+lat+','+lng+',this)">📍 Copy link</button>':'')
     +'<button class="p-btn trk" onclick="openTicketTrack(\''+t.ticket_number+'\')">🛤 Track</button>'
     +'</div>'
