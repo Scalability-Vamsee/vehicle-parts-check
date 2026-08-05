@@ -6,11 +6,7 @@ const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DEDUP_SECONDS = 100;
 
-const RSA_TEAM = [
-  { name: 'Nishanth', chassis: 'P6EBE1JYK25000288', reg: 'KA05AR5056' },
-  { name: 'Pavan',    chassis: 'P6EBE1JYK25000072', reg: 'KA05AR3238' },
-  { name: 'Bhoja',    chassis: 'P6EBE1JYH25000416', reg: 'KA05AR0387' },
-];
+// RSA_TEAM is no longer hardcoded — loaded dynamically from rsa_vehicle_assignments
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type' };
 
@@ -60,26 +56,49 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── Step 0: RSA team tracking — runs first, always, no dedup ──
+  // ── Step 0: RSA team tracking — dynamic from rsa_vehicle_assignments ──
   if (isScheduled) {
     try {
-      const { data: teamLocs } = await sb
-        .from('bike_location_cache')
-        .select('chassis_number,lat,lng')
-        .in('chassis_number', RSA_TEAM.map(t => t.chassis));
+      // Load all active assignments with tech name via FK join
+      const { data: assignments } = await sb
+        .from('rsa_vehicle_assignments')
+        .select('chassis_number, reg_number, rsa_technicians(name)')
+        .eq('is_active', true);
 
-      const teamRows = (teamLocs || []).map((loc: any) => {
-        const member = RSA_TEAM.find(t => t.chassis === loc.chassis_number);
-        if (!member || !loc.lat || !loc.lng) return null;
-        return { name: member.name, chassis: member.chassis, reg_number: member.reg, lat: loc.lat, lng: loc.lng, synced_at: now };
-      }).filter(Boolean);
+      if (assignments && assignments.length > 0) {
+        const chassisNos = assignments.map((a: any) => a.chassis_number).filter(Boolean);
+        const { data: teamLocs } = await sb
+          .from('bike_location_cache')
+          .select('chassis_number,lat,lng')
+          .in('chassis_number', chassisNos);
 
-      if (teamRows.length > 0) {
-        const { error } = await sb.from('rsa_team_locations').insert(teamRows);
-        if (error) console.error('Team insert error:', error.message);
-        else console.log(`Team tracking: appended ${teamRows.length} rows`);
+        const locMap: Record<string, { lat: number; lng: number }> = {};
+        (teamLocs || []).forEach((loc: any) => {
+          if (loc.chassis_number) locMap[loc.chassis_number] = { lat: loc.lat, lng: loc.lng };
+        });
+
+        const teamRows = assignments.map((a: any) => {
+          const loc = locMap[a.chassis_number];
+          if (!loc || !loc.lat || !loc.lng) return null;
+          return {
+            name: (a.rsa_technicians as any)?.name || 'Unknown',
+            chassis: a.chassis_number,
+            reg_number: a.reg_number,
+            lat: loc.lat,
+            lng: loc.lng,
+            synced_at: now,
+          };
+        }).filter(Boolean);
+
+        if (teamRows.length > 0) {
+          const { error } = await sb.from('rsa_team_locations').insert(teamRows);
+          if (error) console.error('Team insert error:', error.message);
+          else console.log(`Team tracking: appended ${teamRows.length} rows`);
+        } else {
+          console.log('Team tracking: no bikes found in location cache');
+        }
       } else {
-        console.log('Team tracking: no bikes found in cache');
+        console.log('Team tracking: no active vehicle assignments found');
       }
     } catch (e) {
       console.error('Team tracking error:', String(e));
