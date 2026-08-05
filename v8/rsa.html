@@ -349,11 +349,17 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 
 <!-- Map filters -->
 <div id="filter-bar">
-  <span class="filter-label" title="Applies to selected city">Zone</span>
-  <button class="z-btn active" id="z-all" onclick="setZone('ALL',this)">All</button>
-  <button class="z-btn" id="z-n" onclick="setZone('NORTH',this)">North</button>
-  <button class="z-btn" id="z-s" onclick="setZone('SOUTH',this)">South</button>
-  <div class="divider"></div>
+  <span class="filter-label" id="cluster-label" style="display:none">Cluster</span>
+  <span id="cluster-btns" style="display:none;gap:4px;flex-wrap:wrap">
+    <button class="z-btn active" id="z-all" onclick="setCluster('ALL',this)">All</button>
+    <button class="z-btn" onclick="setCluster('Central Cluster',this)">Central</button>
+    <button class="z-btn" onclick="setCluster('YPR Cluster',this)">YPR</button>
+    <button class="z-btn" onclick="setCluster('RR Nagara Cluster',this)">RR Nagara</button>
+    <button class="z-btn" onclick="setCluster('Bellandur Cluster',this)">Bellandur</button>
+    <button class="z-btn" onclick="setCluster('Hoodi Cluster',this)">Hoodi</button>
+    <button class="z-btn" onclick="setCluster('Hebbal Cluster',this)">Hebbal</button>
+  </span>
+  <div class="divider" id="cluster-divider" style="display:none"></div>
   <span class="filter-label">Status</span>
   <div class="ms-wrap" id="ms-status">
     <div class="ms-btn" onclick="toggleDropdown('ms-status')">All <span class="arrow">▾</span></div>
@@ -407,7 +413,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <div class="lp-title">Map Layers</div>
     <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-hubs" checked onchange="toggleLayer('hubs')" style="accent-color:#E8191C"/><div class="lp-dot" style="background:#E8191C;border-radius:3px"></div>Bounce Hubs</label></div>
     <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-rsa" checked onchange="toggleLayer('rsa')" style="accent-color:#1D4ED8"/><div class="lp-dot" style="background:#1D4ED8"></div>RSA Team</label></div>
-    <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-clusters" onchange="toggleLayer('clusters')" style="accent-color:#7C3AED"/><div class="lp-dot" style="background:#7C3AED;border-radius:2px;opacity:.7"></div>Zone Clusters</label></div>
+    <div class="lp-row"><label style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="lyr-clusters" checked onchange="toggleLayer('clusters')" style="accent-color:#7C3AED"/><div class="lp-dot" style="background:#7C3AED;border-radius:2px;opacity:.7"></div>Clusters</label></div>
   </div>
   <div id="legend">
     <div class="leg-title">Ticket Status</div>
@@ -653,9 +659,9 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       </table>
     </div>
     <div class="dv-section">
-      <div class="dv-section-title">By Zone</div>
+      <div class="dv-section-title">By Cluster</div>
       <table class="dv-table">
-        <thead><tr><th>Zone</th><th>Total</th><th>Done</th><th>Avg TAT</th></tr></thead>
+        <thead><tr><th>Cluster</th><th>Total</th><th>Done</th><th>Avg TAT</th></tr></thead>
         <tbody id="dv-zone-tbody"><tr><td colspan="4" style="color:#9CA3AF;padding:12px 8px">No data</td></tr></tbody>
       </table>
     </div>
@@ -684,7 +690,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png
 var ticketGroup=L.layerGroup().addTo(leafMap);
 var hubGroup=L.layerGroup().addTo(leafMap);
 var rsaGroup=L.layerGroup().addTo(leafMap);
-var clusterGroup=L.layerGroup(); // off by default — toggled via Layers panel
+var clusterGroup=L.layerGroup().addTo(leafMap); // on by default — primary grouping
 
 // ── BLR zone clusters (extracted from KML, polygons only) ──
 // Central Cluster: KML only had 4 corners while its neighbors have 7-9 (finer boundary detail),
@@ -722,28 +728,35 @@ function renderClusters(){
   });
 }
 
+// ── Cluster assignment helpers ──
+function _clusterCentroid(coords){
+  var lat=coords.reduce(function(s,p){return s+p[0];},0)/coords.length;
+  var lng=coords.reduce(function(s,p){return s+p[1];},0)/coords.length;
+  return [lat,lng];
+}
+function _haversineKm(lat1,lng1,lat2,lng2){
+  var R=6371,dL=(lat2-lat1)*Math.PI/180,dG=(lng2-lng1)*Math.PI/180;
+  var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dG/2)*Math.sin(dG/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+// Precomputed BLR cluster centroids (computed once at load)
+var BLR_CLUSTER_CENTROIDS=BLR_CLUSTERS.map(function(c){return{name:c.name,ctr:_clusterCentroid(c.coords)};});
+function nearestCluster(lat,lng){
+  var best=null,bestD=Infinity;
+  BLR_CLUSTER_CENTROIDS.forEach(function(c){
+    var d=_haversineKm(lat,lng,c.ctr[0],c.ctr[1]);
+    if(d<bestD){bestD=d;best=c.name;}
+  });
+  return best;
+}
+
 // Per-city config: [centerLat, centerLng, zoom, divLat, lngMin, lngMax, lngLabel, city bounds]
 var CITY_CONFIG={
   'BLR':{divLat:12.97,lngMin:77.38,lngMax:77.82,lngLabel:77.58,name:'BLR',center:[12.97,77.59],zoom:11,bounds:[[12.75,77.28],[13.25,77.88]]},
   'NCR':{divLat:28.62,lngMin:76.85,lngMax:77.60,lngLabel:77.22,name:'NCR',center:[28.62,77.22],zoom:12,bounds:[[28.38,76.80],[28.90,77.65]]},
   'HYD':{divLat:17.38,lngMin:78.20,lngMax:78.75,lngLabel:78.48,name:'HYD',center:[17.38,78.48],zoom:12,bounds:[[17.15,78.20],[17.62,78.80]]}
 };
-// Dynamic divider layer group — redrawn when city selection changes
-var dividerGroup=L.layerGroup().addTo(leafMap);
-// Zone shade layer — shaded rectangle for North/South selection
-var zoneShadeGroup=L.layerGroup().addTo(leafMap);
-
-function updateDividers(){
-  dividerGroup.clearLayers();
-  var citySel=getSelectedCities();
-  if(!citySel.length)return; // no city selected = no dividers
-  citySel.forEach(function(code){
-    var c=CITY_CONFIG[code];if(!c)return;
-    L.polyline([[c.divLat,c.lngMin],[c.divLat,c.lngMax]],{color:'#6366F1',weight:2,dashArray:'8,5',opacity:0.55}).addTo(dividerGroup);
-    L.marker([c.divLat,c.lngLabel],{icon:L.divIcon({className:'',html:'<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:700;color:#4F46E5;background:rgba(255,255,255,.9);padding:2px 8px;border-radius:4px;border:1px solid #C7D2FE;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.1)">▲ North '+c.name+'</div>',iconAnchor:[40,14]})}).addTo(dividerGroup);
-    L.marker([c.divLat,c.lngLabel],{icon:L.divIcon({className:'',html:'<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:700;color:#4F46E5;background:rgba(255,255,255,.9);padding:2px 8px;border-radius:4px;border:1px solid #C7D2FE;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.1)">▼ South '+c.name+'</div>',iconAnchor:[40,-4]})}).addTo(dividerGroup);
-  });
-}
+// North/South zone dividers removed — clusters are now the grouping concept
 
 // State
 // Infer city from lat/lng when ticket.city is null; default to BLR if unknown
@@ -769,7 +782,7 @@ function inferCity(t){
 var _all=[];
 var _filtered=[];
 var _ticketMarkerMap={};  // ticket_number → L.marker (for panel click-to-highlight)
-var _zoneFilter='ALL';
+var _clusterFilter='ALL';
 var _isToday=true;
 var _lastCitySel=null;
 var _gpsMode='ticket'; // 'ticket' = Bass_Lat from Metabase | 'live' = bike_location_cache
@@ -956,6 +969,17 @@ function setCityFilter(code){
   else{_cityActive=[code];}
   document.getElementById('cp-all').classList.toggle('active',_cityActive.length===0);
   ['BLR','NCR','HYD'].forEach(function(c){document.getElementById('cp-'+c.toLowerCase()).classList.toggle('active',_cityActive.indexOf(c)>=0);});
+  // Show cluster filter only when BLR is selected (or All cities)
+  var showCluster=_cityActive.length===0||_cityActive.indexOf('BLR')>=0;
+  document.getElementById('cluster-label').style.display=showCluster?'':'none';
+  document.getElementById('cluster-btns').style.display=showCluster?'flex':'none';
+  document.getElementById('cluster-divider').style.display=showCluster?'':'none';
+  // Reset cluster filter when switching away from BLR
+  if(!showCluster&&_clusterFilter!=='ALL'){
+    _clusterFilter='ALL';
+    document.querySelectorAll('#cluster-btns .z-btn').forEach(function(b){b.classList.remove('active');});
+    var allBtn=document.querySelector('#cluster-btns .z-btn');if(allBtn)allBtn.classList.add('active');
+  }
   renderTickets();
 }
 function getSelectedCities(){return _cityActive.slice();}
@@ -974,7 +998,6 @@ function updateDropdownLabel(wrapId,allLabel){
 }
 
 function renderTickets(){
-  drawZoneShade();
   updateDropdownLabel('ms-status','All ');
   updateDropdownLabel('ms-tat','All ');
   updateDropdownLabel('ms-tech','All ');
@@ -1003,15 +1026,12 @@ function renderTickets(){
       });
       if(!techMatch)return false;
     }
-    // Zone filter: N/S relative to each city's own center lat (applies to all cities)
-    if(_zoneFilter!=='ALL'){
-      var dispLat=t.display_lat||t.lat;
-      if(dispLat){
-        var tCC=CITY_CONFIG[inferCity(t)||''];
-        if(tCC){
-          if(_zoneFilter==='NORTH'&&dispLat<tCC.divLat)return false;
-          if(_zoneFilter==='SOUTH'&&dispLat>=tCC.divLat)return false;
-        }
+    // Cluster filter: BLR only — assign ticket to nearest cluster centroid
+    if(_clusterFilter!=='ALL'){
+      if(inferCity(t)==='BLR'){
+        var cLat=t.display_lat||t.lat,cLng=t.display_lng||t.lng;
+        var tc=cLat&&cLng?nearestCluster(cLat,cLng):null;
+        if(tc!==_clusterFilter)return false;
       }
     }
     var citySel=getSelectedCities();
@@ -1032,9 +1052,6 @@ function renderTickets(){
     _ticketMarkerMap[t.ticket_number]=m;
     bounds.push([t.display_lat,t.display_lng]);
   });
-
-  // Update divider lines for selected cities
-  updateDividers();
 
   // Map fit: only refit when city selection changes
   var citySel=getSelectedCities();
@@ -1183,36 +1200,11 @@ function searchZoom(){
   setTimeout(function(){leafMap.removeLayer(hl);},2000);
 }
 
-function setZone(v,el){
-  _zoneFilter=v;
+function setCluster(v,el){
+  _clusterFilter=v;
   document.querySelectorAll('.z-btn').forEach(function(b){b.classList.remove('active');});
   el.classList.add('active');
-  drawZoneShade();
   renderTickets();
-}
-
-function drawZoneShade(){
-  zoneShadeGroup.clearLayers();
-  if(_zoneFilter==='ALL')return;
-  // Shade applies per selected city
-  var cities=getSelectedCities();
-  var toShade=cities.length?cities:Object.keys(CITY_CONFIG);
-  toShade.forEach(function(cityKey){
-    var c=CITY_CONFIG[cityKey];if(!c)return;
-    var latMin=c.bounds[0][0],latMax=c.bounds[1][0];
-    var lngMin=c.bounds[0][1],lngMax=c.bounds[1][1];
-    var shadeBounds;
-    if(_zoneFilter==='NORTH'){
-      shadeBounds=[[c.divLat,lngMin],[latMax,lngMax]];
-    } else {
-      shadeBounds=[[latMin,lngMin],[c.divLat,lngMax]];
-    }
-    L.rectangle(shadeBounds,{
-      color:'#6366F1',weight:0,
-      fillColor:'#6366F1',fillOpacity:0.10,
-      interactive:false
-    }).addTo(zoneShadeGroup);
-  });
 }
 
 // ── Dropdown toggle ──
@@ -1835,22 +1827,26 @@ function renderDashboard(){
     return '<tr><td style="font-weight:600">'+name+'</td><td>'+tm.total+'</td><td>'+tm.done+'</td><td>'+avgT+'</td></tr>';
   }).join(''):'<tr><td colspan="4" style="color:#9CA3AF;padding:12px 8px">No data</td></tr>';
 
-  // Zone table
-  var zoneMap={'North':{total:0,done:0,tatSum:0,tatCount:0},'South':{total:0,done:0,tatSum:0,tatCount:0},'No GPS':{total:0,done:0,tatSum:0,tatCount:0}};
+  // Cluster table (BLR only; non-BLR shown as city name)
+  var clusterMap={};
+  BLR_CLUSTERS.forEach(function(c){clusterMap[c.name]={total:0,done:0,tatSum:0,tatCount:0};});
+  clusterMap['No GPS']={total:0,done:0,tatSum:0,tatCount:0};
+  clusterMap['Other City']={total:0,done:0,tatSum:0,tatCount:0};
   data.forEach(function(t){
-    var dispLat=t.display_lat||t.lat;
-    var zone;
-    if(!dispLat){zone='No GPS';}
-    else{var tCC=CITY_CONFIG[inferCity(t)||''];zone=(tCC&&dispLat>=tCC.divLat)?'North':'South';}
-    if(!zoneMap[zone])zoneMap[zone]={total:0,done:0,tatSum:0,tatCount:0};
-    zoneMap[zone].total++;
-    if(effStatus(t)==='DONE'){zoneMap[zone].done++;if(t.tat_minutes!=null){zoneMap[zone].tatSum+=parseFloat(t.tat_minutes);zoneMap[zone].tatCount++;}}
+    var lat=t.display_lat||t.lat,lng=t.display_lng||t.lng;
+    var clusterKey;
+    if(inferCity(t)!=='BLR'){clusterKey='Other City';}
+    else if(!lat||!lng){clusterKey='No GPS';}
+    else{clusterKey=nearestCluster(lat,lng)||'No GPS';}
+    if(!clusterMap[clusterKey])clusterMap[clusterKey]={total:0,done:0,tatSum:0,tatCount:0};
+    clusterMap[clusterKey].total++;
+    if(effStatus(t)==='DONE'){clusterMap[clusterKey].done++;if(t.tat_minutes!=null){clusterMap[clusterKey].tatSum+=parseFloat(t.tat_minutes);clusterMap[clusterKey].tatCount++;}}
   });
-  var zoneOrder=['North','South','No GPS'];
-  document.getElementById('dv-zone-tbody').innerHTML=zoneOrder.filter(function(z){return zoneMap[z]&&zoneMap[z].total>0;}).map(function(z){
-    var zm=zoneMap[z];
+  var clusterOrder=BLR_CLUSTERS.map(function(c){return c.name;}).concat(['No GPS','Other City']);
+  document.getElementById('dv-zone-tbody').innerHTML=clusterOrder.filter(function(z){return clusterMap[z]&&clusterMap[z].total>0;}).map(function(z){
+    var zm=clusterMap[z];
     var avgT=zm.tatCount?fmtMin(zm.tatSum/zm.tatCount):'—';
-    return '<tr><td style="font-weight:600">'+z+'</td><td>'+zm.total+'</td><td>'+zm.done+'</td><td>'+avgT+'</td></tr>';
+    return '<tr><td style="font-weight:600">'+z.replace(' Cluster','')+'</td><td>'+zm.total+'</td><td>'+zm.done+'</td><td>'+avgT+'</td></tr>';
   }).join('')||'<tr><td colspan="4" style="color:#9CA3AF;padding:12px 8px">No data</td></tr>';
 
   // Category bars
@@ -2749,9 +2745,11 @@ async function loadAndApplyPermissions(userId){
   document.getElementById('date-to').value=t;
   document.getElementById('date-to').min=t;
   document.getElementById('date-to').max=maxTo30.toLocaleDateString('en-CA');
-  // Default city = BLR
-  // City default = BLR (pill pre-marked active via HTML; _cityActive=['BLR'] set at declaration)
-  updateDividers();
+  // Default city = BLR (pill pre-marked active via HTML; _cityActive=['BLR'] set at declaration)
+  // Cluster section visible by default (BLR is active)
+  document.getElementById('cluster-label').style.display='';
+  document.getElementById('cluster-btns').style.display='flex';
+  document.getElementById('cluster-divider').style.display='';
   // Default status = NEW + IN_PROGRESS (hide DONE)
   document.getElementById('s-new').checked=true;
   document.getElementById('s-ip').checked=true;
