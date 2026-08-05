@@ -122,9 +122,10 @@ function stopBgPoll() {
 async function pollNewTickets() {
   if (!_authToken || !_techName) return;
   try {
+    // Use prefix wildcard so "Karan Luitel" matches "Karan Luitel (BLR)" etc.
     const res = await fetch(
       SB_URL + '/rest/v1/rsa_tickets_cache'
-        + '?technician_name=ilike.' + encodeURIComponent(_techName)
+        + '?technician_name=ilike.' + encodeURIComponent(_techName + '%')
         + '&select=ticket_number,reg_number,category,fault_details'
         + '&order=created_at_ist.desc&limit=20',
       { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + _authToken } }

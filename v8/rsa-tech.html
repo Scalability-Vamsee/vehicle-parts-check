@@ -905,7 +905,8 @@ function setTicketCity(city,reload){
 
 async function loadMyTickets(){
   if(!_techRecord||!_techRecord.name){renderTicketsPanel();renderHomeTicketCard();return;}
-  var url=SB_URL+'/rest/v1/rsa_tickets_live?technician_name=ilike.'+encodeURIComponent(_techRecord.name)
+  // Use prefix wildcard so "Karan Luitel" matches "Karan Luitel (BLR)" etc.
+  var url=SB_URL+'/rest/v1/rsa_tickets_live?technician_name=ilike.'+encodeURIComponent(_techRecord.name+'%')
     +'&order=created_at_ist.asc&limit=100';
   if(_ticketCity)url+='&city=eq.'+_ticketCity;
   try{
@@ -1588,7 +1589,12 @@ function switchFWSubtab(sub){
     if(tab)tab.classList.toggle('active',s===sub);
     if(panel)panel.style.display=s===sub?'block':'none';
   });
-  if(sub==='map')renderFWMap();
+  if(sub==='map'){
+    renderFWMap();
+    // Extra invalidateSize calls — map may have initialized before panel was fully visible
+    setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},300);
+    setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},700);
+  }
 }
 
 function renderFWMap(){
@@ -1625,7 +1631,10 @@ function _initFWMap(){
     }).addTo(_fwMap).bindPopup('<b>📍 You</b>');
   }
   _renderFWMapPins();
-  setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},250);
+  // Fire invalidateSize multiple times — panel may still be transitioning when map initializes
+  setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},200);
+  setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},500);
+  setTimeout(function(){if(_fwMap)_fwMap.invalidateSize();},1000);
 }
 
 function _renderFWMapPins(){
