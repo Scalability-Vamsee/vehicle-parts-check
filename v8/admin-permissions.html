@@ -96,6 +96,14 @@ input[type=checkbox]:disabled{opacity:.3;cursor:not-allowed}
 .new-group-row input{background:#F8FAFC;border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:#1E293B;outline:none;flex:1;min-width:140px;font-family:'Inter',sans-serif;transition:border-color .15s}
 .new-group-row input:focus{border-color:var(--teal)}
 .user-email{font-size:11px;color:var(--muted)}
+/* Role badges in directory */
+.role-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
+.rtag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.2px;white-space:nowrap;}
+.rtag-rsa{background:#FEF3C7;color:#92400E;}
+.rtag-warroom{background:#EDE9FE;color:#5B21B6;}
+.rtag-manager{background:#FEE2E2;color:#991B1B;}
+.rtag-fpi-admin{background:#DBEAFE;color:#1E40AF;}
+.rtag-hunter{background:#D1FAE5;color:#065F46;}
 
 /* Loading */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
@@ -217,6 +225,15 @@ var K=ANON_KEY;
 var ADMIN_SECRET='';
 var _groups=[];
 var _users=[];
+
+// Role badge mapping: group ID → {label, css class}
+const ROLE_BADGES={
+  'b49203bb-0395-4263-a7ec-d9b707b89ecc':{label:'RSA Tech',cls:'rtag-rsa'},
+  'd1ca876a-c9a6-4479-863b-8cfc61ce48a3':{label:'Warroom',cls:'rtag-warroom'},
+  'dd57c013-8da0-4e2c-b42b-fbd2ad30a585':{label:'Manager',cls:'rtag-manager'},
+  '6465c5a2-d91d-48dc-a27b-da6c09075c14':{label:'FPI Admin',cls:'rtag-fpi-admin'},
+  '820ce930-043a-4f14-9c06-e7e32cfdc91a':{label:'Hunter',cls:'rtag-hunter'},
+};
 
 const ALL_FEATURES=[
   {key:'fw-map',label:'FW Flash Map'},
@@ -364,7 +381,14 @@ function renderUsersMatrix(){
   _groups.forEach(function(g){html+='<th class="cb-cell">'+g.name+'</th>';});
   html+='</tr></thead><tbody>';
   _users.forEach(function(u){
-    html+='<tr><td>'+u.email+'<br><span class="user-email">'+u.id.slice(0,8)+'…</span></td>';
+    // Build role badge tags
+    var badges=u.group_ids.reduce(function(acc,gid){
+      var rb=ROLE_BADGES[gid];
+      if(rb)acc+='<span class="rtag '+rb.cls+'">'+rb.label+'</span>';
+      return acc;
+    },'');
+    var badgeHtml=badges?'<div class="role-tags">'+badges+'</div>':'';
+    html+='<tr><td>'+u.email+badgeHtml+'<br><span class="user-email">'+u.id.slice(0,8)+'…</span></td>';
     _groups.forEach(function(g){
       var has=u.group_ids.includes(g.id);
       html+='<td class="cb-cell"><input type="checkbox"'+(has?' checked':'')
