@@ -286,9 +286,12 @@ tr:last-child td{border-bottom:none}
 
     <!-- Per-tech breakdown -->
     <div class="card">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span>Per Technician — <span id="vr-tech-wk-label">selected week</span></span>
-        <select id="vr-tech-week" onchange="vrRenderTechTable()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif"></select>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="vr-tech-week" onchange="vrRenderTechTable()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif"></select>
+          <button class="btn btn-ghost" onclick="vrDownloadCSV()" style="padding:5px 12px;font-size:12px">⬇ Download CSV</button>
+        </div>
       </div>
       <div id="vr-tech-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
     </div>
@@ -839,6 +842,32 @@ function vrRenderTechTable(){
   });
   html+='</tbody></table>';
   document.getElementById('vr-tech-table').innerHTML=html;
+}
+
+function vrDownloadCSV(){
+  if(!vrLoaded)return;
+  var w=document.getElementById('vr-tech-week').value;
+  var wr=vrRowsFor(w).slice().sort(function(a,b){
+    var av=(+a.total_jcs>0?100*a.voided_jcs/a.total_jcs:0);
+    var bv=(+b.total_jcs>0?100*b.voided_jcs/b.total_jcs:0);
+    return bv-av;
+  });
+  var header=['Week','Technician','Hub','City','Total JCs','Voided JCs','Void %','Intrip Void %','EndTrip Void %'];
+  var rows=wr.map(function(r){
+    var vr=+r.total_jcs>0?+(100*r.voided_jcs/r.total_jcs).toFixed(1):0;
+    var iv=r.intrip_void_rate!=null?+(+r.intrip_void_rate*100).toFixed(1):'';
+    var sv=r.submission_void_rate!=null?+(+r.submission_void_rate*100).toFixed(1):'';
+    return [vrFmtWeek(w),r.tech_name||'',r.hub_name||'',r.city||'',+r.total_jcs||0,+r.voided_jcs||0,vr,iv,sv];
+  });
+  var csv=[header].concat(rows).map(function(row){
+    return row.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');
+  }).join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='void_rate_'+w+'_'+(vrCity==='Overall'?'all':vrCity)+'.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
