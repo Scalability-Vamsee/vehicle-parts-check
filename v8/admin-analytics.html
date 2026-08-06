@@ -843,9 +843,6 @@ function vrRenderTechTable(){
 
 function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// Hook into switchTab to lazy-load void rate on first open
-var _origSwitchTab=typeof switchTab==='function'?switchTab:null;
-// Patch after definition
 // ══════════════════════════════════════════════════════════
 
 async function toggleCron(jobid,active){
