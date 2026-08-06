@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;min-height:100vh}
@@ -159,6 +160,7 @@ tr:last-child td{border-bottom:none}
   <!-- TAB BAR -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-btn-analytics" onclick="switchTab('analytics')">📊 Analytics</button>
+    <button class="tab-btn" id="tab-btn-voidrate" onclick="switchTab('voidrate')">📉 Void Rate</button>
     <button class="tab-btn" id="tab-btn-sync" onclick="switchTab('sync')">⚙️ Sync Jobs</button>
   </div>
 
@@ -229,6 +231,70 @@ tr:last-child td{border-bottom:none}
 
   </div><!-- /tab-analytics -->
 
+  <!-- ── VOID RATE TAB ── -->
+  <div id="tab-voidrate" class="tab-panel">
+
+    <!-- Filter row -->
+    <div class="filter-row" style="flex-wrap:wrap;gap:8px;margin-bottom:16px">
+      <label style="font-weight:700;font-size:12px;color:#374151">City</label>
+      <div id="vr-city-btns" style="display:flex;gap:4px">
+        <button class="btn btn-teal vr-city-btn active" onclick="vrSetCity('Overall',this)">Overall</button>
+        <button class="btn btn-ghost vr-city-btn" onclick="vrSetCity('Bangalore',this)">BLR</button>
+        <button class="btn btn-ghost vr-city-btn" onclick="vrSetCity('NCR',this)">NCR</button>
+        <button class="btn btn-ghost vr-city-btn" onclick="vrSetCity('Hyderabad',this)">HYD</button>
+      </div>
+      <label style="margin-left:12px;font-weight:700;font-size:12px;color:#374151">Weeks</label>
+      <select id="vr-week-from" onchange="vrRender()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Inter',sans-serif"></select>
+      <span style="font-size:12px;color:#6B7280">to</span>
+      <select id="vr-week-to" onchange="vrRender()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Inter',sans-serif"></select>
+      <button class="btn btn-ghost" onclick="loadVoidRate()" style="padding:5px 12px;font-size:12px">↻</button>
+      <span id="vr-status" style="font-size:11px;color:var(--muted)"></span>
+    </div>
+
+    <!-- KPI tiles -->
+    <div class="kpi-row" style="margin-bottom:16px">
+      <div class="kpi">
+        <div class="kpi-label">Overall Void %</div>
+        <div class="kpi-val" id="vr-kpi-all" style="color:#dc2626">—</div>
+        <div class="kpi-sub" id="vr-kpi-all-d">selected period</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Intrip Void %</div>
+        <div class="kpi-val" id="vr-kpi-intrip" style="color:#dc2626">—</div>
+        <div class="kpi-sub">% of intrip JCs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">EndTrip Void %</div>
+        <div class="kpi-val" id="vr-kpi-end" style="color:#f59e0b">—</div>
+        <div class="kpi-sub">% of endtrip JCs</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Voided JCs</div>
+        <div class="kpi-val" id="vr-kpi-voids">—</div>
+        <div class="kpi-sub" id="vr-kpi-voids-d">of billed in period</div>
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div class="card">
+      <div class="card-title">Void Rate — % of billed JCs, split by JC type</div>
+      <div style="position:relative;height:240px"><canvas id="vr-chart"></canvas></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">
+        Bars = voided ÷ all billed. Lines = void rate within type (solid red = Intrip, dashed amber = EndTrip). A week is final only Wednesday of the following week — recent weeks may be maturing.
+      </div>
+    </div>
+
+    <!-- Per-tech breakdown -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Per Technician — <span id="vr-tech-wk-label">selected week</span></span>
+        <select id="vr-tech-week" onchange="vrRenderTechTable()" style="background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif"></select>
+      </div>
+      <div id="vr-tech-table"><div class="loading"><span class="spin"></span>Loading…</div></div>
+    </div>
+
+  </div><!-- /tab-voidrate -->
+
   <!-- ── SYNC JOBS TAB ── -->
   <div id="tab-sync" class="tab-panel">
 
@@ -261,11 +327,12 @@ function toggleSidebar(){sbOpen=!sbOpen;document.getElementById('sb').classList.
 
 // ── Tabs ──
 function switchTab(name){
-  ['analytics','sync'].forEach(function(t){
+  ['analytics','voidrate','sync'].forEach(function(t){
     document.getElementById('tab-btn-'+t).classList.toggle('active',t===name);
     document.getElementById('tab-'+t).classList.toggle('active',t===name);
   });
   if(name==='sync')loadCronJobs();
+  if(name==='voidrate'&&!vrLoaded)loadVoidRate();
 }
 
 // ── Auth ──
@@ -609,6 +676,177 @@ async function saveCron(jobid){
     loadCronJobs();
   }catch(err){alert('Error: '+err.message);}
 }
+
+// ══════════════════════════════════════════════════════════
+// VOID RATE TAB
+// ══════════════════════════════════════════════════════════
+var vrRows=[], vrCity='Overall', vrChart=null, vrLoaded=false;
+
+function vrSetCity(city,el){
+  vrCity=city;
+  document.querySelectorAll('.vr-city-btn').forEach(function(b){
+    b.classList.remove('active');b.classList.add('btn-ghost');b.classList.remove('btn-teal');
+  });
+  el.classList.add('active','btn-teal');el.classList.remove('btn-ghost');
+  vrRender();
+}
+
+async function loadVoidRate(){
+  document.getElementById('vr-status').textContent='Loading…';
+  try{
+    // Paginate: incentive_weekly_stats can be large
+    var all=[], from=0, PAGE=1000;
+    while(true){
+      var res=await fetch(
+        SB_URL+'/rest/v1/incentive_weekly_stats?select=tech_name,hub_name,city,week_start,total_jcs,intrip_jcs,submission_jcs,voided_jcs,intrip_void_rate,submission_void_rate&order=week_start.asc&limit='+PAGE+'&offset='+from,
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Prefer':'count=exact','Range':from+'-'+(from+PAGE-1)}}
+      );
+      var batch=await res.json();
+      if(!Array.isArray(batch)||!batch.length)break;
+      all=all.concat(batch);
+      if(batch.length<PAGE)break;
+      from+=PAGE;
+    }
+    // compute iv/sv (intrip voids, submission voids) per row
+    all.forEach(function(r){
+      r.iv=Math.round((+r.intrip_void_rate||0)*(+r.intrip_jcs||0));
+      r.sv=Math.round((+r.submission_void_rate||0)*(+r.submission_jcs||0));
+    });
+    vrRows=all;
+    vrLoaded=true;
+
+    // Populate week selectors
+    var weeks=[...new Set(all.map(function(r){return r.week_start;}))].sort();
+    function fillSel(id,val){
+      var sel=document.getElementById(id);sel.innerHTML='';
+      weeks.forEach(function(w){
+        var o=document.createElement('option');
+        o.value=w;o.textContent=vrFmtWeek(w);sel.appendChild(o);
+      });
+      sel.value=val||weeks[weeks.length-1];
+    }
+    var defFrom=weeks.length>8?weeks[weeks.length-8]:weeks[0];
+    fillSel('vr-week-from',defFrom);
+    fillSel('vr-week-to',weeks[weeks.length-1]);
+
+    // Populate tech-week selector (most recent first)
+    var twSel=document.getElementById('vr-tech-week');twSel.innerHTML='';
+    [...weeks].reverse().forEach(function(w){
+      var o=document.createElement('option');o.value=w;o.textContent=vrFmtWeek(w);twSel.appendChild(o);
+    });
+
+    document.getElementById('vr-status').textContent=all.length+' rows loaded';
+    vrRender();
+  }catch(e){
+    document.getElementById('vr-status').textContent='Error: '+e.message;
+  }
+}
+
+function vrFmtWeek(w){
+  // w = "2026-06-08", display as "W? · 8 Jun – 14 Jun"
+  var d=new Date(w+'T00:00:00Z');
+  var end=new Date(d.getTime()+6*86400000);
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate()+' '+months[d.getMonth()]+' – '+end.getDate()+' '+months[end.getMonth()];
+}
+
+function vrRowsFor(w){
+  return vrRows.filter(function(r){
+    return r.week_start===w&&(vrCity==='Overall'||r.city===vrCity);
+  });
+}
+
+function vrDist(w){
+  var wr=vrRowsFor(w);
+  var sum=function(g,k){return g.reduce(function(s,r){return s+(+r[k]||0);},0);};
+  var billed=sum(wr,'total_jcs'), voids=sum(wr,'voided_jcs');
+  var ti=sum(wr,'intrip_jcs'), ts=sum(wr,'submission_jcs');
+  var iv=sum(wr,'iv'), sv=sum(wr,'sv');
+  return {
+    billed:billed, voids:voids,
+    vrAll:billed?+(100*voids/billed).toFixed(1):null,
+    vrIntrip:ti?+(100*iv/ti).toFixed(1):null,
+    vrEnd:ts?+(100*sv/ts).toFixed(1):null
+  };
+}
+
+function vrRender(){
+  if(!vrLoaded)return;
+  var fromW=document.getElementById('vr-week-from').value;
+  var toW=document.getElementById('vr-week-to').value;
+  var weeks=[...new Set(vrRows.map(function(r){return r.week_start;}))].sort().filter(function(w){return w>=fromW&&w<=toW;});
+
+  // KPIs: aggregate across selected weeks
+  var tot=weeks.reduce(function(s,w){var d=vrDist(w);return{billed:s.billed+(d.billed||0),voids:s.voids+(d.voids||0),ti:s.ti+vrRowsFor(w).reduce(function(a,r){return a+(+r.intrip_jcs||0);},0),iv:s.iv+vrRowsFor(w).reduce(function(a,r){return a+(+r.iv||0);},0),ts:s.ts+vrRowsFor(w).reduce(function(a,r){return a+(+r.submission_jcs||0);},0),sv:s.sv+vrRowsFor(w).reduce(function(a,r){return a+(+r.sv||0);},0)};},{billed:0,voids:0,ti:0,iv:0,ts:0,sv:0});
+  document.getElementById('vr-kpi-all').textContent=tot.billed?+(100*tot.voids/tot.billed).toFixed(1)+'%':'—';
+  document.getElementById('vr-kpi-all-d').textContent=weeks.length+' weeks · '+vrCity;
+  document.getElementById('vr-kpi-intrip').textContent=tot.ti?+(100*tot.iv/tot.ti).toFixed(1)+'%':'—';
+  document.getElementById('vr-kpi-end').textContent=tot.ts?+(100*tot.sv/tot.ts).toFixed(1)+'%':'—';
+  document.getElementById('vr-kpi-voids').textContent=tot.voids.toLocaleString();
+  document.getElementById('vr-kpi-voids-d').textContent='of '+tot.billed.toLocaleString()+' billed';
+
+  // Trend chart
+  var labels=weeks.map(function(w){return vrFmtWeek(w);});
+  var dists=weeks.map(function(w){return vrDist(w);});
+  if(vrChart)vrChart.destroy();
+  vrChart=new Chart(document.getElementById('vr-chart'),{
+    type:'bar',
+    data:{labels:labels,datasets:[
+      {label:'Void % of billed',data:dists.map(function(d){return d.vrAll;}),backgroundColor:'#fca5a5',borderRadius:4,maxBarThickness:80,order:3},
+      {label:'Intrip void rate',data:dists.map(function(d){return d.vrIntrip;}),type:'line',borderColor:'#dc2626',backgroundColor:'#dc2626',borderWidth:2.5,pointRadius:3.5,tension:.25,order:1},
+      {label:'EndTrip void rate',data:dists.map(function(d){return d.vrEnd;}),type:'line',borderColor:'#f59e0b',backgroundColor:'#f59e0b',borderDash:[6,3],borderWidth:2.5,pointRadius:3.5,tension:.25,order:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10,usePointStyle:true}},
+        tooltip:{callbacks:{label:function(c){
+          if(c.datasetIndex===0){var d=dists[c.dataIndex];return ' Void: '+d.vrAll+'% ('+d.voids+' of '+d.billed.toLocaleString()+' billed)';}
+          return ' '+c.dataset.label+': '+(c.raw==null?'—':c.raw+'%');
+        }}}},
+      scales:{y:{title:{display:true,text:'Void % of billed JCs',font:{size:10}},beginAtZero:true,suggestedMax:14,ticks:{callback:function(v){return v+'%';}}}}}
+  });
+
+  vrRenderTechTable();
+}
+
+function vrRenderTechTable(){
+  if(!vrLoaded)return;
+  var w=document.getElementById('vr-tech-week').value;
+  document.getElementById('vr-tech-wk-label').textContent=vrFmtWeek(w);
+  var wr=vrRowsFor(w);
+  if(!wr.length){document.getElementById('vr-tech-table').innerHTML='<div class="loading">No data for this selection.</div>';return;}
+
+  // Sort by void rate desc
+  wr=wr.slice().sort(function(a,b){
+    var av=(+a.total_jcs>0?100*a.voided_jcs/a.total_jcs:0);
+    var bv=(+b.total_jcs>0?100*b.voided_jcs/b.total_jcs:0);
+    return bv-av;
+  });
+
+  var html='<table><thead><tr><th>Technician</th><th>Hub</th><th>City</th><th>Total JCs</th><th>Voided</th><th>Void %</th><th>Intrip Void %</th><th>EndTrip Void %</th></tr></thead><tbody>';
+  wr.forEach(function(r){
+    var vr=+r.total_jcs>0?+(100*r.voided_jcs/r.total_jcs).toFixed(1):0;
+    var color=vr>10?'#dc2626':vr>6?'#f59e0b':'#22c55e';
+    html+='<tr>'
+      +'<td style="font-weight:600">'+_esc(r.tech_name||'—')+'</td>'
+      +'<td style="font-size:12px;color:#6B7280">'+_esc(r.hub_name||'—')+'</td>'
+      +'<td style="font-size:12px;color:#6B7280">'+_esc(r.city||'—')+'</td>'
+      +'<td style="text-align:right">'+((+r.total_jcs)||0)+'</td>'
+      +'<td style="text-align:right">'+((+r.voided_jcs)||0)+'</td>'
+      +'<td style="text-align:right;font-weight:700;color:'+color+'">'+vr+'%</td>'
+      +'<td style="text-align:right;color:#dc2626">'+(r.intrip_void_rate!=null?+(+r.intrip_void_rate*100).toFixed(1)+'%':'—')+'</td>'
+      +'<td style="text-align:right;color:#d97706">'+(r.submission_void_rate!=null?+(+r.submission_void_rate*100).toFixed(1)+'%':'—')+'</td>'
+      +'</tr>';
+  });
+  html+='</tbody></table>';
+  document.getElementById('vr-tech-table').innerHTML=html;
+}
+
+function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Hook into switchTab to lazy-load void rate on first open
+var _origSwitchTab=typeof switchTab==='function'?switchTab:null;
+// Patch after definition
+// ══════════════════════════════════════════════════════════
 
 async function toggleCron(jobid,active){
   if(!confirm((active?'Resume':'Pause')+' this job?'))return;
