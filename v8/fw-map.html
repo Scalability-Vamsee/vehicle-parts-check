@@ -843,12 +843,10 @@ async function sendMagicLink(){
 document.getElementById('auth-email').addEventListener('keydown',function(e){if(e.key==='Enter')sendMagicLink();});
 async function signOut(){await sbClient.auth.signOut();document.getElementById('logout-btn').style.display='none';showAuthScreen();}
 
-// RSA technicians get 7-day session; all other users get 12h
-var RSA_EMAILS=['nishanthshetty2024@gmail.com','pavanmahesh120@gmail.com'];
+// fw-map group members (fpCan) get 7-day session; others get 12h
 async function enforce12hReauth(userId){
   try{
-    if(RSA_EMAILS.indexOf(CURRENT_USER_EMAIL)>-1)return; // RSA team — skip 12h check
-    if(fpCan('fw-map'))return; // DB group members (admin/ops) — skip 12h check
+    if(fpCan('fw-map'))return; // DB group members — skip 12h check
     var{data}=await sbClient.from('user_last_login').select('last_login_at').eq('user_id',userId).single();
     if(!data)return;
     var hoursElapsed=(Date.now()-new Date(data.last_login_at))/36e5;
@@ -914,7 +912,7 @@ window.addEventListener('resize',setMapHeight);
 
 // ── Permission helpers ──
 // Fetches user's allowed features from group_features via user_groups.
-// Returns a feature map {key:true} or null if user has no DB groups (triggers RSA_EMAILS fallback).
+// Returns a feature map {key:true} or empty object if user has no DB groups.
 async function loadUserPermissions(userId){
   try{
     var r1=await sbClient.from('user_groups').select('group_id').eq('user_id',userId);
@@ -924,10 +922,9 @@ async function loadUserPermissions(userId){
     var f={};(r2.data||[]).forEach(function(r){f[r.feature_key]=true;});return f;
   }catch(e){console.warn('[FP] Permission check failed',e);return {};}
 }
-// Returns true if user has the feature (DB-driven), falls back to RSA_EMAILS allowlist.
+// Returns true if user has the feature (DB-driven).
 function fpCan(featureKey){
-  if(window.FP_FEATURES!==undefined)return !!(window.FP_FEATURES&&window.FP_FEATURES[featureKey]);
-  return RSA_EMAILS.indexOf(CURRENT_USER_EMAIL)>-1;
+  return !!(window.FP_FEATURES&&window.FP_FEATURES[featureKey]);
 }
 // Show access denied on auth screen
 function showAccessDenied(){
@@ -980,9 +977,9 @@ var _authReady=false;
     else if(event==='TOKEN_REFRESHED'&&session){K=session.access_token;}
   });
 
-  // Idle logout — ops/admin get 7-day session, others 8h; falls back to RSA_EMAILS if no DB groups
+  // Idle logout — fw-map group members get 7-day session, others 8h
   var _idleTimer;
-  var _idleMs=(RSA_EMAILS.indexOf(CURRENT_USER_EMAIL)>-1||fpCan('fw-map'))?7*24*60*60*1000:8*60*60*1000;
+  var _idleMs=fpCan('fw-map')?7*24*60*60*1000:8*60*60*1000;
   // Separate poll-idle: stop DB polling after 15 min of no user activity (saves queries overnight)
   var _POLL_IDLE_MS=15*60*1000;
   var _lastFwActivity=Date.now();
