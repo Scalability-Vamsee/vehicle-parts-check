@@ -166,7 +166,7 @@ body.pinned #main{margin-left:var(--sb-width)}
     </div>
     <div class="auth-title">Welcome to FleetPro</div>
     <div class="auth-sub">Enter your work email and we'll send you a one-click sign-in link.</div>
-    <div class="auth-domain">@bounceshare.com · approved users</div>
+    <div class="auth-domain">Approved users only</div>
     <div id="auth-form">
       <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email"/>
       <button id="auth-submit" class="auth-btn" onclick="sendMagicLink()">Send Magic Link</button>
@@ -819,12 +819,22 @@ async function sendMagicLink(){
   var email=document.getElementById('auth-email').value.trim().toLowerCase();
   var msg=document.getElementById('auth-msg'),btn=document.getElementById('auth-submit');
   if(!email){msg.textContent='Please enter your email.';return;}
-  var ALLOWED_DOMAINS=['bounceshare.com'];
-  var ALLOWED_EMAILS=['vamsee@scalability.club','sreeranga100@gmail.com','nishanthshetty2024@gmail.com','pavanmahesh120@gmail.com']; // add technician emails here
-  var domainOk=ALLOWED_DOMAINS.some(function(d){return email.endsWith('@'+d);});
-  var emailOk=ALLOWED_EMAILS.indexOf(email)>-1;
-  if(!domainOk&&!emailOk){msg.textContent='Access restricted. Contact your manager to get added.';return;}
-  btn.disabled=true;btn.textContent='Sending…';msg.textContent='';
+  // Pre-auth check — two paths, no hardcoded individual emails:
+  // 1. @bounceshare.com → internal ops staff, pass through (access gated by DB groups after auth)
+  // 2. Any other domain → must exist in rsa_technicians (is_active=true) to get a magic link
+  btn.disabled=true;btn.textContent='Checking…';msg.textContent='';
+  if(!email.endsWith('@bounceshare.com')){
+    try{
+      var chk=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id&email=ilike.'+encodeURIComponent(email)+'&is_active=eq.true&limit=1',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY}});
+      var chkData=await chk.json();
+      if(!Array.isArray(chkData)||chkData.length===0){
+        btn.disabled=false;btn.textContent='Send Magic Link';
+        msg.textContent='Email not registered — contact your hub manager.';return;
+      }
+    }catch(_){/* network error — fall through */}
+  }
+  btn.textContent='Sending…';
   var res=await sbClient.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
   btn.disabled=false;btn.textContent='Send Magic Link';
   if(res.error){msg.textContent=res.error.message;}
