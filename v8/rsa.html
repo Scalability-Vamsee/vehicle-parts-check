@@ -273,7 +273,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <div class="auth-title">RSA Warroom</div>
     <div class="auth-sub">Sign in with your Bounce email</div>
     <div id="auth-form">
-      <input id="auth-email" class="auth-input" type="email" placeholder="you@bounceshare.com" autocomplete="email"/>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email"/>
       <button class="auth-btn" id="auth-submit" onclick="sendMagicLink()">Send Magic Link</button>
       <div class="auth-msg" id="auth-msg"></div>
     </div>
@@ -1882,8 +1882,19 @@ async function sendMagicLink(){
   var email=document.getElementById('auth-email').value.trim().toLowerCase();
   var msg=document.getElementById('auth-msg'),btn=document.getElementById('auth-submit');
   if(!email){msg.textContent='Please enter your email.';return;}
-  if(!email.endsWith('@bounceshare.com')&&email!=='vamsee@scalability.club'){msg.textContent='Access restricted to Bounce team.';return;}
-  btn.disabled=true;btn.textContent='Sending…';msg.textContent='';
+  btn.disabled=true;btn.textContent='Checking…';msg.textContent='';
+  if(!email.endsWith('@bounceshare.com')){
+    try{
+      var chk=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id&email=ilike.'+encodeURIComponent(email)+'&is_active=eq.true&limit=1',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY}});
+      var chkData=await chk.json();
+      if(!Array.isArray(chkData)||chkData.length===0){
+        btn.disabled=false;btn.textContent='Send Magic Link';
+        msg.textContent='Access restricted to Bounce team.';return;
+      }
+    }catch(_){/* network error — fall through */}
+  }
+  btn.textContent='Sending…';msg.textContent='';
   var{error}=await sbClient.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
   btn.disabled=false;btn.textContent='Send Magic Link';
   if(error){msg.textContent=error.message;return;}
