@@ -175,9 +175,9 @@ body.pinned #hbg{display:none}
     </div>
     <div class="auth-title">Welcome to FleetPro</div>
     <div class="auth-sub">Enter your work email and we'll send you a one-click sign-in link.</div>
-    <div class="auth-domain">@bounceshare.com only</div>
+    <div class="auth-domain">Approved users only</div>
     <div id="auth-form">
-      <input id="auth-email" class="auth-input" type="email" placeholder="you@bounceshare.com" autocomplete="email"/>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email"/>
       <button id="auth-submit" class="auth-btn" onclick="sendMagicLink()">Send Magic Link</button>
       <div id="auth-msg" class="auth-msg"></div>
     </div>
@@ -417,11 +417,12 @@ async function sendMagicLink(){
   if(!email){msg.textContent='Please enter your email.';return;}
   const isStaff=email.endsWith('@bounceshare.com')||email==='vamsee@scalability.club';
   if(!isStaff){
-    const[{data:emp},{data:tech}]=await Promise.all([
+    const[{data:emp},{data:tech},{data:rsa}]=await Promise.all([
       sbClient.from('hr_employees').select('employee_id').eq('email',email).maybeSingle(),
       sbClient.from('incentive_technicians').select('id').eq('email',email).maybeSingle(),
+      sbClient.from('rsa_technicians').select('id').eq('email',email).eq('is_active',true).maybeSingle(),
     ]);
-    if(!emp&&!tech){msg.textContent='Email not registered — contact your hub manager.';return;}
+    if(!emp&&!tech&&!rsa){msg.textContent='Email not registered — contact your hub manager.';return;}
   }
   btn.disabled=true;btn.textContent='Sending…';msg.textContent='';
   var res=await sbClient.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.origin+window.location.pathname}});

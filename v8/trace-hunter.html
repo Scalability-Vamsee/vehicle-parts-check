@@ -174,9 +174,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       </div>
     </div>
     <div class="auth-title">Sign in</div>
-    <div class="auth-sub">@bounceshare.com only</div>
+    <div class="auth-sub">Approved users only</div>
     <div id="auth-form">
-      <input id="auth-email" class="auth-input" type="email" placeholder="you@bounceshare.com" autocomplete="email" inputmode="email"/>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email" inputmode="email"/>
       <button class="auth-btn" onclick="sendMagicLink()">Send Magic Link</button>
       <div id="auth-msg" class="auth-msg"></div>
     </div>
@@ -339,8 +339,14 @@ async function sendMagicLink(){
   var email=document.getElementById('auth-email').value.trim().toLowerCase();
   var msg=document.getElementById('auth-msg');
   if(!email){msg.textContent='Enter your email.';return;}
-  if(!email.endsWith('@bounceshare.com')&&email!=='vamsee@scalability.club'){
-    msg.textContent='@bounceshare.com only.';return;
+  msg.textContent='Checking…';
+  if(!email.endsWith('@bounceshare.com')){
+    try{
+      var chk=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id&email=ilike.'+encodeURIComponent(email)+'&is_active=eq.true&limit=1',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY}});
+      var chkData=await chk.json();
+      if(!Array.isArray(chkData)||chkData.length===0){msg.textContent='Email not registered — contact your hub manager.';return;}
+    }catch(_){/* network error — fall through */}
   }
   msg.textContent='Sending…';
   var res=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.href}});
