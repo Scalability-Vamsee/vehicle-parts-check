@@ -342,10 +342,8 @@ async function sendMagicLink(){
   msg.textContent='Checking…';
   if(!email.endsWith('@bounceshare.com')){
     try{
-      var chk=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id&email=ilike.'+encodeURIComponent(email)+'&is_active=eq.true&limit=1',
-        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY}});
-      var chkData=await chk.json();
-      if(!Array.isArray(chkData)||chkData.length===0){msg.textContent='Email not registered — contact your hub manager.';return;}
+      var chkRes=await sb.rpc('is_approved_user',{p_email:email});
+      if(!chkRes.data){msg.textContent='Email not registered — contact your hub manager.';return;}
     }catch(_){/* network error — fall through */}
   }
   msg.textContent='Sending…';

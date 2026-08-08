@@ -825,10 +825,8 @@ async function sendMagicLink(){
   btn.disabled=true;btn.textContent='Checking…';msg.textContent='';
   if(!email.endsWith('@bounceshare.com')){
     try{
-      var chk=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id&email=ilike.'+encodeURIComponent(email)+'&is_active=eq.true&limit=1',
-        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY}});
-      var chkData=await chk.json();
-      if(!Array.isArray(chkData)||chkData.length===0){
+      var chkRes=await sbClient.rpc('is_approved_user',{p_email:email});
+      if(!chkRes.data){
         btn.disabled=false;btn.textContent='Send Magic Link';
         msg.textContent='Email not registered — contact your hub manager.';return;
       }
