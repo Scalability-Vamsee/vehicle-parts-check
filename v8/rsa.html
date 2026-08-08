@@ -2179,7 +2179,7 @@ async function loadDirectoryTab(force){
   if(_dirTechs.length&&!force){renderDirectory();return;}
   document.getElementById('dir-table-wrap').innerHTML='<div style="color:#9CA3AF;font-size:.8rem;padding:16px">Loading…</div>';
   try{
-    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,email,employee_id,joining_date,is_active&order=city,name',
+    var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?select=id,name,city,phone,email,employee_id,joining_date,is_active,role&order=city,name',
       {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     _dirTechs=res.ok?await res.json():[];
   }catch(e){_dirTechs=[];}
@@ -2200,10 +2200,20 @@ function renderDirectory(){
     +(!_dirAddMode?'<button onclick="showDirAddForm()" style="'+_DSV+';padding:4px 12px">+ Add Tech</button>':'')
     +'</div>';
 
+  var _RSA_GROUPS={'RSA Field Team':'b49203bb-0395-4263-a7ec-d9b707b89ecc','RSA Warroom':'d1ca876a-c9a6-4479-863b-8cfc61ce48a3'};
+  function roleSelect(id,cur){
+    var opts=['RSA Field Team','RSA Warroom'];
+    return '<select id="'+id+'" style="'+_DIS+'">'+opts.map(function(r){return '<option value="'+r+'"'+(cur===r?' selected':'')+'>'+r+'</option>';}).join('')+'</select>';
+  }
+  function roleBadge(r){
+    var isWarroom=(r==='RSA Warroom');
+    return '<span style="font-size:.68rem;padding:2px 7px;border-radius:4px;background:'+(isWarroom?'#EDE9FE':'#ECFDF5')+';color:'+(isWarroom?'#6D28D9':'#065F46')+';font-weight:500">'+_esc(r||'RSA Field Team')+'</span>';
+  }
+
   out+='<div style="overflow-x:auto"><table class="dir-table"><thead><tr>'
     +'<th class="dir-th">Name</th><th class="dir-th">City</th><th class="dir-th">Phone</th>'
     +'<th class="dir-th">Email</th><th class="dir-th">Emp ID</th><th class="dir-th">Joining Date</th>'
-    +'<th class="dir-th">Status</th><th class="dir-th" style="width:90px"></th>'
+    +'<th class="dir-th">Role</th><th class="dir-th">Status</th><th class="dir-th" style="width:90px"></th>'
     +'</tr></thead><tbody>';
 
   // Add-form row
@@ -2215,6 +2225,7 @@ function renderDirectory(){
       +'<td class="dir-td"><input type="email" id="dir-add-email" placeholder="Email" style="'+_DIS+'"></td>'
       +'<td class="dir-td"><input type="text" id="dir-add-empid" placeholder="Emp ID" style="'+_DIS+'"></td>'
       +'<td class="dir-td"><input type="date" id="dir-add-jd" style="'+_DIS+'"></td>'
+      +'<td class="dir-td">'+roleSelect('dir-add-role','RSA Field Team')+'</td>'
       +'<td class="dir-td"><span style="font-size:.72rem;color:#16A34A">● Active</span></td>'
       +'<td class="dir-td" style="white-space:nowrap">'
         +'<button onclick="saveDirAdd()" style="'+_DSV+'">Add</button> '
@@ -2233,6 +2244,7 @@ function renderDirectory(){
         +'<td class="dir-td"><input type="email" id="dir-e-email-'+tech.id+'" value="'+_esc(tech.email||'')+'" style="'+_DIS+'" placeholder="Email"></td>'
         +'<td class="dir-td"><input type="text" id="dir-e-empid-'+tech.id+'" value="'+_esc(tech.employee_id||'')+'" style="'+_DIS+'" placeholder="Emp ID"></td>'
         +'<td class="dir-td"><input type="date" id="dir-e-jd-'+tech.id+'" value="'+(tech.joining_date||'')+'" style="'+_DIS+'"></td>'
+        +'<td class="dir-td">'+roleSelect('dir-e-role-'+tech.id,tech.role||'RSA Field Team')+'</td>'
         +'<td class="dir-td"><span style="font-size:.72rem;color:'+(tech.is_active?'#16A34A':'#9CA3AF')+'">● '+(tech.is_active?'Active':'Inactive')+'</span></td>'
         +'<td class="dir-td" style="white-space:nowrap">'
           +'<button onclick="saveDirRow(\''+tech.id+'\')" style="'+_DSV+'">Save</button> '
@@ -2247,6 +2259,7 @@ function renderDirectory(){
         +'<td class="dir-td" style="color:#6B7280;font-size:.75rem">'+_esc(tech.email||'—')+'</td>'
         +'<td class="dir-td" style="color:#6B7280">'+_esc(tech.employee_id||'—')+'</td>'
         +'<td class="dir-td">'+fmtJd(tech.joining_date)+'</td>'
+        +'<td class="dir-td">'+roleBadge(tech.role||'RSA Field Team')+'</td>'
         +'<td class="dir-td">'
           +'<button onclick="toggleDirActive(\''+tech.id+'\','+tech.is_active+')" title="Click to toggle" style="font-size:.7rem;padding:2px 8px;border-radius:5px;cursor:pointer;border:1px solid '+(tech.is_active?'#86EFAC':'#D1D5DB')+';background:'+(tech.is_active?'#F0FDF4':'#F9FAFB')+';'+activeCls+'">● '+(tech.is_active?'Active':'Inactive')+'</button>'
         +'</td>'
@@ -2266,12 +2279,15 @@ function cancelDirAdd(){_dirAddMode=false;renderDirectory();}
 async function saveDirAdd(){
   var name=(document.getElementById('dir-add-name')||{}).value||'';
   if(!name.trim()){alert('Name is required');return;}
+  var role=(document.getElementById('dir-add-role')||{}).value||'RSA Field Team';
+  var email=(document.getElementById('dir-add-email')||{}).value.trim()||null;
   var body={name:name.trim(),
     city:(document.getElementById('dir-add-city')||{}).value||'BLR',
     phone:(document.getElementById('dir-add-phone')||{}).value.trim()||null,
-    email:(document.getElementById('dir-add-email')||{}).value.trim()||null,
+    email:email,
     employee_id:(document.getElementById('dir-add-empid')||{}).value.trim()||null,
     joining_date:(document.getElementById('dir-add-jd')||{}).value||null,
+    role:role,
     is_active:true};
   try{
     var res=await fetch(SB_URL+'/rest/v1/rsa_technicians',{
@@ -2282,6 +2298,8 @@ async function saveDirAdd(){
     if(!res.ok)throw new Error('HTTP '+res.status);
     var rows=await res.json();
     if(rows&&rows[0]){_dirTechs.push(rows[0]);_rosterTechs.push(rows[0]);}
+    // Assign group based on role (best-effort — no auth account yet is fine)
+    if(email){try{await sbClient.rpc('assign_rsa_role',{p_email:email,p_role:role});}catch(_){}}
     _dirAddMode=false;
     renderDirectory();
   }catch(e){alert('Add failed — please retry');}
@@ -2293,12 +2311,15 @@ function cancelDirEdit(){_dirEditId=null;renderDirectory();}
 async function saveDirRow(techId){
   var name=(document.getElementById('dir-e-name-'+techId)||{}).value||'';
   if(!name.trim()){alert('Name is required');return;}
+  var role=(document.getElementById('dir-e-role-'+techId)||{}).value||'RSA Field Team';
+  var email=(document.getElementById('dir-e-email-'+techId)||{}).value.trim()||null;
   var body={name:name.trim(),
     city:(document.getElementById('dir-e-city-'+techId)||{}).value||'BLR',
     phone:(document.getElementById('dir-e-phone-'+techId)||{}).value.trim()||null,
-    email:(document.getElementById('dir-e-email-'+techId)||{}).value.trim()||null,
+    email:email,
     employee_id:(document.getElementById('dir-e-empid-'+techId)||{}).value.trim()||null,
-    joining_date:(document.getElementById('dir-e-jd-'+techId)||{}).value||null};
+    joining_date:(document.getElementById('dir-e-jd-'+techId)||{}).value||null,
+    role:role};
   try{
     var res=await fetch(SB_URL+'/rest/v1/rsa_technicians?id=eq.'+techId,{
       method:'PATCH',
@@ -2306,6 +2327,8 @@ async function saveDirRow(techId){
       body:JSON.stringify(body)
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
+    // Reassign group based on new role
+    if(email){try{await sbClient.rpc('assign_rsa_role',{p_email:email,p_role:role});}catch(_){}}
     var t=_dirTechs.find(function(x){return x.id===techId;});
     if(t)Object.assign(t,body);
     var rt=_rosterTechs.find(function(x){return x.id===techId;});
