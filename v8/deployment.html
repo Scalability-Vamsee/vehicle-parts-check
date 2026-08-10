@@ -712,8 +712,9 @@ function loadQueue(){
   document.getElementById('queue-meta').textContent='';
   document.getElementById('refresh-btn').disabled=true;
 
+  var city=document.getElementById('city-select').value;
   var queueFilter=(hub==='all')
-    ? 'order=hub_name.asc,sort_group.asc,allotment_score.desc.nullslast'
+    ? (city?'city=eq.'+encodeURIComponent(city)+'&':'')+'order=hub_name.asc,sort_group.asc,allotment_score.desc.nullslast'
     : 'hub_name=eq.'+encodeURIComponent(hub)+'&order=sort_group.asc,allotment_score.desc.nullslast';
   sbGet('deployment_queue_cache', queueFilter)
   .then(function(rfdData){
@@ -932,12 +933,13 @@ function loadAllocList(){
   if(!hub){wrap.innerHTML='<div class="state-box"><div class="icon">🔍</div><p>Select a hub to view pending customers.</p></div>';return;}
   wrap.innerHTML='<div class="state-box"><div class="spinner"></div><p>Loading customers & pipeline…</p></div>';
   // Fetch both caches in parallel — render only when both are ready
+  var city2=document.getElementById('alloc-city-select').value;
   var allocFilter=(hub==='all')
-    ? 'order=full_name.asc&limit=500'
+    ? (city2?'hub_name=in.('+_allHubs.filter(function(h){return _hubCity[h]===city2;}).map(encodeURIComponent).join(',')+')&':'')+'order=full_name.asc&limit=500'
     : 'hub_name=eq.'+encodeURIComponent(hub)+'&order=full_name.asc&limit=500';
   var pendingPromise=sbGet('pending_bookings_cache',allocFilter);
   var queueFilter=(hub==='all')
-    ? 'order=hub_name.asc,sort_group.asc,allotment_score.desc.nullslast'
+    ? (city2?'city=eq.'+encodeURIComponent(city2)+'&':'')+'order=hub_name.asc,sort_group.asc,allotment_score.desc.nullslast'
     : 'hub_name=eq.'+encodeURIComponent(hub)+'&order=sort_group.asc,allotment_score.desc.nullslast';
   var queuePromise=(LAST_QUEUE_HUB===hub)
     ?Promise.resolve(LAST_QUEUE_DATA)
