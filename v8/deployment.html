@@ -630,7 +630,6 @@ function loadHubs(){
 function filterHubDropdowns(city){
   var sel=document.getElementById('hub-select');
   var sel2=document.getElementById('alloc-hub-select');
-  var cur=sel?sel.value:'all';
   [sel,sel2].forEach(function(s){
     if(!s)return;
     while(s.options.length>1)s.remove(1);
@@ -638,10 +637,8 @@ function filterHubDropdowns(city){
     _allHubs.filter(function(h){return !city||_hubCity[h]===city;}).forEach(function(h){
       var o=document.createElement('option');o.value=h;o.textContent=h;s.appendChild(o);
     });
-    s.value=cur;
-    if(!s.value||!Array.from(s.options).find(function(o){return o.value===cur;}))s.value='all';
+    s.value='all'; // always reset to All Hubs on city change
   });
-  if(sel&&sel2)sel2.value=sel.value;
 }
 
 function onCityChange(){
