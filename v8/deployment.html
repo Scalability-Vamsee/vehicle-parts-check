@@ -726,7 +726,7 @@ function loadQueue(){
         psChip('0d','Avg RFD Age','var(--text)');
       statsEl.style.display='flex';
       var ageEl=document.getElementById('pipeline-stats-age');
-      ageEl.innerHTML=psChip(0,'Total','var(--text)')+psChip(0,'< 1d','#16A34A')+psChip(0,'1 – 3d','#D97706')+psChip(0,'3 – 7d','#EA580C')+psChip(0,'> 7d','#DC2626');
+      ageEl.innerHTML=psChip(0,'< 1d','#16A34A')+psChip(0,'1 – 3d','#D97706')+psChip(0,'3 – 7d','#EA580C')+psChip(0,'> 7d','#DC2626');
       ageEl.style.display='flex';
       return;
     }
@@ -827,7 +827,6 @@ function renderKanban(data,board,hub){
   var gt7  =rfdOnly.filter(function(b){return (b.rfd_age_days||0)>=7;}).length;
   var ageEl=document.getElementById('pipeline-stats-age');
   ageEl.innerHTML=
-    psChip(total,'Total','var(--text)')+
     psChip(lt1,'< 1d','#16A34A')+
     psChip(d1to3,'1 – 3d','#D97706')+
     psChip(d3to7,'3 – 7d','#EA580C')+
