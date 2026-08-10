@@ -731,10 +731,10 @@ function loadQueue(){
         psChip(0,'Total RFD','var(--text)')+
         psChip(0,'Starvation','#DC2626')+
         psChip(0,'Overuse','#D97706')+
-        psChip('0d','Avg RFD Age','var(--text)');
+        psChip(0,'Allocated','#2563EB');
       statsEl.style.display='flex';
       var ageEl=document.getElementById('pipeline-stats-age');
-      ageEl.innerHTML=psChip(0,'≤ 1d','#16A34A')+psChip(0,'2 – 3d','#D97706')+psChip(0,'4 – 7d','#EA580C')+psChip(0,'> 7d','#DC2626');
+      ageEl.innerHTML=psChip('0d','Avg Age','var(--text)')+psChip(0,'≤ 1d','#16A34A')+psChip(0,'2 – 3d','#D97706')+psChip(0,'4 – 7d','#EA580C')+psChip(0,'> 7d','#DC2626');
       ageEl.style.display='flex';
       return;
     }
@@ -831,7 +831,6 @@ function renderStats(data){
     psChip(total,_inclAlloc?'Total (all)':'Total RFD','var(--text)')+
     psChip(starv,'Starvation','#DC2626')+
     psChip(over,'Overuse','#D97706')+
-    psChip(avgRfd+'d','Avg RFD Age','var(--text)')+
     psChip(allocCount,'Allocated','#2563EB');
   statsEl.style.display='flex';
 
@@ -841,6 +840,7 @@ function renderStats(data){
   var gt7  =pool.filter(function(b){return (b.rfd_age_days||0)>7;}).length;
   var ageEl=document.getElementById('pipeline-stats-age');
   ageEl.innerHTML=
+    psChip(avgRfd+'d','Avg Age','var(--text)')+
     psChip(lt1,'≤ 1d','#16A34A')+
     psChip(d2to3,'2 – 3d','#D97706')+
     psChip(d4to7,'4 – 7d','#EA580C')+
