@@ -336,6 +336,9 @@ body.pinned #hbg{display:none}
   <!-- TAB: PIPELINE (Kanban) -->
   <div id="tab-queue" class="tab-panel active">
     <div class="controls">
+      <select id="city-select" class="ctl-select" onchange="onCityChange()" style="min-width:140px">
+        <option value="">All Cities</option>
+      </select>
       <select id="hub-select" class="ctl-select" onchange="loadQueue()">
         <option value="">Select a hub…</option>
       </select>
@@ -343,6 +346,7 @@ body.pinned #hbg{display:none}
       <span class="ctl-meta" id="queue-meta"></span>
     </div>
     <div class="pipeline-stats" id="pipeline-stats" style="display:none"></div>
+    <div class="pipeline-stats" id="pipeline-stats-age" style="display:none;padding-top:0;border-top:1px solid #F3F4F6"></div>
     <div class="kanban-board" id="kanban-board">
       <div class="state-box"><div class="icon">🏭</div><p>Select a hub above to view the pipeline.</p></div>
     </div>
@@ -351,6 +355,9 @@ body.pinned #hbg{display:none}
   <!-- TAB: ALLOCATE -->
   <div id="tab-allocate" class="tab-panel">
     <div class="alloc-controls">
+      <select id="alloc-city-select" class="ctl-select" onchange="onAllocCityChange()" style="min-width:140px">
+        <option value="">All Cities</option>
+      </select>
       <select id="alloc-hub-select" class="ctl-select" onchange="loadAllocList()">
         <option value="">Select a hub…</option>
       </select>
@@ -394,6 +401,8 @@ var LAST_QUEUE_DATA = null;
 var LAST_QUEUE_HUB  = '';
 var ALLOC_DATA      = [];
 var _refreshTimer   = null;
+var _hubCity        = {};   // {hub_name: 'Bangalore'|'NCR'|...}
+var _allHubs        = [];   // sorted hub names (all cities)
 
 /* ── Auth ─────────────────────────────────────────────────────────── */
 function showAuthScreen(){var v=document.getElementById('perm-veil');if(v)v.remove();document.getElementById('auth-screen').classList.remove('hidden');showForm();}
@@ -528,13 +537,19 @@ function switchTab(name){
   document.querySelectorAll('.tab-btn').forEach(function(b,i){b.classList.toggle('active',TAB_IDS[i]===name);});
   document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active');
-  // Sync hub filter between tabs and always reload on tab switch
+  // Sync city + hub between tabs, then reload
   if(name==='allocate'){
+    var city=document.getElementById('city-select').value;
+    var cs2=document.getElementById('alloc-city-select');
+    if(cs2&&cs2.value!==city)cs2.value=city;
     var h=document.getElementById('hub-select').value;
     var s=document.getElementById('alloc-hub-select');
     if(h&&s.value!==h)s.value=h;
     loadAllocList();
   } else if(name==='queue'){
+    var city=document.getElementById('alloc-city-select').value;
+    var cs=document.getElementById('city-select');
+    if(cs&&cs.value!==city)cs.value=city;
     var h=document.getElementById('alloc-hub-select').value;
     var s=document.getElementById('hub-select');
     if(h&&s.value!==h)s.value=h;
@@ -568,34 +583,83 @@ function modelTag(type){
 
 /* ── Load hubs ───────────────────────────────────────────────────── */
 function loadHubs(){
-  var sel=document.getElementById('hub-select');
-  var sel2=document.getElementById('alloc-hub-select');
-  // Clear existing options (keep first placeholder) to avoid duplicates on re-call
-  while(sel.options.length>1)sel.remove(1);
-  while(sel2.options.length>1)sel2.remove(1);
-  // Merge hubs from both tables so hubs with 0 bikes still appear in dropdown
   Promise.all([
-    sbGet('deployment_queue_cache','select=hub_name&order=hub_name'),
+    sbGet('deployment_queue_cache','select=hub_name,city&order=hub_name'),
     sbGet('fw_pending_cache','select=hub&order=hub')
   ]).then(function(results){
+    // Build hub→city map and master hub list
     var seen={};
-    var hubs=[];
-    (results[0]||[]).forEach(function(r){if(r.hub_name&&!seen[r.hub_name]){seen[r.hub_name]=true;hubs.push(r.hub_name);}});
-    (results[1]||[]).forEach(function(r){if(r.hub&&!seen[r.hub]){seen[r.hub]=true;hubs.push(r.hub);}});
-    // "All Hubs" first, then individual hubs
-    var allOpt=document.createElement('option');allOpt.value='all';allOpt.textContent='All Hubs';sel.appendChild(allOpt);
-    var allOpt2=document.createElement('option');allOpt2.value='all';allOpt2.textContent='All Hubs';sel2.appendChild(allOpt2);
-    hubs.sort().forEach(function(h){
-      var o=document.createElement('option');o.value=h;o.textContent=h;sel.appendChild(o);
-      var o2=document.createElement('option');o2.value=h;o2.textContent=h;sel2.appendChild(o2);
+    _hubCity={};_allHubs=[];
+    (results[0]||[]).forEach(function(r){
+      if(r.hub_name&&!seen[r.hub_name]){
+        seen[r.hub_name]=true;
+        _allHubs.push(r.hub_name);
+        if(r.city)_hubCity[r.hub_name]=r.city;
+      }
     });
-    // Auto-select saved hub (default 'all' if none saved)
+    (results[1]||[]).forEach(function(r){
+      if(r.hub&&!seen[r.hub]){seen[r.hub]=true;_allHubs.push(r.hub);}
+    });
+    _allHubs.sort();
+
+    // Populate city dropdowns with unique cities in the data
+    var cities=[...new Set(Object.values(_hubCity))].sort();
+    ['city-select','alloc-city-select'].forEach(function(id){
+      var cs=document.getElementById(id);if(!cs)return;
+      while(cs.options.length>1)cs.remove(1);
+      cities.forEach(function(c){
+        var o=document.createElement('option');o.value=c;o.textContent=c;cs.appendChild(o);
+      });
+    });
+
+    // Restore saved city, apply filter, restore hub
+    var lastCity=localStorage.getItem('last_city')||'';
+    document.getElementById('city-select').value=lastCity;
+    document.getElementById('alloc-city-select').value=lastCity;
+    filterHubDropdowns(lastCity);
+
     var last=localStorage.getItem('last_hub')||'all';
+    var sel=document.getElementById('hub-select');
     sel.value=last;
-    if(!sel.value)sel.value='all';   // saved hub no longer exists → fall back to All
-    sel2.value=sel.value;
+    if(!sel.value)sel.value='all';
+    document.getElementById('alloc-hub-select').value=sel.value;
     loadQueue();
   }).catch(function(){});
+}
+
+function filterHubDropdowns(city){
+  var sel=document.getElementById('hub-select');
+  var sel2=document.getElementById('alloc-hub-select');
+  var cur=sel?sel.value:'all';
+  [sel,sel2].forEach(function(s){
+    if(!s)return;
+    while(s.options.length>1)s.remove(1);
+    var ao=document.createElement('option');ao.value='all';ao.textContent='All Hubs';s.appendChild(ao);
+    _allHubs.filter(function(h){return !city||_hubCity[h]===city;}).forEach(function(h){
+      var o=document.createElement('option');o.value=h;o.textContent=h;s.appendChild(o);
+    });
+    s.value=cur;
+    if(!s.value||!Array.from(s.options).find(function(o){return o.value===cur;}))s.value='all';
+  });
+  if(sel&&sel2)sel2.value=sel.value;
+}
+
+function onCityChange(){
+  var city=document.getElementById('city-select').value;
+  var cs2=document.getElementById('alloc-city-select');
+  if(cs2)cs2.value=city;
+  localStorage.setItem('last_city',city);
+  filterHubDropdowns(city);
+  loadQueue();
+}
+
+function onAllocCityChange(){
+  var city=document.getElementById('alloc-city-select').value;
+  var cs=document.getElementById('city-select');
+  if(cs)cs.value=city;
+  localStorage.setItem('last_city',city);
+  filterHubDropdowns(city);
+  loadAllocList();
 }
 
 /* ── Kanban column definitions ───────────────────────────────────── */
@@ -661,6 +725,9 @@ function loadQueue(){
         psChip(0,'Overuse','#D97706')+
         psChip('0d','Avg RFD Age','var(--text)');
       statsEl.style.display='flex';
+      var ageEl=document.getElementById('pipeline-stats-age');
+      ageEl.innerHTML=psChip(0,'Total','var(--text)')+psChip(0,'< 1d','#16A34A')+psChip(0,'1 – 3d','#D97706')+psChip(0,'3 – 7d','#EA580C')+psChip(0,'> 7d','#DC2626');
+      ageEl.style.display='flex';
       return;
     }
 
@@ -752,6 +819,20 @@ function renderKanban(data,board,hub){
     psChip(avgRfd+'d','Avg RFD Age','var(--text)')+
     psChip(allocCount,'Allocated','#2563EB');
   statsEl.style.display='flex';
+
+  // Age distribution row (non-overlapping buckets, unallocated bikes only)
+  var lt1  =rfdOnly.filter(function(b){return (b.rfd_age_days||0)<1;}).length;
+  var d1to3=rfdOnly.filter(function(b){var a=b.rfd_age_days||0;return a>=1&&a<3;}).length;
+  var d3to7=rfdOnly.filter(function(b){var a=b.rfd_age_days||0;return a>=3&&a<7;}).length;
+  var gt7  =rfdOnly.filter(function(b){return (b.rfd_age_days||0)>=7;}).length;
+  var ageEl=document.getElementById('pipeline-stats-age');
+  ageEl.innerHTML=
+    psChip(total,'Total','var(--text)')+
+    psChip(lt1,'< 1d','#16A34A')+
+    psChip(d1to3,'1 – 3d','#D97706')+
+    psChip(d3to7,'3 – 7d','#EA580C')+
+    psChip(gt7,'> 7d','#DC2626');
+  ageEl.style.display='flex';
 }
 function psChip(val,label,color){
   return'<div class="ps-chip" style="border-top-color:'+color+'"><div class="ps-val" style="color:'+color+'">'+val+'</div><div class="ps-label">'+label+'</div></div>';
