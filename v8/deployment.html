@@ -404,7 +404,7 @@ var ALLOC_DATA      = [];
 var _refreshTimer   = null;
 var _hubCity        = {};   // {hub_name: 'Bangalore'|'NCR'|...}
 var _allHubs        = [];   // sorted hub names (all cities)
-var _inclAlloc      = localStorage.getItem('depl_incl_alloc')==='1';
+var _inclAlloc      = localStorage.getItem('depl_incl_alloc')!=='0'; // default ON (include allocated)
 
 /* ── Auth ─────────────────────────────────────────────────────────── */
 function showAuthScreen(){var v=document.getElementById('perm-veil');if(v)v.remove();document.getElementById('auth-screen').classList.remove('hidden');showForm();}
@@ -761,9 +761,11 @@ function startAutoRefresh(){
 
 /* ── Kanban render ───────────────────────────────────────────────── */
 function renderKanban(data,board,hub){
+  var _isAlloc=function(b){return b.rental_status&&b.rental_status.toLowerCase().indexOf('blocked for booking')===0;};
+  var displayData=_inclAlloc?data:data.filter(function(b){return !_isAlloc(b);});
   var html='';
   COLUMNS.forEach(function(col){
-    var bikes=data.filter(col.filter);
+    var bikes=displayData.filter(col.filter);
     html+='<div class="kb-col">';
     html+='<div class="kb-col-header '+col.cls+'">';
     html+='<div><div class="kb-col-title">'+col.label+'</div><div class="kb-col-sub">'+col.sub+'</div></div>';
@@ -856,7 +858,10 @@ function toggleAllocIncl(){
     btn.style.borderColor=_inclAlloc?'#2563EB':'#D1D5DB';
     btn.style.color=_inclAlloc?'#1D4ED8':'#6B7280';
   }
-  if(LAST_QUEUE_DATA&&LAST_QUEUE_DATA.length)renderStats(LAST_QUEUE_DATA);
+  if(LAST_QUEUE_DATA&&LAST_QUEUE_DATA.length){
+    var board=document.getElementById('kanban-board');
+    renderKanban(LAST_QUEUE_DATA,board,LAST_QUEUE_HUB);
+  }
 }
 
 function psChip(val,label,color){
