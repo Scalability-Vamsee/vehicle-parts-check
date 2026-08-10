@@ -404,7 +404,7 @@ var ALLOC_DATA      = [];
 var _refreshTimer   = null;
 var _hubCity        = {};   // {hub_name: 'Bangalore'|'NCR'|...}
 var _allHubs        = [];   // sorted hub names (all cities)
-var _inclAlloc      = localStorage.getItem('depl_incl_alloc')!=='0'; // default ON (include allocated)
+var _inclAlloc      = localStorage.getItem('depl_alloc_v2')!=='0'; // default ON (include allocated)
 
 /* ── Auth ─────────────────────────────────────────────────────────── */
 function showAuthScreen(){var v=document.getElementById('perm-veil');if(v)v.remove();document.getElementById('auth-screen').classList.remove('hidden');showForm();}
@@ -850,7 +850,7 @@ function renderStats(data){
 
 function toggleAllocIncl(){
   _inclAlloc=!_inclAlloc;
-  localStorage.setItem('depl_incl_alloc',_inclAlloc?'1':'0');
+  localStorage.setItem('depl_alloc_v2',_inclAlloc?'1':'0');
   var btn=document.getElementById('alloc-toggle-btn');
   if(btn){
     btn.textContent=(_inclAlloc?'☑':'☐')+' Incl. Allocated';
