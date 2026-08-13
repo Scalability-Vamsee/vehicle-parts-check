@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { action, group_id, feature_key, user_id, name, description } = await req.json()
+  const { action, group_id, feature_key, user_id, name, description, email, full_name } = await req.json()
 
   // --- list_groups: all groups with their features ---
   if (action === 'list_groups') {
@@ -98,6 +98,38 @@ Deno.serve(async (req) => {
       if (error) return err(error.message, corsHeaders)
       return ok({ added: true, feature_key }, corsHeaders)
     }
+  }
+
+  // --- create_user: provision auth + hr_employees + optional group ---
+  if (action === 'create_user') {
+    if (!email) return err('email is required', corsHeaders)
+    const cleanEmail = email.trim().toLowerCase()
+
+    // 1. Create auth user (confirm immediately — magic-link only)
+    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+      email: cleanEmail,
+      email_confirm: true,
+    })
+    if (authErr) return err(authErr.message, corsHeaders)
+    const newId = authData.user.id
+
+    // 2. Upsert into hr_employees so is_approved_user() RPC recognises them
+    await supabase.from('hr_employees').upsert(
+      {
+        employee_id: 'EMP-' + newId.slice(0, 8).toUpperCase(),
+        employee_name: full_name || cleanEmail.split('@')[0],
+        designation: '',
+        email: cleanEmail,
+      },
+      { onConflict: 'email' }
+    )
+
+    // 3. Optionally assign to an initial group
+    if (group_id) {
+      await supabase.from('user_groups').upsert({ user_id: newId, group_id }, { onConflict: 'user_id,group_id' })
+    }
+
+    return ok({ user: { id: newId, email: cleanEmail, group_ids: group_id ? [group_id] : [] } }, corsHeaders)
   }
 
   // --- create_group ---
