@@ -1,5 +1,250 @@
 # Fleetpro — Context File
-*Last updated: 2026-07-19 (session 2) — auth storageKey root-cause fix on all admin pages + rfd-check.html maintenance-style redesign + global favicon sweep (881612e / 833b6db). Prior (session 1): RFD Check page built + deployed. 2026-07-18 Analytics: payout_amount-from-DB fix (frozen weeks W3 ₹14,725/W4 ₹15,750), Hyd/Fathenagar 3.5 techs/day for W1–W5 + real from W6, Miyapur→Fathenagar merge (c2828b2/ce63938/416507f/41d851a). 2026-07-17: W6 attendance lag diagnosed; hotfixes 900d95b/1eb7b71/c05aaab. 2026-07-16: maintenance.html FW/IoT tags + JC-history hero + item wrap, live.*
+*Last updated: 2026-08-15 — Three-party dev workflow set up (Manasa + Claude Cowork + Claude Code); RSA Tech PWA fully fixed; GPS source fusion in RSA Warroom; staging environment scaffolded.*
+
+## 🆕 2026-08-15 — Three-party workflow + staging environment
+
+### Dev workflow (Manasa + Claude Cowork + Claude Code)
+- **Manasa** owns feature branch → staging merge → bounceops.info testing → staging→main PR
+- **Claude Cowork** reads the PR URL, applies migrations via MCP, writes push prompt to clipboard, updates context docs after merge
+- **Claude Code** receives clipboard prompt, syntax-checks JS, executes git push to main
+- **Vamsee** glances at diff, pastes PR URL to Cowork, pastes prompt to Claude Code + fills `<PAT>`
+- Full responsibility matrix in `CLAUDE.md` §👥 Three-Party Workflow
+
+### Staging environment scaffolded
+- `staging` branch → Netlify → bounceops.info (Netlify setup still pending)
+- Same Supabase project as prod (anon key, read via same credentials)
+- Manasa gets Supabase Dashboard Viewer access (pending invite)
+- `docs/STAGING-SETUP.md` — onboarding guide for Manasa
+- `.github/PULL_REQUEST_TEMPLATE.md` — PR template Manasa fills in for every staging→main PR
+
+### RSA Tech PWA — additional fixes (commits b022ce3, 0b7ee45, 68c27bb)
+- **Camera-only photo capture** — `capture="environment"` on file input; also saves to device gallery via `URL.createObjectURL` + `<a download>`
+- **Navigate GPS-only** — when no GPS on ticket, shows warning toast instead of opening Google Maps with reg_number+city as search text
+- **Off-duty banner** — Tickets tab shows amber banner when `_onDuty=false`; access not blocked (tech may have open tickets to close out)
+- **Buzzer (AudioContext)** — shared `_getAudioCtx()` + unlock on first `touchstart`/`click`; `rsa_tickets_cache` added to `supabase_realtime` publication with `REPLICA IDENTITY FULL`
+- **Auth loop fix** — `sendMagicLink()` now has `is_approved_user` pre-auth gate; `loadAndApplyPermissions` falls back to `rsa_technicians` direct check (`is_active=true`) when group sync cron hasn't run yet for a new tech
+
+### RSA Warroom — tech location GPS fusion (commit 1ebc7db)
+- `loadRsaLocations()` now fetches both `bike_location_cache` (bike GPS, best of intellicar/BAAS already resolved) and `rsa_tech_live_locations` (PWA breadcrumbs, last 24h)
+- Compares `baas_location_time` vs `recorded_at` — places pin at whichever is more recent
+- Popup shows "📍 PWA" or "📍 Bike GPS" source label
+- `bike-location-sync` was already correct (uses location timestamp not packet time) — no change needed there
+
+### Supabase cleanup
+- `manasajagadish141@gmail.com` (typo account) deleted from `hr_employees` + `auth.users`
+
+### Edge function deploys (2026-08-15)
+- `sync-hr-employees` → v14 (was stuck at v7 live)
+- `recovery-blocked-sync` → v7
+- `zone-cluster` → v12
+
+---
+
+## 🆕 2026-08-14 — RSA Tech PWA ticket flow fixes (commits 8f36de2, ace6f77)
+
+Five stacked bugs that together made the RSA ticket state machine non-functional end-to-end:
+
+### Bug 1 — Ticket missing from Pending tab (city=null filter)
+`loadMyTickets()` in PWA mode set `_ticketCity = _techRecord.city || 'BLR'` and appended `&city=eq.BLR` to the PostgREST query. Newly created tickets have `city = null` → excluded by the equality filter. Fix: removed the city filter entirely. The `technician_name ilike 'Name%'` prefix filter is sufficient; city was never an authorization boundary for a tech's own ticket list.
+
+### Bug 2 — Realtime subscription not triggering reload
+The `rsa_tickets_cache` realtime subscription used exact match: `newTech.toLowerCase() !== myName.toLowerCase()`. Tickets with a `"Name (City)"` suffix format (`"Vamshi (Testing)"` ≠ `"Vamshi"`) silently skipped the `loadMyTickets()` call. Push notification still fired (different path) — so the tech got the notification buzzer but the list never refreshed. Fix: changed to `startsWith` check.
+
+### Bug 3 — No manual refresh button
+The Tickets panel had no way to manually reload. Added a 🔄 button at the right end of the Pending/In Progress/Completed subtab bar.
+
+### Bug 4 — ticket_events CHECK constraint (DB, applied live 2026-08-14)
+`ticket_events_event_type_check` predated RSA-8 and only allowed: `on_my_way`, `on_site`, `completed`, `note`. The RSA Tech PWA sends: `accepted`, `en_route`, `reached`, `work_started`, `transferred_to_ho`. Every one of these violated the constraint and was silently rejected by Postgres (`res.ok = false`, code returned `false`, toast showed "Failed — retry"). Fix: expanded constraint via migration `20260814000001_ticket_events_event_type_expand.sql` (applied live via Supabase MCP, also git-committed). **Verification gap:** earlier review of ticket-flow pushes verified RLS and frontend logic but did not check the CHECK constraint against the new event vocabulary — now closed.
+
+### Bug 5 — postEvent() sending wrong UUID as technician_id (FK violation)
+`postEvent()` sent `technician_id: _techRecord.id` where `_techRecord.id` is the `rsa_technicians` table PK. But `ticket_events.technician_id` is `FK → auth.users(id)`. Cross-schema FK (`auth` schema) wasn't caught by the earlier `information_schema` FK query (which only covers `public` schema). Fix: changed to `technician_id: _currentUserId` (set to `session.user.id` at login on line 590).
+
+**Verification protocol for future ticket-flow changes:** after any DB schema change, run a direct `INSERT` via Supabase MCP against the exact payload the client sends — don't rely on frontend error messages alone (they are intentionally vague). Also query `pg_constraint` cross-schema FKs via `pg_catalog` not `information_schema`.
+
+---
+
+## 🆕 2026-08-13 — Auth-hardening arc closed; Add User modal in admin-permissions
+
+### incentive.html — third allowlist variant removed (commit bb988a4)
+`incentive.html` had its own distinct pre-auth gate that differed from both the 8-page `is_approved_user()` pattern (RSA-10, 2026-08-12) and the direct-table-query interim approach. Specifically it had:
+1. A hardcoded `ALLOWED_EMAILS` array (`vamsee@bounceshare.com`, `vamsee@scalability.club`, `nishanthshetty2024@gmail.com`)
+2. Parallel anon-client queries: `sbClient.from('hr_employees')…maybeSingle()` + `sbClient.from('incentive_technicians')…maybeSingle()`
+
+The anon queries are the core bug: `hr_employees` and `incentive_technicians` have `authenticated`-only RLS, so the anon client silently returns `null` for any row it can't see — causing "not registered" even for legitimately enrolled users. This was the root cause of `manasajagadish141@gmail.com` failing to log in even after being added to `hr_employees`.
+
+Fix: removed `ALLOWED_EMAILS`, replaced the parallel queries with a single `sbClient.rpc('is_approved_user',{p_email:email})` call — identical to all other pages. The `@bounceshare.com` bypass remains unconditional (runs before the RPC, same as everywhere else).
+
+### admin-permissions edge fn — create_user hr_employees bug (commit ab6e22b)
+`hr_employees.employee_id` is the primary key; `email` has no unique constraint. The original `create_user` action used `upsert(..., {onConflict:'email'})` — no valid conflict target → PostgREST error on every call. Error was never checked, so the insert silently failed for every user added via the modal. Any user created this way would fail `is_approved_user()` at login unless they happened to already be in `rsa_technicians`/`incentive_technicians`. Fix: plain `insert()` with error checking (duplicate key logged, other errors surfaced). Edge fn now v11 (MCP-deployed + git-synced ab6e22b). **`manasajagadeesh141@gmail.com` was affected** — `hr_employees` row manually inserted 2026-08-13 to unblock login. Old typo email (`manasajagadish141@gmail.com`) remains in `hr_employees` + `auth.users` — can be cleaned up from Supabase Dashboard when convenient.
+
+### admin-permissions.html — Add User modal
+Previously: adding a user to FleetPro required SQL (`auth.users` insert → `hr_employees` insert → `user_groups` insert). Now a "**+ Add User**" button in the Users × Groups tab opens a modal (email, full name, optional initial group). On submit, calls the `admin-permissions` edge function with a new `create_user` action that:
+1. `supabase.auth.admin.createUser({email, email_confirm:true})` — creates the auth user pre-confirmed, magic-link ready
+2. Upserts an `hr_employees` row (so `is_approved_user()` immediately recognises the email)
+3. Optionally inserts into `user_groups` for an initial group
+
+The new user appears in the matrix immediately without a page reload. Same `x-admin-secret`-gated `permFetch()` helper as all other admin-permissions actions. Edge function deployed as v9 via Supabase MCP.
+
+### admin-permissions.html — stale cached secret bug (commit 6135c74)
+When `Login_key` is rotated in Supabase (e.g. changed to `Bounce@123`), any browser with the old secret cached in `localStorage.fp_admin_secret` would silently fail on `loadAll()` — the error was written to `lock-err` (inside the hidden secret-gate div) but `show('secret-gate')` was never called, leaving the auth-gate visible. User would be stuck on the login screen despite being fully authenticated. Fix: `loadAll()` now detects the `Unauthorized` error, clears `fp_admin_secret` from localStorage, and calls `show('secret-gate')` with "Wrong secret — enter the current admin key." so the user can re-enter. **Admin secret rotated this session: `Bounce@123`** (update in Supabase Dashboard → Settings → Edge Functions → Secrets → `Login_key`; never commit this value).
+
+### Login debugging — manasajagadish141@gmail.com
+Confirmed via browser-context `javascript_tool` test on the live page: the current `sendMagicLink()` gate returns `{isStaff:false, approved:true, wouldBlock:false}` — the login will succeed. The earlier error was caused by `incentive.html`'s anon table queries (now fixed). On `index.html` the email has been in `hr_employees` since 2026-08-12, `is_approved_user()` returns `true` both from Supabase service_role and from the anon browser context. If error persists: hard-refresh (Cmd/Ctrl+Shift+R) or try incognito to clear browser cache.
+
+---
+
+## 🆕 2026-08-12 (cont.) — User access, Supabase security alert, knowledge base
+
+### User access changes
+
+- **Nabina Behera** (`nabina.behera@bounceshare.com`) and **Venkatesh R** (`venkatesh.r@bounceshare.com`) removed from Default Users group (`c848edab-6cd3-446f-88f7-8addb66e94d9`) — revoked Deployment Queue, Preventive Maintenance, and OOS Queue access.
+- **manasa@scalability.club** (QA Lead): auth account created via SQL insert into `auth.users`; added to Admin group (`dd57c013-8da0-4e2c-b42b-fbd2ad30a585`) + `hr_employees`; `is_superadmin:true` set in `raw_app_meta_data`. Full platform access including all admin panels.
+- **manasajagadish141@gmail.com** (QA — Default Users test persona): auth account created; auto-assigned to Default Users group by trigger; added to `hr_employees`. Used to test permission-gating as a non-admin user.
+- Both emails added to `hr_employees` (with role `QA Lead` / `QA`) so `is_approved_user()` RPC allows magic link sign-in. Sign-in method: magic link only (SQL-inserted password hash is incompatible with GoTrue validation — use magic link or Forgot Password flow).
+- Supabase team invite: user to invite `manasa@scalability.club` manually via Dashboard → Settings → Team → Developer role (Supabase MCP has no invite-member endpoint).
+
+### Supabase security alert — spatial_ref_sys (false positive, 2026-08-12)
+
+Supabase emailed a `rls_disabled_in_public` alert (as of 2026-08-09). The only flagged table is `spatial_ref_sys` — a PostGIS extension table containing coordinate reference system definitions (SRIDs). It holds no user data and is read-only reference data. Cannot enable RLS on it (PostgreSQL enforces ownership; the extension owns the table, not the project superuser). Confirmed via `pg_tables` query that all user-created tables have RLS enabled. Alert is a known PostGIS false positive — dismiss in Supabase Dashboard → Advisors.
+
+### Notion knowledge base + testing docs
+
+Two Notion pages created under a parent **FleetPro** page in the Notion workspace:
+- **FleetPro Knowledge Base** — production-grade platform guide: all modules, auth flow, permission matrix, DB table reference, known gotchas, how to add new users. URL: `https://app.notion.com/p/3ba40d61a6c8818b9b6bcb0552e47e79`
+- **FleetPro Testing** — active testing tracker for Manasa: smoke test checklist (per-page, covers both Admin + Default Users accounts), active sprint tasks, bug log table, push test log, testing tips. URL: `https://app.notion.com/p/3ba40d61a6c881b1b94def13afd72a45`
+
+---
+
+## 🆕 2026-08-12 — RSA Admin Module + RSA Tech PWA (RSA-1 through RSA-9), Warroom overhaul, auth hardening
+
+Spans 2026-07-31 → 2026-08-12. All pushed & live on `main` (`vehicle-parts-check`), Claude Code verify+push on every commit (secret scan, JS syntax check, fresh-clone diff against remote before push). Session summary below; see `PRODUCTIZATION-TASKS.md` RSA Admin Module section for per-item status.
+
+### RSA-1 — Schema foundation
+5 new tables (`rsa_roster_template`, `rsa_roster_overrides` — later superseded by `rsa_day_overrides`, `rsa_vehicle_assignments`, `rsa_spare_ledger`, `rsa_core_assets`), `rsa_technicians` extended (`employee_id`, `hub_id`, `city`, `working_location`, dropped old FK to `auth.users`). **PII caught before push:** original seed had real phone/email for 10 technicians — stripped to `(id, name, employee_id, city, working_location, is_active)` before the repo (public) ever saw it. Missing UPDATE/INSERT RLS policies on `rsa_technicians` (only 2 SELECT policies existed at creation) surfaced as silent-failure bugs twice — joining-date edits and Add-Tech both failed with no error until policies were added (`…000003`, `…000004`). `rsa_technicians.id` also had no `DEFAULT` after the FK-to-auth.users drop, breaking Add-Tech a second way until `ALTER COLUMN id SET DEFAULT gen_random_uuid()` (`20260801000001`).
+
+### rsa.html — Admin panel (Vehicles / Roster / Directory / Spares / Assets tabs)
+Restructured from a slide-in overlay into a 3rd top-level view (`showView('admin')`) alongside Map/Metrics. **Vehicles** — DB-driven `RSA_BIKES` via `loadRsaBikes()` against `rsa_vehicle_assignments` (replaces the old hardcoded 3→7-entry array from 2026-07-27, closing the RSA-BIKES filter gap noted 2026-07-29). **Roster** — day-level overrides (`rsa_day_overrides`, replacing a week-level template that's now orphaned) + joining-date; Warroom map now hides W/O and Leave techs for the current day (override → weekly template → visible fallback). **Directory** — full CRUD (add/edit/toggle-active), email field, Role dropdown (RSA Field Team / RSA Warroom) that auto-syncs `user_groups` via `assign_rsa_role()` RPC on save. **Spares** — `rsa_spare_ledger` stock view + movement log, manual entry form. **Assets** — Tools/Laptop Bounce/Laptop SMPL issue-tracking matrix against `rsa_core_assets`.
+
+### Warroom (rsa.html) map + Tickets panel
+Replaced the North/South zone filter with a proper 6-cluster filter (Central/YPR/RR Nagara/Bellandur/Hoodi/Hebbal), Haversine nearest-centroid assignment, BLR-only (auto-hidden for other cities). Added a Tickets slide panel (left side, open by default, inside `#map-wrap`): search box, TAT-based urgency sort/coloring, click-to-highlight (pans + opens popup, no forced zoom), a DONE filter, reuses the map's already-filtered `_all`/`_filtered` data (no extra fetch). Summary tiles regrouped **Volume → Speed → Quality → Cost** per an RSA Report Card ask: added "No Dispatch %" (proxy: DONE tickets with no `technician_name` — covers call-resolution + porter, since neither has a tech assigned) and "Fixed on Site %" (from the new `action_taken` field, backfilled by `rsa-ticket-sync` from `ticket_events.resolution_type`); both gracefully fall back to a plain "Total Tickets" count when the newer fields are sparse. An earlier attempt to key these tiles off literal `category` strings (`RESOLVED_ON_CALL`/`PORTER_BOOKED`) didn't match real ticket data and was replaced same-session.
+
+### RSA-7/8/9 — `rsa-tech.html` PWA (+ manifest + service worker)
+New installable PWA at `v8/rsa-tech.html` (permissions-first auth, feature key `tech-app`, tech lookup by `email ILIKE` against `rsa_technicians`). **Home tab (RSA-7):** profile card, hub + Google Maps nav (now uses the tech's actual city, not hardcoded Bangalore), GPS-stamped Start/End Duty (`rsa_duty_log`), today's log. **Tickets tab (RSA-8):** full state machine — accept → navigate → reached (photo required) → work started → complete (disposition + photo) or transfer to HO; one active ticket enforced; live GPS written to `rsa_tech_live_locations` (7-day retention cron). **FW Map tab (RSA-9):** List + Map subtabs, MCU/DIU filter, nearest-first sort by phone GPS, Leaflet lazy-loaded only when the Map subtab opens, India-bbox guard on all pins (same pattern as `trace-ho.html`). Service worker v2 adds background ticket polling (60s) with Web Push notification scaffolding (VAPID tables created, not yet wired to a push provider) and a `SW_UPDATED` reload banner, shared across `rsa-tech.html`/`trace-hunter.html`/`incentive.html`. **Note on numbering:** "RSA-9" was used twice in-session — once for the Core Assets admin tab, once for the FW Map PWA tab — both shipped; no functional collision, just a tracker label reused.
+
+### Auth hardening — hardcoded email allowlists removed everywhere
+Multi-pass effort, most recent version wins: `index.html`, `maintenance.html`, `queue.html`, `deployment.html`, `trace-ho.html`, `trace-hunter.html`, `rsa.html`, `fw-map.html` all previously had a single hardcoded email exception (`vamsee@scalability.club`) or a small `RSA_EMAILS`/`ALLOWED_EMAILS` array gating non-`@bounceshare.com` logins. Final state: every page calls a single `is_approved_user(p_email)` Postgres RPC before sending a magic link; `@bounceshare.com` still bypasses unconditionally. The RPC replaced an interim version that queried `hr_employees`/`incentive_technicians`/`rsa_technicians` directly from the client — that approach was correct in intent but unverifiable from an anon session (RLS on those tables is `authenticated`-only, so a same-shaped anon probe can't distinguish "no match" from "silently blocked"); the RPC sidesteps this by running inside Postgres. **Verified twice before trusting it:** first pass showed `is_approved_user('vamsee@scalability.club')→false`, initially read as a possible bug — confirmed intentional (that email is a removed legacy exception; the real bypass is the `@bounceshare.com` domain check, which runs before the RPC) once cross-checked against a real registered user (`ks4697149@gmail.com`) returning `true`. `fw-map.html` also gained a matching `RSA_EMAILS`-free session-length policy: 7-day idle timeout is now driven purely by `fpCan('fw-map')` (DB group membership), no code-level fallback list.
+
+### deployment.html — city filter, allocation toggle, age buckets
+City filter added and synced between the Pipeline and Allocation tabs (hub dropdowns filter to the selected city, localStorage-persisted); one bug required a follow-up push — the "All Hubs" branch of both queries had no city clause at all, so switching city while on "All Hubs" silently did nothing. RFD age-distribution row added (non-overlapping `≤1d / 2–3d / 4–7d / >7d` buckets — the first version used ambiguous `<`/`>=` boundaries that mis-bucketed bikes at exactly 1/3/7 days). "Incl. Allocated" toggle added for the stats + kanban board (defaults ON; the localStorage key was bumped to `depl_alloc_v2` mid-session so users who'd toggled it OFF before the default flipped don't get stuck on stale state).
+
+### admin-analytics.html — Void Rate tab
+New tab: weekly trend chart (Chart.js — overall/intrip/end-trip void rate, bar+line combo) + per-technician breakdown table sorted by void rate, city filter, CSV export. Reads `incentive_weekly_stats` (paginated fetch, 1000-row pages). A leftover dead variable (`_origSwitchTab`, an abandoned monkey-patch approach) was removed in a same-session follow-up cleanup.
+
+### Edge functions — git-sync catch-ups (source-of-record only; live deploys via Cowork/MCP)
+`jc-failure-alert` (v6) and `jc-history-sync` (v12, streaming CSV reader + 90-day incremental delete/reinsert, replacing a full delete+reinsert that was OOM-crashing on the then-372k-row Metabase card) were confirmed live via MCP and git-synced this session — **the "git pending push" status on both in `docs/INDEX.md` predates this sync and is now stale.** New `indofast-station-sync` fn (+ `indofast_top_stations` table, seeded coords for top-5 BLR/NCR swap stations) added for a red-⚡-marker overlay on `fw-map.html` MCU mode; caught one bug pre-push — the Metabase fetch URL was `http://`, which 302-redirects to `https://` and can return an empty body depending on redirect-following behavior (same footgun hit twice on `jc-history-sync` earlier). `rsa-ticket-sync` reworked twice: first to use `rsa_vehicle_assignments` instead of a hardcoded 3-person `RSA_TEAM` array for its own live-location tracking step; then to backfill the new `action_taken` field from `ticket_events`.
+
+### Bugs caught before shipping (verify-before-push discipline)
+- `20260731000006_rsa_tech_group_sync.sql`'s `sync_rsa_tech_groups()` inserted into `user_groups` referencing a "RSA Field Team" group ID that didn't exist in any prior migration — would have thrown an FK violation and aborted the whole function (including the working HO-user branch). Held until Vamsee confirmed via MCP that the group existed live (created directly in the DB, not via migration file) — pushed once confirmed.
+- `indofast-station-sync`'s `http://` Metabase URL, caught and fixed before push (see above).
+- The `Ticket_events` `in.(...)` filter build in `rsa-tech.html` (fetching events for the tech's visible tickets) interpolated raw ticket numbers unquoted — low practical risk since ticket numbers are system-generated, but fixed to quote each value (`'"'+t.ticket_number+'"'`) for correctness.
+- Several tables/columns/RPCs (`rsa_duty_log`, `rsa_tickets_cache.action_taken`, `rsa-tech-evidence` storage bucket, `assign_rsa_role`, `is_approved_user`) were deployed live via Supabase MCP ahead of any migration file — each confirmed live (direct REST probe: 200 = exists+RLS-blocks vs 400 = doesn't exist) before the dependent frontend code was pushed, then git-synced with a follow-up migration commit in every case this session.
+
+---
+
+## 🆕 2026-07-29 (cont.) — Central Cluster gap fix, incentive PWA fixes + attendance biller-proxy
+
+### rsa.html — Central Cluster gap fixed (pushed eef3f24)
+User reported visible white gaps between zone polygons on the Warroom map (screenshot). Root cause verified against the source `All HUB loaction.kmz` (in `~/Downloads`): the KML itself has Central Cluster at only 4 corners while its 5 neighbors (YPR, RR Nagara, Bellandur, Hoodi, Hebbal) each have 7–9 — Central's straight edges cut inside its neighbors' more detailed boundaries, leaving triangular gaps on all 4 sides. Confirmed `rsa.html`'s existing coordinates exactly matched the KML (nothing lost in the earlier extraction — this was a pre-existing authoring gap, not a bug). Per user's choice, snapped Central's boundary to reuse its neighbors' own shared junction vertices (RRNagara/Bellandur corner, Hoodi/Hebbal corner, YPR/Hebbal corner) — 4 → 7 points. Validated: no self-intersection, shared-edge count with each neighbor went from 1 point (corner touch) to 2–3 (real shared boundary). Original 4 corners preserved unchanged; flagged in-code as a best-effort visual snap, not a re-survey.
+
+### incentive.html + incentive-sw.js — PWA mobile fixes + attendance biller-proxy (pushed e0b6794)
+Mobile PWA audit fixes (7 items): Trend + Leaderboard tables wrapped `overflow-x:auto` with min-width; compact date format ("15–21 Jun") in the trend-table cell (drill-down title keeps the full format); drill-down 🔍 icon enlarged + tap targets kept ≥44px on mobile; `color-scheme:light` added (stops forced-dark inversion — trade-off: consistent light UI, no real dark mode; noted as a larger follow-up if wanted); KPI payout values use `clamp(1.6rem,6vw,2.6rem)` instead of fixed size. Service worker bumped to v2: `incentive.html` deliberately dropped from precache (this page deploys frequently — a precached copy would silently serve a stale version on any flaky-network fetch); fetch handler now refreshes the fallback cache on every successful load instead of relying on an install-time snapshot; new tabs get a `SW_UPDATED` postMessage → non-blocking "new version available" reload banner. Skipped: manifest icon maskable safe-zone fix (needs visual inspection of `icon-192.png`, low-risk per the audit's own "minor" rating).
+
+**Also bundled in the same push — attendance biller-proxy (`ATT_SHEET_STALE_FROM='2026-07-20'`):** the ops attendance Google Sheet (→ `hub_productivity_daily`) stopped syncing after 20 Jul. From that date onward, Analytics always uses a JC-billing proxy (`anBillerRate` — distinct technicians billing ≥1 non-void JC per hub per day, averaged across the week) as the tech-headcount denominator instead of the stale sheet feed, matching the same "how many people worked" question the sheet used to answer. Before 20 Jul, `hub_productivity_daily` remains primary; the proxy only fills hub-weeks with zero attendance rows (same fallback pattern as the pre-existing Hyderabad 3.5-techs/day assumption). Chart series updated to show real (light blue) vs proxy (dashed amber) lines separately; 7-day trailing average blends both. ⚠️ This changes analytics denominators, not just mobile UI — flagged distinctly from the PWA fixes above even though pushed together.
+
+---
+
+## 🆕 2026-07-29 — FW map toggle default, incentive analytics tiles, RSA_BIKES, zone overlay
+
+### fw-map.html — MCU 60A default toggle (pushed ff944eb)
+`_fwMode` defaulted to `'diu'`; changed to `'mcu'`. Active class moved from `#toggle-diu` to `#toggle-mcu`. Page now opens on MCU 60A (3,000+ bikes) instead of DIU FW on load.
+
+### incentive.html — Analytics L0 tiles update on week select (pushed b43cb0b)
+Two fixes: (1) `anTiles()` now reads `anSelWeek` for `cur` instead of always computing the last full week independently — tiles reflect whichever week pill is active; (2) `anSetWeek()` now calls `anTiles()` when a pill is clicked. Previously, clicking a week updated charts but left the five headline tiles (JC/Tech/Day, Eligible JCs, Earner Rate, Void Rate, Payout) frozen on the last full week.
+
+### RSA_BIKES — 4 techs added, now 7 entries (pushed ff944eb)
+Both `fw-map.html` and `rsa.html` `RSA_BIKES` arrays now have 7 entries — the 3 original (Nishanth, Pavan, Bhoja) plus 4 added this session, per Sreeranga's 2026-07-27 mapping request:
+- Akhil: `P6EBE1RYG25000038` / KA05AQ9282 — BLR HSR
+- Nagendra (Verma): `P6EBE1FCM24000029` / UP32QC5462 — NCR Okhla
+- Tara Chand: `P6EBE1RCL24000005` / UP32QC3889 — NCR Rohini
+- Karan Luitel: `P6EBE1PBC26000599` / BLRBD03198 — BLR Hoodi
+
+⚠️ **`rsa.html`'s Assigned-filter checkboxes (`#a-n`/`#a-p`/`#a-b`) and dropdown still only list the original 3** (Nishanth/Pavan/Bhoja) — Akhil/Nagendra/Tara Chand/Karan Luitel show as map dots (RSA_BIKES array) but cannot be isolated via the ticket Assigned filter. Needs a small follow-up: add 4 checkbox rows + 4 `<option>`s mirroring the existing pattern (~L296–298, ~L346–348).
+
+### rsa.html — BLR zone cluster overlay (pushed dcfdbc0 + 298b3c3; gap fix eef3f24 — see block above)
+6 polygon zones from `All HUB loaction.kmz` rendered on the warroom map. Hub pins and dividing lines from the KML ignored. Polygons: Central (#FF5252), YPR (#FBC02D), RR Nagara (#AFB42B), Bellandur (#3949AB), Hoodi (#795548), Hebbal (#7B8C9E). Off by default; toggled via "Zone Clusters" checkbox in Layers panel (`toggleLayer('clusters')` → `renderClusters()` → `clusterGroup`). Chaikin corner-cutting (3 iterations) applied at render time — 4–9 raw vertices → 32–72 smooth points. Hover tooltip shows cluster name. ⚠️ Original Central Cluster had visible gaps vs. its neighbors — fixed same day, see "Central Cluster gap fixed" above.
+
+### Supabase — mcu_bikes_live view + anon revoke
+`mcu_bikes_live` view created (Supabase MCP, not in git):
+- Source: `rfd_violations_cache` (regen_60a_check_needed=true) → `bike_location_cache` (via reg_number) → `fw_pending_cache` (via chassis_number, for hub name) → `bike_rider_cache` (for rider PII)
+- Hub name: `COALESCE(fp.hub, CASE r.hub_id …)` using 14-entry hub_id→name map derived from `incentive_jc_log` frequency analysis
+- `GRANT SELECT TO authenticated, service_role; REVOKE SELECT FROM anon` — rider PII (name, phone) must not be anon-readable
+- Also: `REVOKE SELECT ON fw_bikes_live FROM anon` (pre-existing anon exposure, fixed same session)
+
+### RSA Admin Module — planned (tasks 6–14, not yet built)
+Feature set defined: `rsa-admin` permission key, roster management (tech×hub weekly template + overrides + leave toggle), vehicle assignment UI (replaces hardcoded RSA_BIKES), RSA vehicle health (swap freq + test drive 500m check + SOC <50% email alert), spare ledger (tech-level parts inventory), Intellicar+BAAS GPS merge, RSA Tech PWA (duty start/end + ticket flow + FW map tab). See PRODUCTIZATION-TASKS.md RSA Admin Module section.
+
+---
+
+## 🆕 2026-07-26 — jc-failure-alert + jc-history-sync fixes
+
+### jc-failure-alert v6 — RFC 4180 parser + type labels
+
+**Root cause of blank `intrip` column in alert emails:** The Metabase card included a `dms_api_call_json` column (JSON payload with embedded commas/newlines). The old regex parser split on `\n` first, which shattered JSON field boundaries — by the time it reached `intrip` (last column), row alignment was off and `intrip` mapped to `undefined`.
+
+**Fix:** Replaced the regex parser with a full RFC 4180 compliant parser (`parseCSV`) that walks character-by-character, tracking quoted-field state across newlines. `intrip` now resolves correctly.
+
+**Label changes (deployed v6, 2026-07-26):**
+- `intrip=true` → **🔴 RUNNING REPAIR** (red, bold)
+- `intrip=false` → **GENERAL SERVICES (Repossessed)**
+- Column header: `Type` (was `In Trip`)
+- Subject prefix: `🔴 N running repair ·` (omitted if 0 in-trip)
+- Email row background: `#FEF2F2` (pale red) for running repair rows
+
+**Status:** Deployed via MCP as v6, `verify_jwt:false`. **Not yet pushed to git** — edge fn source at `supabase/functions/jc-failure-alert/index.ts` reflects v6.
+
+---
+
+### jc-history-sync v12 — streaming + 90-day incremental
+
+**Root cause of stalled sync (page showing "JC History as of: 22 Jul 26 · 09:30 am"):** The Metabase card `a2c3e48b` had grown to 372,053 rows / 46MB. Old code did `csvText.split("\n")` (RFC-broken, built entire array in memory) then full delete+reinsert of 372k rows. At that size, the edge function worker hit `WORKER_RESOURCE_LIMIT` (HTTP 546) and crashed silently at ~30s. Cron "succeeded" log entry was misleading — it only records that `net.http_post` fired, not that the function completed.
+
+**v12 fix (deployed 2026-07-26):**
+- **Streaming:** `mbRes.body.getReader()` + `TextDecoder` — processes 46MB CSV in chunks, never loads the full text into JS heap
+- **90-day incremental:** Only deletes `jc_history` rows where `jc_date >= CURRENT_DATE - 90 days` and only inserts CSV rows meeting the same cutoff — reduces inserts from 372k to ~90k
+
+**Metabase card updated (2026-07-26):** User added `AND jc_date >= CURRENT_DATE - INTERVAL '90 days'` to both the `new_flow` and `old_dms` CTEs in card `a2c3e48b`. Export is now ~11MB. Cron (jobs 21 + 41, every 2–3h) will maintain incremental sync going forward.
+
+**One-time full seed (2026-07-26):** Edge function can't handle the 46MB full load even with streaming. Full seed done from bash sandbox via a temporary `SECURITY DEFINER` PostgreSQL function `bulk_insert_jc_history(jsonb)` (granted to anon, dropped after use) — 372,053 rows inserted in 2 bash passes × 47 batches × 4000 rows, 0 errors, ~33s total. Coverage: 2025-04-01 → 2026-07-24.
+
+**Status:** v12 deployed via MCP. **Not yet pushed to git.** Heartbeat written to `sync_heartbeats` (success, 372,053 rows, 2026-07-26).
+
+---
+
+### incentive.html — HYD hybrid fill + anPooled projection fix + void backfill (2026-07-26)
+
+**HYD hybrid fill (⚠️ not yet pushed):** `HYD_ASSUMED_TECHS` reverted to 3.5 (had been incorrectly set to 4; real team = 4 but absences average to 3.5). Removed the blanket `HYD_REAL_FROM='2026-07-06'` cutoff that was zeroing-out any real attendance before that date. All three analytics paths now use a per-day approach: pull real `hub_productivity_daily` rows for Hyderabad hub keys; fall back to 3.5 only for days with NO real row in `anAttRows`. Affected: `anChartTechs` synthetic fill (fills gap days only), `anPooled` HF branch (realTd + Math.max(0, wdays−realDays)×3.5), `jptOf` HF branch (same totalTd formula).
+
+**anPooled sparse-week fallback (⚠️ not yet pushed):** Root cause of W8 pooled JC/tech/day collapsing to ~4.63: `anPooled` only included a hub in the denominator when it had current-week attendance data. For W8 (partial week, attendance not yet synced for most hubs), only Fathenagar contributed — all other hubs excluded from both numerator + denominator. Fix: added fallback branch — hubs with JCs but no current-week attendance now use the most recent prior week's td/days rate. W8 projection is now fleet-wide (~5+ JC/tech/day).
+
+**Void baseline rebuilt (Supabase, 2026-07-26):** Jun 1 and Jun 8 were `is_frozen=true` (pre-launch baseline). Sync had written `is_void=false` for all those rows because the 30-day comeback window had rolled past them. Correct void data was already in `incentive_jc_log` from the 02:21 UTC Jul 24 sync (90-day card). Applied: unfreeze → `SELECT rebuild_incentive_weekly_stats()` → re-freeze. Jun 1 → 9.5% (was 0.0%), Jun 8 → 7.8% (was 0.6%). Jun 15+ unchanged.
+
+**Duplicate email fix (Supabase, 2026-07-26):** `incentive_technicians` had two rows sharing `anilkumarbogle@gmail.com` — Anil Kumar Banaswadi (correct) + Nishanth CK Hoodi (stale; user had removed from Gsheet). Auth `.single()` threw on multiple matches → Anil Kumar saw "not registered" on login. Fix: deleted Nishanth CK row (`id 3b04e665-7989-4816-8f87-14b94fe0f1ee`).
+
+**SQL reconciliation (committed 975ed30, Bounce outer repo):** `sql/rrr/RRR_Technician_OOSRFD_Quality.sql` rewritten to match live Metabase card `9a4c0477`: part exclusion list (6 cosmetic parts), labour-only penalization branch (b), `jc_labour` CTE (full vs capped-30-min standalone), `jc_weight` (2 if >180 min, else 1), new output columns. `RRR_Incentive_VoidBackfill_EarlyJune.sql` added (same commit) — one-time backfill query for Jun 1–14 JCs with absolute window overrides.
+
+**⚠️ Still pending:** `incentive.html` HYD hybrid + anPooled fallback needs /tmp-clone push. Metabase card `9a4c0477` needs both date windows reverted from `INTERVAL '90 days'` → `INTERVAL '30 days'` (user to do manually; if left at 90 days, daily sync hits 2000-row truncation and overwrites good void data with `is_void=false`).
+
+---
 
 ## 🆕 2026-07-19 (session 2) — auth fix + rfd-check redesign + favicon sweep
 
@@ -439,11 +684,12 @@ Extends Manual JC Approval Check (A1) from 5 → 8 lookup sections. Canonical de
   `jc-status-log-sync` (each = the `jc-history-sync` pattern, one hardcoded card UUID:
   c1efbecd / 98f2dc7c / b1470077, which already exist).
 
-**⚠️ Pending deploy (Supabase MCP + Metabase UI):** deploy the 3 split fns; register 3
-staggered crons (`:00` / `:05` / `:10`, every 15 min); **drop the old `jc-context-sync`
-cron (job 28) + fn**; trigger the 3 fns once to populate; redeploy `jc-approval-sync`
-and re-publish the jc-approval Metabase card so `Intrip` + `JC Hub Name` flow through.
-Until then the 3 new sections show empty states and In-Trip / JC Hub show "—".
+**✅ Deployed & live (Cowork via Supabase MCP + Metabase UI):** the 3 split fns run on
+staggered crons (`jc-booking-sync` :00, `jc-ops-sync` :05, `jc-status-log-sync` :10 —
+every 15 min); the old `jc-context-sync` cron (job 28) + fn are RETIRED; the fns were
+triggered once to populate; `jc-approval-sync` was redeployed and the jc-approval
+Metabase card re-published, so `Intrip` + `JC Hub Name` now flow through. All 8 lookup
+sections + In-Trip / JC Hub render live. Cron table + card UUIDs: `docs/jc-approval-context.md`.
 
 ## 🆕 2026-06-22 — Deployment Queue Upgrade
 
