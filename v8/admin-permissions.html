@@ -354,7 +354,11 @@ async function permFetch(body){
 async function loadAll(){
   var[gd,ud]=await Promise.all([permFetch({action:'list_groups'}),permFetch({action:'list_users'})]);
   if(gd.error||ud.error){
-    document.getElementById('lock-err').textContent=gd.error||ud.error;
+    var errMsg=gd.error||ud.error;
+    // Bad/changed secret — clear cache so user re-enters rather than getting stuck on auth-gate
+    if(errMsg==='Unauthorized'){localStorage.removeItem('fp_admin_secret');ADMIN_SECRET='';errMsg='Wrong secret — enter the current admin key.';}
+    document.getElementById('lock-err').textContent=errMsg;
+    show('secret-gate');
     return;
   }
   _groups=gd.groups;
