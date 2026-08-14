@@ -989,7 +989,7 @@ async function postEvent(ticketNo,evType,extras){
   if(!_techRecord)return false;
   var body={
     ticket_number:ticketNo,
-    technician_id:_techRecord.id,
+    technician_id:_currentUserId,   // auth.users.id (FK target), not rsa_technicians.id
     technician_name:_techRecord.name,
     event_type:evType,
     created_at:new Date().toISOString()
