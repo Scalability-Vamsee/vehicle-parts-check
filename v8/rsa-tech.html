@@ -361,11 +361,14 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
       <button class="tk-alert-close" onclick="document.getElementById('tk-alert').style.display='none'">✕</button>
     </div>
 
-    <!-- Subtabs: Pending / In Progress / Completed -->
-    <div class="subtab-bar">
+    <!-- Subtabs: Pending / In Progress / Completed + Refresh -->
+    <div class="subtab-bar" style="position:relative">
       <div class="subtab active" id="st-pending"    onclick="switchSubtab('pending')">Pending<span class="stbadge" id="sbadge-pending" style="display:none"></span></div>
       <div class="subtab"        id="st-inprogress" onclick="switchSubtab('inprogress')">In Progress<span class="stbadge" id="sbadge-inprogress" style="display:none"></span></div>
       <div class="subtab"        id="st-completed"  onclick="switchSubtab('completed')">Completed</div>
+      <button id="tk-refresh-btn" onclick="loadMyTickets()" title="Refresh tickets"
+        style="margin-left:auto;background:none;border:none;cursor:pointer;padding:6px 10px;font-size:18px;color:var(--text-muted);flex-shrink:0"
+        >🔄</button>
     </div>
 
     <div id="sub-pending"><div class="log-empty">Loading…</div></div>
@@ -906,9 +909,10 @@ function setTicketCity(city,reload){
 async function loadMyTickets(){
   if(!_techRecord||!_techRecord.name){renderTicketsPanel();renderHomeTicketCard();return;}
   // Use prefix wildcard so "Karan Luitel" matches "Karan Luitel (BLR)" etc.
+  // Do NOT filter by city — techs see all their assigned tickets regardless of city tag.
+  // (city can be null on newly created tickets, filtering by city hides them.)
   var url=SB_URL+'/rest/v1/rsa_tickets_live?technician_name=ilike.'+encodeURIComponent(_techRecord.name+'%')
     +'&order=created_at_ist.asc&limit=100';
-  if(_ticketCity)url+='&city=eq.'+_ticketCity;
   try{
     var res=await fetch(url,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     if(!res.ok)return;
@@ -1433,10 +1437,10 @@ function subscribeTickets(){
     .on('postgres_changes',{
       event:'*',schema:'public',table:'rsa_tickets_cache'
     },async function(payload){
-      // Only react to rows assigned to this tech (case-insensitive)
+      // Only react to rows assigned to this tech — prefix match (handles "Name (City)" suffix)
       var newTech=(payload.new&&payload.new.technician_name)||'';
       var myName=(_techRecord&&_techRecord.name)||'';
-      if(!newTech||newTech.toLowerCase()!==myName.toLowerCase())return;
+      if(!newTech||!newTech.toLowerCase().startsWith(myName.toLowerCase()))return;
       var isNew=(payload.eventType==='INSERT')||
         (payload.eventType==='UPDATE'&&(!payload.old||!payload.old.technician_name)&&payload.new&&payload.new.technician_name);
       await loadMyTickets();
