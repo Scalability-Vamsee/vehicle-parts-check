@@ -18,8 +18,60 @@ push via the `/tmp` clone (see Repo & Deployment below).
 ## Repo & Deployment
 
 - **Repo**: `vamseebounce/vehicle-parts-check` (main branch → GitHub Pages)
-- **Live URL**: `https://bounceops.online/v8/`
-- **Supabase project**: `clkfvmmlgwcvntxnolsv`
+- **Live URL**: `https://bounceops.online/v8/` (prod)
+- **Staging URL**: `https://bounceops.info/v8/` (staging branch → Netlify)
+- **Supabase project**: `clkfvmmlgwcvntxnolsv` (same for both prod and staging)
+
+## 👥 Three-Party Workflow (Manasa + Claude Cowork + Claude Code)
+
+### Who does what
+
+**Manasa (developer)**
+- Writes code on her feature branch
+- Merges feature → `staging` herself, no approval needed
+- Tests on bounceops.info with real data
+- Writes migration `.sql` files if DB changes needed (writes only — never applies)
+- Fills in `.github/PULL_REQUEST_TEMPLATE.md` completely
+- Opens PR: `staging` → `main` and notifies Vamsee
+
+**Claude Cowork (this session — triggered when Vamsee pastes a PR URL)**
+- Reads the PR description + diff
+- Applies migrations via Supabase MCP BEFORE push
+- Deploys changed edge functions via Supabase MCP AFTER push
+- Writes Claude Code push prompt to clipboard
+- After push confirmed → updates `CLAUDE.md` + `Fleetpro-context.md`
+
+**Claude Code (terminal)**
+- Receives clipboard prompt from Cowork
+- Clones fresh to `/tmp/fleetpro-push`
+- Syntax checks every changed HTML/JS file
+- Executes git push to `main`
+- Scrubs the clone
+
+**Vamsee**
+- Glances at PR diff (2 min sanity check)
+- Pastes PR URL to Cowork
+- Pastes clipboard prompt to Claude Code + replaces `<PAT>`
+- Done
+
+## 🔁 Staging → Production PR Promotion (MANDATORY when Vamsee pastes a PR URL)
+
+When Vamsee pastes a GitHub PR URL (staging → main), follow this exact sequence:
+
+1. **Fetch the PR** via web fetch — read the PR description (filled from `.github/PULL_REQUEST_TEMPLATE.md`)
+2. **List changed files** — identify all modified HTML/JS files and any migration files
+3. **Check for migrations** — if `supabase/migrations/` files are included, apply them via Supabase MCP BEFORE the git push
+4. **Check for edge function changes** — if edge functions changed, deploy them via Supabase MCP AFTER the git push
+5. **Write the Claude Code push prompt** to clipboard:
+   - Clone fresh to `/tmp/fleetpro-push`
+   - Copy all changed files
+   - JS syntax check every HTML file changed
+   - `git merge origin/staging` (not cherry-pick — full staging merge)
+   - Push to main
+6. Tell Vamsee: "Prompt is in clipboard — paste into Claude Code, replace `<PAT>`"
+7. **After push confirmed** — update `CLAUDE.md` + `Fleetpro-context.md` to capture what changed
+
+**Never skip the migration step.** If the PR has migrations and you push code first, prod will break.
 - **Push discipline → `docs/PUSH-DISCIPLINE.md` (canonical).** macOS FUSE lock means you never push from the mounted folder — always clone fresh to `/tmp/fleetpro-push`, copy changed files, verify, push, scrub. Full rules (clone hygiene, secret scan, PAT inline-only, non-ff = STOP, edge fns = source-of-record) live in that doc.
 
 ## 🚀 Cowork → Claude Code deploy handoff (MANDATORY)
@@ -74,17 +126,25 @@ v8/
   index.html          — Home dashboard (tile grid, auth, sidebar)
   maintenance.html    — Preventive Maintenance
   queue.html          — OOS (Out-of-Service) repair queue
-  deployment.html     — Deployment Queue
+  deployment.html     — Deployment Queue (city filter + allocation toggle, 2026-08-10)
   fw-map.html         — Firmware Pending Map
-  rsa.html            — RSA Warroom
+  rsa.html            — RSA Warroom (Admin panel: Vehicles/Roster/Directory/Spares/Assets tabs; Tickets slide panel; BLR cluster filter — see Fleetpro-context.md §2026-08-12)
+  rsa-tech.html       — RSA Tech PWA (field technician app: duty log, ticket flow, FW map tab)
+  rsa-tech-manifest.json — RSA Tech PWA manifest
+  rsa-tech-sw.js      — RSA Tech service worker (v2: bg ticket polling, Web Push scaffolding, SW_UPDATED banner)
   trace-ho.html       — Trace HO Dashboard (FPI Recovery, HO view)
   trace-hunter.html   — Hunter PWA (field agent app)
   trace-hunter-manifest.json — Hunter PWA manifest
   trace-hunter-sw.js  — Hunter service worker
-  icon-192.png / icon-512.png — Hunter PWA install icons
+  icon-192.png / icon-512.png — Hunter PWA install icons (shared by rsa-tech + trace-hunter)
   admin-techs.html    — Admin: Manage Technicians
-  admin-permissions.html — Admin: Permissions
+  admin-permissions.html — Admin: Permissions (role badges in user directory, 2026-08)
+  admin-analytics.html — Admin: Page Analytics + Sync Jobs + Void Rate tabs
   rfd-check.html      — Admin: RFD Check (reg search → IoT/MCU/JC pass-fail; reads rfd_violations_cache)
+  jc-approval.html    — Admin: Manual JC Approval Check
+  incentive.html      — Technician Incentive Portal (dashboard/leaderboard/admin/Analytics tabs) + PWA
+  incentive-manifest.json — Incentive PWA manifest
+  incentive-sw.js     — Incentive PWA service worker (v2, 2026-07-29 — see Fleetpro-context.md)
   logo.jpg            — Bounce logo
 ```
 
@@ -111,16 +171,20 @@ All pages including `trace-hunter.html` now follow this exact flow (the Hunter P
 2. For each one, trace exact condition and simulate against affected user's state
 3. Confirm full session completes without hitting any of them
 
+**Pre-auth email gate (`sendMagicLink()`, do not hardcode) — updated 2026-08-12**: Before calling `signInWithOtp`, every page checks the entered email. `@bounceshare.com` bypasses unconditionally (company staff). Any other email must pass `sbClient.rpc('is_approved_user',{p_email:email})` (or the raw REST equivalent on pages not using the JS client) — this Postgres RPC checks `hr_employees`/`incentive_technicians`/`rsa_technicians` server-side, sidestepping the fact that those tables are `authenticated`-only RLS and can't be reliably probed from an anon pre-login session. **Never reintroduce a hardcoded email/domain allowlist** (`RSA_EMAILS`, `ALLOWED_EMAILS`, a single exception like `vamsee@scalability.club`) — every one of those was removed 2026-08-12 in favor of this RPC precisely because they drift from the real technician/employee roster and require a code push to update. If a legitimate user gets rejected, the fix is a DB row (add them to `rsa_technicians`/`hr_employees`/`incentive_technicians`), not a code-level exception.
+
 ## Sidebar Layout (index.html)
 
 Sections and their labels:
 - **Fleet Tools**: Home
 - **Service Operations**: Preventive Maintenance, OOS Queue
 - **Hub Operations**: Deployment Queue
-- **RSA Operations**: FW Pending Map, RSA Warroom
+- **RSA Operations**: FW Pending Map, RSA Warroom, RSA Tech App ← (data-feature="tech-app", added 2026-08-01)
 - **Recovery Operations**: Trace, Hunter ← (data-feature="trace-ho")
 - **Admin**: Manage Technicians, Permissions, RFD Check ← (data-feature="rfd-check")
 - **Coming Soon**: Fleet Analytics, Alert Centre
+
+`tech-app` feature key gates the RSA Tech PWA link; group membership is auto-assigned from `rsa_technicians.city` via `sync_rsa_tech_groups()` (daily cron, 02:00 IST) and can be set manually per-tech via the Directory Role dropdown in `rsa.html` (calls `assign_rsa_role()` RPC).
 
 Sidebar never auto-pins. No `@media(min-width:900px)` rule. `localStorage('sb_pinned')` for user preference only.
 
@@ -286,6 +350,22 @@ Full spec in `Trace and Hunter/context.md`.
 - **In Transit never writes `bike_operations_log`** — it's Trace & Hunter internal state (overrides context.md). Do not add an ops_log write.
 - **All map markers must pass `validLL()`** (India bbox lat 6.5–37.5, lng 68–97.5) before `L.marker` / `fitBounds`. One out-of-range GPS row otherwise distorts the whole map to world view.
 - RLS `recovery_tickets` UPDATE = owner-or-superadmin. Phase 2 admin drag-reassign will need a broader policy.
+
+## Pending Deploys (as of 2026-08-14)
+
+| Item | Status | Action needed |
+|------|--------|---------------|
+| `jc-failure-alert` v6 | ✅ git (8099932, 2026-08-01) · ✅ MCP-deployed | — done — |
+| `jc-history-sync` v12 | ✅ git (8099932, 2026-08-01) · ✅ MCP-deployed | — done — |
+| `sync-hr-employees` | ✅ git (bd65cfb) · ✅ MCP-deployed (v14, 2026-08-14) | — done — |
+| `zone-cluster` + `recovery-blocked-sync` | ✅ code · ✅ MCP-deployed (v12/v7, 2026-08-14) | — done — |
+| `rsa_tickets_cache` realtime | ✅ live via MCP · ✅ git (de16d6c migration) | — done — |
+
+**H4 summary (2026-07-26):** `dms_api_call_json` (JSON with embedded newlines/commas) broke the old regex/line-split CSV parser → `intrip` mapped to `undefined`. Fixed with RFC 4180 compliant `parseCSV`. Labels: `intrip=true` → "🔴 RUNNING REPAIR", `false` → "GENERAL SERVICES (Repossessed)".
+
+**H5 summary (2026-07-26):** Metabase card grew to 372k rows / 46MB → edge fn OOM (`WORKER_RESOURCE_LIMIT`). v12: streaming reader + 90-day incremental delete/reinsert. Metabase card `a2c3e48b` updated to filter last 90 days. Full seed of 372,053 rows done from bash (2025-04-01 → 2026-07-24). Crons: job 21 (every 2h) + job 41 (every 3h) maintain rolling 90-day window.
+
+---
 
 ## Security Constraints
 
