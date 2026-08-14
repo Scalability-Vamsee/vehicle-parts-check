@@ -371,6 +371,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
         >🔄</button>
     </div>
 
+    <!-- Off-duty banner — visible only when not on duty -->
+    <div id="offduty-banner" style="display:none;align-items:center;gap:10px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.82rem;color:#92400E;">
+      <span style="font-size:1.1rem">⛔</span>
+      <span>You're off duty — no new tickets will be assigned. Complete or transfer any open tickets before logging off.</span>
+    </div>
+
     <div id="sub-pending"><div class="log-empty">Loading…</div></div>
     <div id="sub-inprogress" style="display:none"></div>
     <div id="sub-completed"  style="display:none"></div>
@@ -733,6 +739,10 @@ function renderDutyCard(){
   }
   // Enable only if GPS is ready
   btn.disabled=!_gpsPos;
+
+  // Off-duty banner in the Tickets panel
+  var banner=document.getElementById('offduty-banner');
+  if(banner)banner.style.display=_onDuty?'none':'flex';
 }
 
 function renderDutyLog(){
