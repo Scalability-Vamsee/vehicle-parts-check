@@ -537,6 +537,19 @@ function showAuthForm(){
 async function sendMagicLink(){
   var email=document.getElementById('auth-email').value.trim();
   if(!email){document.getElementById('auth-msg').textContent='Enter your email';return;}
+  // Pre-auth gate: @bounceshare.com bypasses; others must pass is_approved_user RPC
+  if(!email.toLowerCase().endsWith('@bounceshare.com')){
+    document.getElementById('auth-msg').textContent='Checking…';
+    try{
+      var chk=await fetch(SB_URL+'/rest/v1/rpc/is_approved_user',{
+        method:'POST',
+        headers:{apikey:ANON_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({p_email:email.toLowerCase()})
+      });
+      var approved=chk.ok&&(await chk.json());
+      if(!approved){document.getElementById('auth-msg').textContent='This email is not registered. Contact your admin.';return;}
+    }catch(e){/* network error — let OTP proceed */}
+  }
   document.getElementById('auth-msg').textContent='Sending…';
   var{error}=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:window.location.href}});
   if(error){document.getElementById('auth-msg').textContent=error.message;return;}
@@ -578,7 +591,15 @@ async function loadAndApplyPermissions(session){
         var{data:r2}=await sb.from('group_features').select('feature_key').in('group_id',r1.map(function(r){return r.group_id;}));
         (r2||[]).forEach(function(r){f[r.feature_key]=true;});
       }
-      if(!f['tech-app']){window.location.href='index.html';return false;}
+      if(!f['tech-app']){
+        // Fallback: check rsa_technicians directly — group sync runs daily at 2am IST
+        // and may not have run yet for a newly added tech.
+        try{
+          var{data:rtRow}=await sb.from('rsa_technicians').select('id').eq('email',session.user.email).eq('is_active',true).limit(1);
+          if(rtRow&&rtRow.length){f['tech-app']=true;}
+          else{window.location.href='index.html';return false;}
+        }catch(e){window.location.href='index.html';return false;}
+      }
     }
     window.FP_FEATURES=f;
     return true;
