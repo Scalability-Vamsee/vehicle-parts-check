@@ -408,7 +408,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
     <div class="photo-preview" id="pm-thumbs">
       <div class="photo-add" onclick="document.getElementById('pm-file').click()">+</div>
     </div>
-    <input type="file" id="pm-file" accept="image/*" style="display:none" onchange="onPhotoSelect(this)"/>
+    <input type="file" id="pm-file" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelect(this)"/>
     <button class="tkt-btn outline" style="margin-bottom:8px" onclick="document.getElementById('pm-file').click()">📷 Add Photo</button>
     <button class="tkt-btn green" id="pm-submit" onclick="submitPhotos()">✅ Done</button>
     <button class="tkt-btn outline" id="pm-skip" onclick="skipPhotos()" style="margin-top:6px">Skip (no photos)</button>
@@ -848,9 +848,24 @@ function ticketAgeStr(isoTs){
   return elapsedStr(isoTs)+' ago';
 }
 
+// Shared AudioContext — created once on first user gesture.
+// Chrome/Android blocks audio until a tap has occurred; reusing one context avoids that.
+var _audioCtx=null;
+function _getAudioCtx(){
+  if(!_audioCtx){
+    try{_audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}
+  }
+  // Resume if suspended (happens after page idle on some browsers)
+  if(_audioCtx.state==='suspended'){try{_audioCtx.resume();}catch(e){}}
+  return _audioCtx;
+}
+// Unlock audio on first tap anywhere — guarantees buzzer works even without a recent gesture
+document.addEventListener('touchstart',function(){_getAudioCtx();},{once:true,passive:true});
+document.addEventListener('click',function(){_getAudioCtx();},{once:true});
+
 function playBuzzer(){
   try{
-    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var ctx=_getAudioCtx();if(!ctx)return;
     var osc=ctx.createOscillator(), gain=ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type='square';
@@ -865,7 +880,7 @@ function playBuzzer(){
 
 function playConfirmTone(){
   try{
-    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    var ctx=_getAudioCtx();if(!ctx)return;
     var osc=ctx.createOscillator(), gain=ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type='sine'; osc.frequency.value=880;
@@ -1036,12 +1051,16 @@ async function navigateTicket(ticketNo){
   if(!t)return;
   var lat=t.display_lat||t.live_lat||t.lat;
   var lng=t.display_lng||t.live_lng||t.lng;
-  var mapsUrl=lat&&lng
-    ?'https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng
-    :'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((t.reg_number||'bike')+' '+(t.city||(_techRecord&&_techRecord.city)||'Bangalore'));
-  window.open(mapsUrl,'_blank');
+  if(lat&&lng){
+    window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lng,'_blank');
+  }else{
+    showToast('⚠️ No GPS for this bike — marking en route anyway');
+  }
   var ok=await postEvent(ticketNo,'en_route');
-  if(ok){showToast('🗺️ En route — be safe!');await loadMyTickets();}
+  if(ok){
+    if(lat&&lng)showToast('🗺️ En route — be safe!');
+    await loadMyTickets();
+  }
 }
 
 async function reachedTicket(ticketNo){
@@ -1159,10 +1178,25 @@ async function onPhotoSelect(input){
   var file=input.files&&input.files[0];
   if(!file)return;
   input.value='';
+  var ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  if(ext==='heic'||ext==='heif')ext='jpg';
+
+  // 1. Save to device gallery immediately (best-effort — works on Android Chrome via download)
+  // iOS: photo is auto-saved to camera roll by the OS before onPhotoSelect fires
+  try{
+    var localUrl=URL.createObjectURL(file);
+    var a=document.createElement('a');
+    a.href=localUrl;
+    a.download='rsa-evidence-'+Date.now()+'.'+ext;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(localUrl);},3000);
+  }catch(e){/* gallery save is best-effort */}
+
+  // 2. Upload to server
   try{
     showToast('Uploading…');
-    var ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-    if(ext==='heic'||ext==='heif')ext='jpg';
     var path='ticket-'+(_endModalTktNo||_transferModalTktNo||'na')+'/'+Date.now()+'.'+ext;
     var up=await fetch(SB_URL+'/storage/v1/object/rsa-tech-evidence/'+path,{
       method:'POST',
