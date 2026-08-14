@@ -113,16 +113,17 @@ Deno.serve(async (req) => {
     if (authErr) return err(authErr.message, corsHeaders)
     const newId = authData.user.id
 
-    // 2. Upsert into hr_employees so is_approved_user() RPC recognises them
-    await supabase.from('hr_employees').upsert(
-      {
-        employee_id: 'EMP-' + newId.slice(0, 8).toUpperCase(),
-        employee_name: full_name || cleanEmail.split('@')[0],
-        designation: '',
-        email: cleanEmail,
-      },
-      { onConflict: 'email' }
-    )
+    // 2. Insert into hr_employees so is_approved_user() RPC recognises them
+    // (hr_employees has no unique constraint on email — plain insert, ignore duplicate)
+    const { error: empErr } = await supabase.from('hr_employees').insert({
+      employee_id: 'EMP-' + newId.slice(0, 8).toUpperCase(),
+      employee_name: full_name || cleanEmail.split('@')[0],
+      designation: '',
+      email: cleanEmail,
+    })
+    if (empErr && !empErr.message.includes('duplicate')) {
+      console.error('hr_employees insert failed:', empErr.message)
+    }
 
     // 3. Optionally assign to an initial group
     if (group_id) {
