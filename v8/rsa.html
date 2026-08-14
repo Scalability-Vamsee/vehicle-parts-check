@@ -1406,28 +1406,68 @@ async function loadHubs(){
 }
 
 // ── RSA team locations ──
+// Pin position = best of: bike GPS (intellicar vs BAAS, already resolved in bike_location_cache)
+// vs tech's PWA breadcrumb (rsa_tech_live_locations). Whichever has the later location timestamp wins.
 async function loadRsaLocations(){
   if(!K||K===ANON_KEY)return;
   try{
     var chassis=RSA_BIKES.map(function(b){return b.chassis;});
-    var res=await fetch(SB_URL+'/rest/v1/bike_location_cache?select=chassis_number,lat,lng,baas_location_time,current_soc&chassis_number=in.('+chassis.join(',')+')',
-      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
-    if(!res.ok)return;
-    var rows=await res.json();
+    var techIds=RSA_BIKES.map(function(b){return b.techId;}).filter(Boolean);
+
+    // Fetch bike GPS + latest PWA breadcrumbs in parallel
+    var fetches=[
+      fetch(SB_URL+'/rest/v1/bike_location_cache?select=chassis_number,lat,lng,baas_location_time,current_soc&chassis_number=in.('+chassis.join(',')+')',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    ];
+    if(techIds.length){
+      // Recent 24h window so we don't scan the whole log; order desc then dedup client-side
+      var since=new Date(Date.now()-24*3600*1000).toISOString();
+      fetches.push(fetch(SB_URL+'/rest/v1/rsa_tech_live_locations?select=tech_id,lat,lng,recorded_at&tech_id=in.('+techIds.join(',')+')'
+        +'&recorded_at=gte.'+since+'&order=recorded_at.desc&limit=200',
+        {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}}));
+    }
+    var results=await Promise.all(fetches);
+    if(!results[0].ok)return;
+    var bikeRows=await results[0].json();
+
+    // Latest PWA entry per tech_id
+    var pwaMap={};
+    if(results[1]&&results[1].ok){
+      var pwaRows=await results[1].json();
+      pwaRows.forEach(function(r){
+        if(!pwaMap[r.tech_id]||new Date(r.recorded_at)>new Date(pwaMap[r.tech_id].recorded_at)){
+          pwaMap[r.tech_id]=r;
+        }
+      });
+    }
+
     rsaGroup.clearLayers();
-    rows.forEach(function(b,idx){
-      if(!b.lat||!b.lng)return;
+    bikeRows.forEach(function(b,idx){
       var info=RSA_BIKES.find(function(r){return r.chassis===b.chassis_number;})||{};
-      if(info.offDuty)return; // W/O or Leave today — hide from map
+      if(info.offDuty)return;
       var name=info.name||b.chassis_number;
-      var pingTs=b.baas_location_time?b.baas_location_time.replace(' ','T').replace(/(Z|[+-]\d{2}(:?\d{2})?)$/,'')+'Z':null;
+
+      // Compare timestamps: bike GPS vs PWA breadcrumb
+      var bikeTs=b.baas_location_time?new Date(b.baas_location_time).getTime():0;
+      var pwaLoc=info.techId?pwaMap[info.techId]:null;
+      var pwaTs=pwaLoc&&pwaLoc.recorded_at?new Date(pwaLoc.recorded_at).getTime():0;
+      var usePwa=(pwaTs>bikeTs)&&pwaLoc&&pwaLoc.lat&&pwaLoc.lng;
+
+      var lat=usePwa?pwaLoc.lat:b.lat;
+      var lng=usePwa?pwaLoc.lng:b.lng;
+      var displayTs=usePwa?pwaLoc.recorded_at:b.baas_location_time;
+      var source=usePwa?'PWA':'Bike GPS';
+
+      if(!lat||!lng)return;
+      var pingTs=displayTs?displayTs.replace(' ','T').replace(/(Z|[+-]\d{2}(:?\d{2})?)$/,'')+'Z':null;
       var pingStr=pingTs?new Date(pingTs).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'}):'--';
       var popup='<div style="font-family:Inter,sans-serif;font-size:13px;min-width:150px">'
         +'<div style="font-weight:800;color:#1D4ED8;margin-bottom:4px">🦺 RSA — '+name+'</div>'
         +'<div><b>SOC:</b> '+(b.current_soc!=null?b.current_soc+'%':'--')+'</div>'
         +'<div><b>Last ping:</b> '+pingStr+' IST</div>'
+        +'<div style="font-size:10px;color:#6B7280;margin-top:2px">📍 '+source+'</div>'
         +'</div>';
-      L.marker([b.lat+idx*0.0003,b.lng],{icon:makeRsaIcon(name,b.baas_location_time),zIndexOffset:1000})
+      L.marker([lat+idx*0.0003,lng],{icon:makeRsaIcon(name,displayTs),zIndexOffset:1000})
         .bindPopup(popup,{maxWidth:200}).addTo(rsaGroup);
     });
   }catch(e){}
