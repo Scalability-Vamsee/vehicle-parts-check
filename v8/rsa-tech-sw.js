@@ -1,6 +1,6 @@
-// RSA Tech — Service Worker v2
+// RSA Tech — Service Worker v3
 // Handles: network-first caching, Web Push notifications, background ticket polling
-const CACHE = 'rsa-tech-v2';
+const CACHE = 'rsa-tech-v3';
 const SB_URL = 'https://clkfvmmlgwcvntxnolsv.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2Z2bW1sZ3djdm50eG5vbHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ2NTgsImV4cCI6MjA5MDEyMDY1OH0.FA33GFQisWX_hDeGCWqL5yAZmPcuQRdxZX32I23lyoY';
 
