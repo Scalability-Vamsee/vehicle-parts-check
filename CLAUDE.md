@@ -17,10 +17,14 @@ push via the `/tmp` clone (see Repo & Deployment below).
 
 ## Repo & Deployment
 
-- **Repo**: `vamseebounce/vehicle-parts-check` (main branch → GitHub Pages)
+- **Repo**: `Scalability-Vamsee/vehicle-parts-check` (main branch → GitHub Pages)
 - **Live URL**: `https://bounceops.online/v8/` (prod)
-- **Staging URL**: `https://bounceops.info/v8/` (staging branch → Netlify)
+- **Staging URL**: `https://bounceops.info/v8/` (staging branch → Vercel)
 - **Supabase project**: `clkfvmmlgwcvntxnolsv` (same for both prod and staging)
+- **GitHub owner**: `Scalability-Vamsee` (transferred from `vamseebounce` on 2026-08-16)
+- **Supabase owner**: `vamsee@scalability.club` (transferred from `vamsee@bounceshare.com` on 2026-08-16)
+- **Vercel project**: `vehicle-parts-check` (team: Vamsee Krishna Vorugantis-projects) — production branch = `staging`
+- **Manasa (developer)**: GitHub `Manasa4243`, collaborator with Write access (added 2026-08-16)
 
 ## 👥 Three-Party Workflow (Manasa + Claude Cowork + Claude Code)
 

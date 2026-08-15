@@ -1,5 +1,28 @@
 # Fleetpro — Context File
-*Last updated: 2026-08-15 — Three-party dev workflow set up (Manasa + Claude Cowork + Claude Code); RSA Tech PWA fully fixed; GPS source fusion in RSA Warroom; staging environment scaffolded.*
+*Last updated: 2026-08-16 — Ownership transferred to Scalability-Vamsee (GitHub) + vamsee@scalability.club (Supabase); staging environment fully live (bounceops.info → Vercel → staging branch); Manasa onboarded as GitHub collaborator.*
+
+## 🆕 2026-08-16 — Ownership transfer + staging fully live
+
+### Ownership transferred
+- **GitHub repo**: `vamseebounce/vehicle-parts-check` → `Scalability-Vamsee/vehicle-parts-check` (transferred 2026-08-16)
+- **Supabase org**: owner changed from `vamsee@bounceshare.com` → `vamsee@scalability.club` (transferred 2026-08-16)
+- **Supabase MCP**: needs reconnection via Cowork settings using `vamsee@scalability.club` credentials
+
+### Staging environment fully live
+- **Vercel project**: `vehicle-parts-check` (Vamsee Krishna Vorugantis-projects team)
+- **Production branch in Vercel** = `staging` — every push to `staging` auto-deploys to bounceops.info
+- **bounceops.info** DNS: CNAME `www → 8f88bc069219d2ae.vercel-dns-017.com` added in Bigrock (2026-08-16); SSL pending auto-provision
+- **Old entry** in CLAUDE.md said Netlify — corrected to Vercel
+
+### GitHub branch protection
+- `main` branch: PR required before merge, no direct push (classic rule, 2026-08-16)
+- `staging` branch: open (Manasa can push directly)
+
+### Manasa onboarded
+- GitHub username: `Manasa4243`, collaborator with Write access on `Scalability-Vamsee/vehicle-parts-check`
+- Working directory: `~/Projects/vehicle-parts-check` on her machine
+- Onboarding prompt prepared (Claude Code reads CLAUDE.md + STAGING-SETUP.md on first run)
+- New PAT for pushes must come from `Scalability-Vamsee` account (old `vamseebounce` PAT has no write access)
 
 ## 🆕 2026-08-15 — Three-party workflow + staging environment
 
