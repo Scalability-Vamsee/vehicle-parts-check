@@ -2,17 +2,17 @@
 
 ## Overview
 - **Production**: bounceops.online → `main` branch → GitHub Pages
-- **Staging**: bounceops.info → `staging` branch → Netlify
+- **Staging**: bounceops.info → `staging` branch → Vercel (auto-deploys on every push to `staging`)
 - **Supabase**: Same project for both (prod data, read via anon key)
 - **Your responsibility**: Everything up to opening a PR from `staging` → `main`
 
 ---
 
 ## Step 1 — Get repo access
-- Accept the GitHub collaborator invite to `vamseebounce/vehicle-parts-check`
+- Accept the GitHub collaborator invite to `Scalability-Vamsee/vehicle-parts-check`
 - Clone the repo:
   ```
-  git clone https://github.com/vamseebounce/vehicle-parts-check.git
+  git clone https://github.com/Scalability-Vamsee/vehicle-parts-check.git
   cd vehicle-parts-check
   ```
 
@@ -21,20 +21,16 @@
 - Run `claude` inside the repo folder
 - It reads `CLAUDE.md` automatically — this gives full project context
 
-## Step 3 — Set up Netlify (one-time, you do this)
-- Sign up at netlify.com
-- New site → Import from Git → connect `vamseebounce/vehicle-parts-check`
-- Set **deploy branch** to `staging`
-- Set **publish directory** to `/` (root)
-- Add custom domain: `bounceops.info`
-- In bounceops.info domain registrar → add the CNAME Netlify gives you
-- Done — every push to `staging` auto-deploys to bounceops.info
+## Step 3 — Vercel (already set up — nothing to do)
+- Vercel project `vehicle-parts-check` is already connected to `Scalability-Vamsee/vehicle-parts-check`
+- Production branch in Vercel = `staging` — every push to `staging` auto-deploys to bounceops.info
+- bounceops.info DNS is already pointed at Vercel
+- You don't need to set up anything here — just push to `staging` and check bounceops.info
 
-## Step 4 — Supabase view access
-- Vamsee will invite your email to the Supabase project as Viewer
-- Go to https://supabase.com → accept invite
-- You can browse tables, run read-only queries, understand the schema
-- You cannot run migrations or touch edge functions — those go via PR
+## Step 4 — Supabase access
+- The Supabase anon key is already in the repo — your Claude Code uses it to read tables and understand the schema
+- You do NOT need a Supabase account invite
+- You cannot run migrations or touch edge functions — write migration `.sql` files and commit them; Vamsee's Claude applies them via MCP
 
 ## Step 5 — Branch protection (Vamsee sets this)
 - `main` — no direct push, PR required
