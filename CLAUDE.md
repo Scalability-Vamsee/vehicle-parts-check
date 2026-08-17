@@ -53,8 +53,7 @@ push via the `/tmp` clone (see Repo & Deployment below).
 - Scrubs the clone
 
 **Vamsee**
-- Glances at PR diff (2 min sanity check)
-- Pastes PR URL to Cowork
+- Pastes PR URL to Cowork (Claude Cowork reads and reviews the diff — no manual review needed)
 - Pastes clipboard prompt to Claude Code + replaces `<PAT>`
 - Done
 
@@ -63,17 +62,18 @@ push via the `/tmp` clone (see Repo & Deployment below).
 When Vamsee pastes a GitHub PR URL (staging → main), follow this exact sequence:
 
 1. **Fetch the PR** via web fetch — read the PR description (filled from `.github/PULL_REQUEST_TEMPLATE.md`)
-2. **List changed files** — identify all modified HTML/JS files and any migration files
-3. **Check for migrations** — if `supabase/migrations/` files are included, apply them via Supabase MCP BEFORE the git push
-4. **Check for edge function changes** — if edge functions changed, deploy them via Supabase MCP AFTER the git push
-5. **Write the Claude Code push prompt** to clipboard:
+2. **Review the diff** — fetch and read every changed file. Summarise what changed in plain English. Flag anything suspicious: auth changes, hardcoded secrets, DB calls without RLS consideration, JS errors, mismatch between PR description and actual diff. If something looks wrong → stop and ask Vamsee before proceeding.
+3. **List changed files** — identify all modified HTML/JS files and any migration files
+4. **Check for migrations** — if `supabase/migrations/` files are included, apply them via Supabase MCP BEFORE the git push
+5. **Check for edge function changes** — if edge functions changed, deploy them via Supabase MCP AFTER the git push
+6. **Write the Claude Code push prompt** to clipboard:
    - Clone fresh to `/tmp/fleetpro-push`
    - Copy all changed files
    - JS syntax check every HTML file changed
    - `git merge origin/staging` (not cherry-pick — full staging merge)
    - Push to main
-6. Tell Vamsee: "Prompt is in clipboard — paste into Claude Code, replace `<PAT>`"
-7. **After push confirmed** — update `CLAUDE.md` + `Fleetpro-context.md` to capture what changed
+7. Tell Vamsee: "Prompt is in clipboard — paste into Claude Code, replace `<PAT>`"
+8. **After push confirmed** — update `CLAUDE.md` + `Fleetpro-context.md` to capture what changed
 
 **Never skip the migration step.** If the PR has migrations and you push code first, prod will break.
 - **Push discipline → `docs/PUSH-DISCIPLINE.md` (canonical).** macOS FUSE lock means you never push from the mounted folder — always clone fresh to `/tmp/fleetpro-push`, copy changed files, verify, push, scrub. Full rules (clone hygiene, secret scan, PAT inline-only, non-ff = STOP, edge fns = source-of-record) live in that doc.

@@ -167,7 +167,7 @@ body.pinned #hbg{display:none}
 <div id="auth-screen" class="hidden">
   <div class="auth-card">
     <div class="auth-logo">
-      <img id="auth-logo-img" width="44" height="44" style="border-radius:10px;object-fit:cover;flex-shrink:0"/>
+     <img id="auth-logo-img" src="logo.jpg" width="44" height="44" style="border-radius:10px;object-fit:cover;flex-shrink:0"/>
       <div>
         <div class="auth-logo-name">Bounce Daily</div>
         <div class="auth-logo-sub">FleetPro</div>
@@ -514,8 +514,8 @@ function applyTilePermissions(features){
 }
 
 (async function(){
-  var mainLogo=document.querySelector('.sb-brand img');
-  if(mainLogo)document.getElementById('auth-logo-img').src=mainLogo.src;
+  // var mainLogo=document.querySelector('.sb-brand img');
+  // if(mainLogo)document.getElementById('auth-logo-img').src=mainLogo.src;
   var isHashLogin=window.location.hash.includes('access_token');
   var{data:{session}}=await sbClient.auth.getSession();
   var _authReady=false;
