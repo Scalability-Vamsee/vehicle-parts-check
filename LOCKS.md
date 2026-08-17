@@ -13,7 +13,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | maintenance.html | (free) | — | — |
 | deployment.html | (free) | — | — |
 | fw-map.html | (free) | — | — |
-| rsa.html | (free) | — | — |
+| | rsa-tech.html | Manasa | 2026-08-17T06:35:00Z | Fixing broken sidebar styling |
 | trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
