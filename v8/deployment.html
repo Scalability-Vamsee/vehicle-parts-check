@@ -572,7 +572,8 @@ function fmt(v){return(v==null||v==='')?'—':v;}
 function fmtOdo(v){if(v==null)return'—';var n=parseInt(v);return isNaN(n)?'—':n.toLocaleString('en-IN')+' km';}
 
 /* ── Model type classification ───────────────────────────────────── */
-function modelType(modelName){
+function modelType(modelName,bikeModelId){
+  if(bikeModelId===4||bikeModelId==='4')return'hs'; // "Bike with battery and charger" → High Speed
   var m=(modelName||'').toLowerCase();
   if(m.includes('pro'))return'hsp';
   if(m.includes('e1+x')||m.includes('e1 x')||m.includes('high speed')||m.includes('hs'))return'hs';
@@ -779,7 +780,7 @@ function renderKanban(data,board,hub){
         var rank=b.deploy_rank||'—';
         var flag=b.guardrail||'OK';
         var rfd=b.rfd_age_days;
-        var mt=modelType(b.model_name);
+        var mt=modelType(b.model_name,b.bike_model_id);
         var rClass=rank===1||rank==='1'?'r1':rank===2||rank==='2'?'r2':rank===3||rank==='3'?'r3':'rn';
         var fCls=flag==='STARVATION'?'star':flag==='OVERUSE'?'over':'ok';
         var fIcon=flag==='STARVATION'?'🔴':flag==='OVERUSE'?'🟡':'🟢';
@@ -872,7 +873,7 @@ function psChip(val,label,color){
 function openDetail(el){
   var b=JSON.parse(decodeURIComponent(el.dataset.bike));
   var flag=b.guardrail||'OK';
-  var mt=modelType(b.model_name);
+  var mt=modelType(b.model_name,b.bike_model_id);
   var mtLabels={ls:'Low Speed',hs:'High Speed',hsp:'HS Pro'};
   var fCls=flag==='STARVATION'?'star':flag==='OVERUSE'?'over':'ok';
   var fIcon=flag==='STARVATION'?'🔴':flag==='OVERUSE'?'🟡':'🟢';
@@ -1001,7 +1002,7 @@ function renderAllocList(data){
   data.forEach(function(c,i){
     var tier=c.tier||'—';
     var tierCls=tier.toLowerCase();
-    var mt=modelType(c.booked_model);
+    var mt=modelType(c.booked_model,c.bike_model_id);
     var bikeCell=c.assigned_bike_id
       ?'<span class="ac-bike">'+esc(c.assigned_reg||('ID '+c.assigned_bike_id))+'</span>'
       :'<span class="ac-nobike">None assigned</span>';
@@ -1082,7 +1083,7 @@ function lookupAndRenderCustomer(cust){
 
 function renderAllocResult(cust,bikes,note,approxScore){
   var result=document.getElementById('alloc-result');
-  var custMT=modelType(cust.booked_model);
+  var custMT=modelType(cust.booked_model,cust.bike_model_id);
   var rec=bikes[0]||null;
   var flag=rec?(rec.guardrail||'OK'):'—';
   var html='';
