@@ -2779,7 +2779,8 @@ async function loadAnalytics(){
       const jc=await anFetchAll('incentive_jc_log','jc_billed_date,technician_name,hub_name,is_void',
         'jc_billed_date',ATT_SHEET_STALE_FROM);
       const byHubDay={};
-      jc.filter(r=>!r.is_void).forEach(r=>{
+      const AN_DUMMY_NAMES=new Set(['FREELANCER','VECNOCOM','VECMOCON','READY ASSET','VAMSEE - HEBBALA']);
+      jc.filter(r=>!r.is_void && !AN_DUMMY_NAMES.has(r.technician_name)).forEach(r=>{
         const d=String(r.jc_billed_date).slice(0,10);
         const hubKey=anNormHub(r.hub_name);
         const k=hubKey+'|'+d;
