@@ -355,7 +355,7 @@ Full spec in `Trace and Hunter/context.md`.
 - **All map markers must pass `validLL()`** (India bbox lat 6.5–37.5, lng 68–97.5) before `L.marker` / `fitBounds`. One out-of-range GPS row otherwise distorts the whole map to world view.
 - RLS `recovery_tickets` UPDATE = owner-or-superadmin. Phase 2 admin drag-reassign will need a broader policy.
 
-## Pending Deploys (as of 2026-08-14)
+## Pending Deploys (as of 2026-08-18)
 
 | Item | Status | Action needed |
 |------|--------|---------------|
@@ -364,6 +364,9 @@ Full spec in `Trace and Hunter/context.md`.
 | `sync-hr-employees` | ✅ git (bd65cfb) · ✅ MCP-deployed (v14, 2026-08-14) | — done — |
 | `zone-cluster` + `recovery-blocked-sync` | ✅ code · ✅ MCP-deployed (v12/v7, 2026-08-14) | — done — |
 | `rsa_tickets_cache` realtime | ✅ live via MCP · ✅ git (de16d6c migration) | — done — |
+| PR #6 — sidebar CSS + pin-btn (rfd-check, rsa, trace-hunter) | ✅ git (18a8576, 2026-08-18) | — done — |
+| `incentive.html` analytics dummy-name filter | ✅ git (18a8576, 2026-08-18) | — done — |
+| `rsa-tech.html` sidebar fix + `admin-permissions.html` sign-out bug | ⏳ pending Manasa's next PR | Manasa to open follow-up PR |
 
 **H4 summary (2026-07-26):** `dms_api_call_json` (JSON with embedded newlines/commas) broke the old regex/line-split CSV parser → `intrip` mapped to `undefined`. Fixed with RFC 4180 compliant `parseCSV`. Labels: `intrip=true` → "🔴 RUNNING REPAIR", `false` → "GENERAL SERVICES (Repossessed)".
 

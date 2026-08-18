@@ -1,5 +1,22 @@
 # Fleetpro — Context File
-*Last updated: 2026-08-16 — Ownership transferred to Scalability-Vamsee (GitHub) + vamsee@scalability.club (Supabase); staging environment fully live (bounceops.info → Vercel → staging branch); Manasa onboarded as GitHub collaborator.*
+*Last updated: 2026-08-18 — PR #6 merged (CSS sidebar fixes); incentive analytics dummy-name filter; Manasa's follow-up PR pending (rsa-tech.html + admin-permissions.html sign-out bug).*
+
+## 🆕 2026-08-18 — PR #6 merged + incentive analytics fix
+
+### PR #6 (staging → main) — CSS sidebar fixes
+Manasa's first staging→main PR. Pure CSS additions, no migrations, no edge function changes. Merged to main (commit range ddc0043..18a8576).
+
+- **rfd-check.html** — added missing sidebar styling block (`.sb-header`, `.sb-brand`, `.pin-btn`, `.sb-section`, `.sb-item`, etc.)
+- **trace-hunter.html** — same sidebar styling block missing; added
+- **rsa.html** — `.pin-btn` / `.pin-btn:hover` / `.pin-btn.pinned` CSS missing; added (pin button was unstyled)
+- **LOCKS.md** — rsa-tech.html lock released
+
+**Not in PR #6 (still pending from Manasa):** rsa-tech.html sidebar fix + admin-permissions.html sign-out bug — Manasa to open follow-up PR.
+
+### incentive.html — analytics dummy-name filter (same push)
+- **Bug**: Analytics tab's biller-proxy attendance code read raw `incentive_jc_log` and counted ALL distinct `technician_name` per hub per day (including `FREELANCER`, `VECNOCOM`, `VECMOCON`, `READY ASSET`, `VAMSEE - HEBBALA`) as real technicians — inflating the dashed amber headcount line and deflating JC/tech/day.
+- **Fix**: Added `AN_DUMMY_NAMES` Set in `loadAnalytics()`, excluded dummy names from the `byHubDay` distinct-biller count.
+- Note: `rebuild_incentive_weekly_stats` RPC was already correct (same exclusion list in its WHERE clause). Only the client-side proxy was affected.
 
 ## 🆕 2026-08-16 — Ownership transfer + staging fully live
 
