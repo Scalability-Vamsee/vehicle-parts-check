@@ -774,6 +774,7 @@ body.pinned #hbg{display:none}
           <button class="an-fbtn" data-c="Bangalore" onclick="anSetCity(this)">Bangalore</button>
           <button class="an-fbtn" data-c="NCR" onclick="anSetCity(this)">NCR</button>
           <button class="an-fbtn" data-c="Hyderabad" onclick="anSetCity(this)">Hyderabad</button>
+          <button id="an-dummy-btn" class="an-fbtn" style="margin-left:auto;opacity:.7" onclick="anToggleDummy()">Show: All staff</button>
         </div>
       </div>
 
@@ -2705,8 +2706,9 @@ const ATT_SHEET_STALE_FROM='2026-07-20';
 const AN_EXCLUDE=new Set(['MUNIRAJ - R&D TEAM','PRAKASH - R&D TEAM','NISHANTH - RSA']);
 const AN_HUB_ALIAS={'yeshwantpura':'yeshwanthpur','hebbala':'hebbal','miyapur':'fathenagar'};
 
-let anLoaded=false, anCity='Overall', anSelWeek=null;
-let anRows=[], anAtt=null, anProxyAtt=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
+let anLoaded=false, anCity='Overall', anSelWeek=null, anExcludeDummy=false;
+let anRows=[], anAtt=null, anProxyAtt=null, anProxyAttAll=null, anProxyAttClean=null, anWeeks=[], anCohort=null, anAttRows=[], anHubCity={};
+const AN_DUMMY_NAMES=new Set(['FREELANCER','VECNOCOM','VECMOCON','READY ASSET','VAMSEE - HEBBALA']);
 let anCh=[null,null,null,null,null,null];
 
 function anNormHub(s){
@@ -2774,28 +2776,39 @@ async function loadAnalytics(){
     // so anPooled/jptOf/anChartTechs consume it identically with no separate code path. A tech who
     // only bills on 1 of 7 days contributes 1 day of headcount, not 7 — matching how the sheet
     // would have counted a single day's attendance, not a whole week's.
-    anProxyAtt={};
+    anProxyAttAll={}; anProxyAttClean={};
     try{
       const jc=await anFetchAll('incentive_jc_log','jc_billed_date,technician_name,hub_name,is_void',
         'jc_billed_date',ATT_SHEET_STALE_FROM);
-      const byHubDay={};
-      const AN_DUMMY_NAMES=new Set(['FREELANCER','VECNOCOM','VECMOCON','READY ASSET','VAMSEE - HEBBALA']);
-      jc.filter(r=>!r.is_void && !AN_DUMMY_NAMES.has(r.technician_name)).forEach(r=>{
+      // Build both variants in one pass
+      const byAll={}, byClean={};
+      jc.filter(r=>!r.is_void).forEach(r=>{
         const d=String(r.jc_billed_date).slice(0,10);
         const hubKey=anNormHub(r.hub_name);
         const k=hubKey+'|'+d;
-        if(!byHubDay[k])byHubDay[k]=new Set();
-        byHubDay[k].add(r.technician_name);
+        if(!byAll[k])byAll[k]=new Set();
+        byAll[k].add(r.technician_name);
+        if(!AN_DUMMY_NAMES.has(r.technician_name)){
+          if(!byClean[k])byClean[k]=new Set();
+          byClean[k].add(r.technician_name);
+        }
       });
-      Object.keys(byHubDay).forEach(k=>{
+      [['all',byAll,anProxyAttAll],['clean',byClean,anProxyAttClean]].forEach(([,src,dest])=>{
+        Object.keys(src).forEach(k=>{
+          const [hubKey,d]=k.split('|');
+          const t=src[k].size;
+          const w=formatDate(getWeekStart(new Date(d)));
+          const key=hubKey+'|'+w;
+          if(!dest[key])dest[key]={td:0,days:0};
+          dest[key].td+=t; dest[key].days++;
+        });
+      });
+      // Populate anAttRows from the "all" variant for chart rendering
+      Object.keys(byAll).forEach(k=>{
         const [hubKey,d]=k.split('|');
-        const t=byHubDay[k].size;
-        const w=formatDate(getWeekStart(new Date(d)));
-        const key=hubKey+'|'+w;
-        if(!anProxyAtt[key])anProxyAtt[key]={td:0,days:0};
-        anProxyAtt[key].td+=t; anProxyAtt[key].days++;
-        anAttRows.push({date:d,hubKey,tech:t,proxy:true});
+        anAttRows.push({date:d,hubKey,tech:byAll[k].size,proxy:true});
       });
+      anProxyAtt=anExcludeDummy?anProxyAttClean:anProxyAttAll;
     }catch(e){console.warn('[AN] biller-proxy attendance failed',e?.message||e);}
 
     // dynamic week list
@@ -3056,6 +3069,13 @@ function anMarkers(weeks){
 function anSetCity(btn){
   document.querySelectorAll('#an-city .an-fbtn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');anCity=btn.dataset.c;anRenderAll();
+}
+function anToggleDummy(){
+  anExcludeDummy=!anExcludeDummy;
+  anProxyAtt=anExcludeDummy?anProxyAttClean:anProxyAttAll;
+  const btn=document.getElementById('an-dummy-btn');
+  if(btn){btn.textContent=anExcludeDummy?'Show: Excl. freelancers':'Show: All staff';btn.style.opacity=anExcludeDummy?'1':'.7';}
+  anRenderAll();
 }
 function anSetWeek(w){anSelWeek=w;anRenderPills();anTiles();anChart4();anRenderDeciles();}
 function anRenderPills(){
