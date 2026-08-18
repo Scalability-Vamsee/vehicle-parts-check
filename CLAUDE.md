@@ -366,6 +366,7 @@ Full spec in `Trace and Hunter/context.md`.
 | `rsa_tickets_cache` realtime | ✅ live via MCP · ✅ git (de16d6c migration) | — done — |
 | PR #6 — sidebar CSS + pin-btn (rfd-check, rsa, trace-hunter) | ✅ git (18a8576, 2026-08-18) | — done — |
 | `incentive.html` analytics dummy-name filter | ✅ git (18a8576, 2026-08-18) | — done — |
+| PR #7 — docs update + `deployment.html` model_id=4 → High Speed fix | ✅ git (270ea80, 2026-08-18) | — done — |
 | `rsa-tech.html` sidebar fix + `admin-permissions.html` sign-out bug | ⏳ pending Manasa's next PR | Manasa to open follow-up PR |
 
 **H4 summary (2026-07-26):** `dms_api_call_json` (JSON with embedded newlines/commas) broke the old regex/line-split CSV parser → `intrip` mapped to `undefined`. Fixed with RFC 4180 compliant `parseCSV`. Labels: `intrip=true` → "🔴 RUNNING REPAIR", `false` → "GENERAL SERVICES (Repossessed)".
