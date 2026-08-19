@@ -676,17 +676,17 @@ function onAllocCityChange(){
 var COLUMNS=[
   {
     id:'ls', label:'Low Speed', sub:'Standard · >3k km · LS', cls:'ls',
-    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name)==='ls';},
+    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name,b.bike_model_id)==='ls';},
     showModelTag:false, showTierBadge:false
   },
   {
     id:'hs', label:'High Speed', sub:'Standard · e1+x', cls:'hs',
-    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name)==='hs';},
+    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name,b.bike_model_id)==='hs';},
     showModelTag:false, showTierBadge:false
   },
   {
     id:'hsp', label:'HS Pro', sub:'Standard · e1+xPRO', cls:'hsp',
-    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name)==='hsp';},
+    filter:function(b){return b.tier==='Standard'&&modelType(b.model_name,b.bike_model_id)==='hsp';},
     showModelTag:false, showTierBadge:false
   },
   {
