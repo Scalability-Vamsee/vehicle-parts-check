@@ -311,7 +311,7 @@ function sendMagicLink(){
     });
 }
 
-function doSignOut(){sb.auth.signOut().then(function(){window.location.reload();});}
+function doSignOut(){localStorage.removeItem('fp_admin_secret');sb.auth.signOut().then(function(){window.location.reload();});}
 
 function onAuthSession(session){
   K=session.access_token;
