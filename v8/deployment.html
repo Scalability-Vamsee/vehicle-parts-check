@@ -919,15 +919,6 @@ function dsCell(label,val,big){
 function closeDetail(){document.getElementById('detail-modal').classList.remove('show');}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail();});
 
-
-/* ── Tier computation (model-aware, mirrors SQL logic) ───────────── */
-function computeBikeTier(modelName,odo){
-  var m=(modelName||'').toLowerCase();
-  var isLS=!m.includes('pro')&&!m.includes('e1+x')&&!m.includes('e1 x')&&!m.includes('high speed');
-  if(isLS)return(odo||0)<=3000?'Prime':'Standard';
-  return(odo||0)<=200?'Elite':(odo||0)<=3000?'Prime':'Standard';
-}
-
 /* ── Allocate tab ────────────────────────────────────────────────── */
 function loadAllocList(){
   var hub=document.getElementById('alloc-hub-select').value;
