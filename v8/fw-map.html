@@ -244,7 +244,7 @@ body.pinned #main{margin-left:var(--sb-width)}
       </select>
       <button class="map-btn" id="layers-btn" onclick="toggleLayersPanel()">🗂 Layers</button>
       <span id="updated-at"></span>
-      <button class="map-btn" id="refresh-btn" onclick="loadMapData()">↻ Refresh</button>
+      <button class="map-btn" id="refresh-btn" onclick="loadMapData();loadTopIndofastStations()">↻ Refresh</button>
       <button id="clear-btn" onclick="clearFilters()" style="background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:5px 12px;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;display:none">✕ Clear</button>
       <button onclick="showMyLocation()" style="background:#EFF6FF;border:1px solid #BFDBFE;color:#2563EB;padding:5px 12px;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;">📍 My Location</button>
     </div>
@@ -480,6 +480,7 @@ async function loadTopIndofastStations(){
            +'<div style="font-size:12px">📍 Primary here: <b>'+s.home_bikes+'</b>'
            +(pct?' <span style="color:'+(pct>=70?'#16a34a':'#D97706')+';">('+pct+'%)</span>':'')+'</div>'
           :'<div style="font-size:11px;color:#9CA3AF">Stats sync at 8 AM daily</div>')
+        +'<a href="https://www.google.com/maps/dir/?api=1&destination='+s.lat+','+s.lng+'" target="_blank" style="display:block;margin-top:10px;text-align:center;background:#DC2626;color:#fff;padding:6px 0;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;">🗺️ Navigate Here</a>'
         +'</div>';
       L.marker([s.lat,s.lng],{icon:makeTopInIcon(),zIndexOffset:1000})
         .bindPopup(popup)
@@ -1003,6 +1004,7 @@ var _authReady=false;
         if(!r.data||!r.data.session)return;
         triggerSyncFireAndForget();
         loadMapData();
+        loadTopIndofastStations();
       });
     }
   });
@@ -1027,6 +1029,7 @@ var _authReady=false;
       if(!r.data||!r.data.session)return;
       if(!document.hidden)triggerSyncFireAndForget();
       loadMapData();
+      loadTopIndofastStations();
     });
   },5*60*1000);
 
