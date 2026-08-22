@@ -302,12 +302,18 @@ function show(id){
 function sendMagicLink(){
   var e=document.getElementById('auth-email').value.trim();
   if(!e){document.getElementById('auth-msg').textContent='Enter your email';return;}
+  if(!/@bounceshare\.com$/i.test(e)){
+    document.getElementById('auth-msg').style.color='var(--red)';
+    document.getElementById('auth-msg').textContent='Use your @bounceshare.com email';
+    return;
+  }
   document.getElementById('magic-btn').disabled=true;
+  document.getElementById('auth-msg').style.color='var(--teal)';
   document.getElementById('auth-msg').textContent='Sending…';
   sb.auth.signInWithOtp({email:e,options:{emailRedirectTo:window.location.href}})
     .then(function(r){
       if(r.error){document.getElementById('auth-msg').style.color='var(--red)';document.getElementById('auth-msg').textContent=r.error.message;document.getElementById('magic-btn').disabled=false;}
-      else{document.getElementById('auth-msg').textContent='✅ Check your email for the magic link!';}
+      else{document.getElementById('auth-msg').style.color='var(--teal)';document.getElementById('auth-msg').textContent='✅ Check your email for the magic link!';}
     });
 }
 
