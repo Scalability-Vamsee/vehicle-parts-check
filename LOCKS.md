@@ -17,7 +17,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
-| admin-permissions.html | (free) | — | — |
+| admin-permissions.html | Manasa4243 | 2026-08-22 09:30 | Restoring is_approved_user RPC gate (removing hardcoded @bounceshare.com-only check) |
 | rfd-check.html | (free) | — | — |
 | sidebar.js | (free) | — | — |
 | supabase/functions (edge fn source) | (free) | — | — |
