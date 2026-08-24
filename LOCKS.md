@@ -14,7 +14,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | deployment.html | (free) | — | — |
 | fw-map.html | (free) | — | — |
 | rsa-tech.html | (free) | — | — |
-| trace-ho.html | Manasa4243 | 2026-08-24 10:11 | Fixing unstyled white-box Pin button in sidebar (missing .pin-btn CSS) |
+| trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
 | admin-permissions.html | (free) | — | — |
