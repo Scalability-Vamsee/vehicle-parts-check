@@ -12,6 +12,7 @@ area. If you find a duplicate, fold it into the canonical and delete the copy.
 |-----|------|---------|
 | Project memory / rules | `CLAUDE.md` | Auth pattern, deploy, tables, do-not-violate decisions. Always-loaded. |
 | Edit locks | `LOCKS.md` | Claim a page before editing. Protocol at top. |
+| Bug tracker | `docs/BUG-TRACKER.md` | Living log of bugs found/fixed, their branch + PR trail, and known-not-yet-fixed items. Update when a fix's PR opens/merges. |
 | Push discipline | `docs/PUSH-DISCIPLINE.md` | The 9-rule push checklist (one `/tmp/fleetpro-push` clone, re-clone fresh, never push from the mount, verify+secret-scan, PAT hygiene, non-ff=stop, edge fns are source-of-record only). |
 | Cowork primer | `../docs/COWORK-PRIMER.md` | Paste into Cowork at session start (it doesn't auto-load CLAUDE.md). Includes the always-re-clone rule. |
 | Daily prompts | `../START-HERE.md` | START prompt on open, END prompt on close (per window/project). |
