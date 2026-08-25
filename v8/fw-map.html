@@ -234,6 +234,12 @@ body.pinned #main{margin-left:var(--sb-width)}
     <div id="map-topbar">
       <h2>📍 FW Flash Pending — Live Map</h2>
       <span class="count-pill" id="count-pill">Loading…</span>
+      <div class="fw-toggle-group" id="city-toggle-group">
+        <button class="fw-toggle active" id="city-all" onclick="setCityFilter('ALL')">All</button>
+        <button class="fw-toggle" id="city-blr" onclick="setCityFilter('BLR')">BLR</button>
+        <button class="fw-toggle" id="city-ncr" onclick="setCityFilter('NCR')">NCR</button>
+        <button class="fw-toggle" id="city-hyd" onclick="setCityFilter('HYD')">HYD</button>
+      </div>
       <div class="fw-toggle-group">
         <button class="fw-toggle" id="toggle-diu" onclick="toggleFwMode('diu')">DIU FW</button>
         <button class="fw-toggle active" id="toggle-mcu" onclick="toggleFwMode('mcu')">MCU 60A</button>
@@ -282,6 +288,36 @@ var ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 var K=ANON_KEY;
 var CURRENT_USER_EMAIL=null;
 var sbClient=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
+
+// Per-city config (mirrors rsa.html's CITY_CONFIG exactly) — drives city-toggle pan/zoom + city inference
+var CITY_CONFIG={
+  'BLR':{center:[12.97,77.59],zoom:11,bounds:[[12.75,77.28],[13.25,77.88]]},
+  'NCR':{center:[28.62,77.22],zoom:12,bounds:[[28.38,76.80],[28.90,77.65]]},
+  'HYD':{center:[17.38,78.48],zoom:12,bounds:[[17.15,78.20],[17.62,78.80]]}
+};
+var _cityActive=[]; // active city codes; [] = All (no filter)
+var _lastCitySel=null;
+
+// Infer a bike's city from its GPS coordinates (fw_bikes_live/mcu_bikes_live have no city column)
+// Mirrors rsa.html's inferCity() lat/lng-bounds branch + BLR default fallback.
+function inferCity(b){
+  if(b.lat!=null&&b.lng!=null){
+    for(var code in CITY_CONFIG){
+      var cc=CITY_CONFIG[code];
+      if(b.lat>=cc.bounds[0][0]&&b.lat<=cc.bounds[1][0]&&
+         b.lng>=cc.bounds[0][1]&&b.lng<=cc.bounds[1][1])return code;
+    }
+  }
+  return 'BLR';
+}
+
+function setCityFilter(code){
+  if(code==='ALL'||(_cityActive.length===1&&_cityActive[0]===code)){_cityActive=[];}
+  else{_cityActive=[code];}
+  document.getElementById('city-all').classList.toggle('active',_cityActive.length===0);
+  ['BLR','NCR','HYD'].forEach(function(c){document.getElementById('city-'+c.toLowerCase()).classList.toggle('active',_cityActive.indexOf(c)>=0);});
+  renderFiltered();
+}
 
 // fw_bikes_live = fw_pending_cache ⨝ bike_location_cache ⨝ bike_rider_cache
 // mcu_bikes_live = rfd_violations_cache(regen_60a_check_needed) ⨝ bike_location_cache ⨝ bike_rider_cache
@@ -557,6 +593,7 @@ function renderFiltered(){
   markerGroup.clearLayers();
   var _source=getMergedSource();
   var filtered=_source.filter(function(b){
+    if(_cityActive.length&&_cityActive.indexOf(inferCity(b))<0)return false;
     if(hub&&b.hub!==hub)return false;
     if(raw){
       var reg=normReg(b.reg);
@@ -579,6 +616,19 @@ function renderFiltered(){
   });
   document.getElementById('count-pill').textContent=filtered.length+(raw||hub?' filtered':' bikes pending');
   if(typeof updateClearBtn==='function')updateClearBtn();
+  // City pan/zoom: only refit when city selection changes (mirrors rsa.html)
+  var cityKey=_cityActive.slice().sort().join(',');
+  if(cityKey!==_lastCitySel){
+    _lastCitySel=cityKey;
+    if(_cityActive.length===1){
+      var cc=CITY_CONFIG[_cityActive[0]];
+      if(cc)leafMap.setView(cc.center,cc.zoom,{animate:true});
+    }else{
+      var mb=[];
+      Object.keys(CITY_CONFIG).forEach(function(k){mb=mb.concat(CITY_CONFIG[k].bounds);});
+      if(mb.length)leafMap.fitBounds(L.latLngBounds(mb).pad(0.2),{animate:true,maxZoom:9});
+    }
+  }
   // Zoom and open popup for unique result
   if(focusMarker){
     var b=filtered[0];
