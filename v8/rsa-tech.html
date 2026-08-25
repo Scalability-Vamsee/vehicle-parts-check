@@ -282,6 +282,17 @@ body.pinned #sb{transform:translateX(0)}
         <button class="resend-btn" onclick="showAuthForm()">← Use a different email</button>
       </div>
     </div>
+    <div id="no-access" style="display:none">
+      <div class="auth-sent-card">
+        <div class="big">🔒</div>
+        <p>Your account isn't linked to an active technician profile yet.</p>
+        <p style="margin-top:8px">If you were just added, this can take a few minutes — try refreshing, or contact your admin.</p>
+        <div>
+          <button class="resend-btn" onclick="window.location.reload()">↻ Try Again</button>
+          <button class="resend-btn" style="margin-left:18px" onclick="signOut()">Sign Out</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -550,7 +561,15 @@ function stopGPS(){
 function showAuthForm(){
   document.getElementById('auth-form').style.display='block';
   document.getElementById('auth-sent').style.display='none';
+  document.getElementById('no-access').style.display='none';
   document.getElementById('auth-msg').textContent='';
+}
+
+function showNoAccess(){
+  document.getElementById('auth-form').style.display='none';
+  document.getElementById('auth-sent').style.display='none';
+  document.getElementById('no-access').style.display='block';
+  document.getElementById('auth-screen').classList.add('show');
 }
 
 async function sendMagicLink(){
@@ -616,8 +635,8 @@ async function loadAndApplyPermissions(session){
         try{
           var{data:rtRow}=await sb.from('rsa_technicians').select('id').eq('email',session.user.email).eq('is_active',true).limit(1);
           if(rtRow&&rtRow.length){f['tech-app']=true;}
-          else{window.location.href='index.html';return false;}
-        }catch(e){window.location.href='index.html';return false;}
+          else{showNoAccess();return false;}
+        }catch(e){showNoAccess();return false;}
       }
     }
     window.FP_FEATURES=f;
