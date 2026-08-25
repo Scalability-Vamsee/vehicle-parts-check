@@ -12,7 +12,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | queue.html | (free) | — | — |
 | maintenance.html | (free) | — | — |
 | deployment.html | (free) | — | — |
-| fw-map.html | (free) | — | — |
+| fw-map.html | Manasa4243 | 2026-08-25 08:17 | Adding city toggle (All/BLR/NCR/HYD) with auto-pan/zoom, matching RSA Warroom |
 | rsa-tech.html | (free) | — | — |
 | trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
