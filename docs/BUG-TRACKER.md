@@ -17,6 +17,13 @@ Status legend: 🔧 In progress · 🟡 PR open, awaiting review · ✅ Merged t
 | Hardcoded `vamsee@scalability.club` bypass in Permission Manager pre-auth email gate — reintroduced a pattern `CLAUDE.md` says was removed 2026-08-12; restored the `is_approved_user` RPC check | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — merged directly to staging (commit `e8e14de`, no PR opened) | 2026-08-22 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
 | Login error message wasn't displaying on Permission Manager's magic-link screen | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — same branch as above | 2026-08-22 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
 | Unstyled white-box Pin button on Trace (`trace-ho.html`) sidebar — `sidebar.js` injects the button markup on every page, but the base `.pin-btn` CSS has to be defined per-page; `trace-ho.html` never got it | `v8/trace-ho.html` | `fix/trace-sidebar-white-pin-btn` | [#10](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/10) | 2026-08-24 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
+| FW Pending Map had no city concept at all (no toggle, bike data fetched with zero city filtering). Added city toggle (All/BLR/NCR/HYD) mirroring RSA Warroom's `CITY_CONFIG` + `inferCity()` + pan/zoom-on-selection-change exactly — bikes bucketed by lat/lng since `fw_bikes_live`/`mcu_bikes_live` have no city column. Defaults to All (not BLR, unlike RSA). Mumbai intentionally not included — separate follow-up pending confirmed operational data | `v8/fw-map.html` | `feature/fw-map-city-toggle` | none — merged directly to staging (commit `7c4c815`, no PR opened) | 2026-08-25 | ✅ confirmed working on bounceops.info by Manasa |
+
+## In progress
+
+| Bug | File(s) | Branch | Status | Blocked on |
+|---|---|---|---|---|
+| Magic-link redirect: technician clicking their magic link could get silently bounced to `index.html` (a different app) with no explanation whenever the permission check couldn't confirm `tech-app` access. Fixed to show an in-page "no active technician profile" message + Try Again/Sign Out instead of redirecting away | `v8/rsa-tech.html` | `fix/rsa-tech-magic-link-redirect` | 🔧 Code complete, pushed, not yet merged to staging | Testing paused — Manasa asked Sriranga clarifying questions first (2026-08-25) |
 
 ## Fixed independently (found during the 2026-08-24 full-codebase audit, already resolved by someone else)
 
