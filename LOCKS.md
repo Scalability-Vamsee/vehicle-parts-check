@@ -13,7 +13,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | maintenance.html | (free) | — | — |
 | deployment.html | (free) | — | — |
 | fw-map.html | (free) | — | — |
-| rsa-tech.html | (free) | — | — |
+| rsa-tech.html | Manasa4243 | 2026-08-25 06:19 | Fixing magic-link redirect to index.html on failed permission check |
 | trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
