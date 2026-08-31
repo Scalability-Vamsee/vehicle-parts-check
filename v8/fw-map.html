@@ -349,7 +349,7 @@ function updateClearBtn(){
   if(btn)btn.style.display=(hasSearch||hasHub||!atDefault||dist>0.05)?'inline-block':'none';
 }
 leafMap.on('zoomend moveend',updateClearBtn);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'}).addTo(leafMap);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19,subdomains:'abc'}).addTo(leafMap);
 
 var markerGroup=L.layerGroup().addTo(leafMap);
 var hubMarkerGroup=L.layerGroup(); // off by default (lyr-hubs unchecked)

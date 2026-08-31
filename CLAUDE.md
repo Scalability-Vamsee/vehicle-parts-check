@@ -71,7 +71,7 @@ When Vamsee pastes a GitHub PR URL (staging → main), follow this exact sequenc
    - Copy all changed files
    - JS syntax check every HTML file changed
    - `git merge origin/staging` (not cherry-pick — full staging merge)
-   - Push to main
+   - `git push origin main` (requires PAT with admin rights; branch protection bypassed only for PR-reviewed merges)
 7. Tell Vamsee: "Prompt is in clipboard — paste into Claude Code, replace `<PAT>`"
 8. **After push confirmed** — update `CLAUDE.md` + `Fleetpro-context.md` to capture what changed
 
@@ -83,13 +83,17 @@ When Vamsee pastes a GitHub PR URL (staging → main), follow this exact sequenc
 After saving any file change, **Cowork must immediately write a clipboard prompt** for
 Claude Code to execute the push — no exceptions, no asking the user for the PAT.
 
+**Push target: always `staging`, never `main` directly.**
+`main` is branch-protected (no bypass allowance). All changes land on `staging` first;
+`main` only moves via PR review (Cowork reads the PR → Claude Code merges).
+
 Pattern Cowork always follows:
 1. Save file(s) to the workspace folder.
 2. Write this prompt to clipboard (`write_clipboard`) with `<PAT>` as a literal placeholder:
 
 ```
 cd /tmp && rm -rf fleetpro-push
-git clone https://<PAT>@github.com/vamseebounce/vehicle-parts-check.git fleetpro-push
+git clone https://<PAT>@github.com/Scalability-Vamsee/vehicle-parts-check.git fleetpro-push
 cp "/Users/vamsee/Desktop/Scalability/Bounce/fleetpro/v8/<file>" /tmp/fleetpro-push/v8/<file>
 cd /tmp/fleetpro-push
 
@@ -107,10 +111,10 @@ blocks.forEach((js,i)=>{
 console.log('All checks passed — proceeding to push');
 " || exit 1
 
-git add . && git commit -m "<short description>" && git push origin main
+git add . && git commit -m "<short description>" && git push origin HEAD:staging
 ```
 
-3. Tell the user: "Prompt is in your clipboard — paste into Claude Code, replace `<PAT>`. Claude Code will syntax-check JS before pushing."
+3. Tell the user: "Prompt is in your clipboard — paste into Claude Code, replace `<PAT>`. Claude Code will syntax-check JS and push to staging."
 
 **Never ask the user for their PAT. Never expect the PAT to come to Cowork.**
 The user fills in `<PAT>` themselves in the Claude Code terminal.
@@ -355,19 +359,22 @@ Full spec in `Trace and Hunter/context.md`.
 - **All map markers must pass `validLL()`** (India bbox lat 6.5–37.5, lng 68–97.5) before `L.marker` / `fitBounds`. One out-of-range GPS row otherwise distorts the whole map to world view.
 - RLS `recovery_tickets` UPDATE = owner-or-superadmin. Phase 2 admin drag-reassign will need a broader policy.
 
-## Pending Deploys (as of 2026-08-18)
+## Pending Deploys (as of 2026-08-31)
 
 | Item | Status | Action needed |
 |------|--------|---------------|
 | `jc-failure-alert` v6 | ✅ git (8099932, 2026-08-01) · ✅ MCP-deployed | — done — |
 | `jc-history-sync` v12 | ✅ git (8099932, 2026-08-01) · ✅ MCP-deployed | — done — |
-| `sync-hr-employees` | ✅ git (bd65cfb) · ✅ MCP-deployed (v14, 2026-08-14) | — done — |
+| `sync-hr-employees` | ✅ git (bd65cfb) · ✅ MCP-deployed (v15, 2026-08-21) | — done — |
 | `zone-cluster` + `recovery-blocked-sync` | ✅ code · ✅ MCP-deployed (v12/v7, 2026-08-14) | — done — |
 | `rsa_tickets_cache` realtime | ✅ live via MCP · ✅ git (de16d6c migration) | — done — |
 | PR #6 — sidebar CSS + pin-btn (rfd-check, rsa, trace-hunter) | ✅ git (18a8576, 2026-08-18) | — done — |
 | `incentive.html` analytics dummy-name filter | ✅ git (18a8576, 2026-08-18) | — done — |
 | PR #7 — docs update + `deployment.html` model_id=4 → High Speed fix | ✅ git (270ea80, 2026-08-18) | — done — |
-| `rsa-tech.html` sidebar fix + `admin-permissions.html` sign-out bug | ⏳ pending Manasa's next PR | Manasa to open follow-up PR |
+| `incentive.html` analytics freelancer toggle (default all-staff, btn excludes dummies) | ✅ git (ce71496, 2026-08-18) | — done — |
+| `deployment.html` column filters missing bike_model_id (model_id=4 stayed in LS) | ✅ git (63b1eb1, 2026-08-19) | — done — |
+| `rsa-tech.html` sidebar pin CSS + `admin-permissions.html` clear secret on sign-out | ✅ git (54b8a36, 2026-08-19) | — done — |
+| PR #9 — rsa.html 4 new techs; deployment.html dead code; fw-map.html city toggle + Indofast nav/refresh; admin-permissions.html RPC gate restored; trace-ho.html pin CSS; docs/BUG-TRACKER.md + COWORK-PRIMER.md | ✅ main (b0d71a1, 2026-08-31) | — done — |
 
 **H4 summary (2026-07-26):** `dms_api_call_json` (JSON with embedded newlines/commas) broke the old regex/line-split CSV parser → `intrip` mapped to `undefined`. Fixed with RFC 4180 compliant `parseCSV`. Labels: `intrip=true` → "🔴 RUNNING REPAIR", `false` → "GENERAL SERVICES (Repossessed)".
 
@@ -384,11 +391,15 @@ Full spec in `Trace and Hunter/context.md`.
 
 ## Map Tiles (all map pages)
 
+CARTO's `basemaps.cartocdn.com` endpoint started requiring an API key (returns a watermarked
+"API KEY REQUIRED" tile without one) — switched all 4 map pages (`fw-map.html`, `rsa.html`,
+`trace-ho.html`, `rsa-tech.html`) to OpenStreetMap's standard tile server on 2026-08-31.
+
 ```js
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap © CARTO',
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
   maxZoom: 19,
-  subdomains: 'abcd'
+  subdomains: 'abc'
 }).addTo(map);
 ```
 

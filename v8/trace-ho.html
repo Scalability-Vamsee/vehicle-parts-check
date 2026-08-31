@@ -355,7 +355,7 @@ var sbClient=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,st
 
 // Map
 var leafMap=L.map('map',{zoomControl:true}).setView([20.5,78.0],5);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'}).addTo(leafMap);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19,subdomains:'abc'}).addTo(leafMap);
 var zoneLayer=L.layerGroup().addTo(leafMap);
 var ticketGroup=L.layerGroup().addTo(leafMap);
 var hubGroup=L.layerGroup().addTo(leafMap);

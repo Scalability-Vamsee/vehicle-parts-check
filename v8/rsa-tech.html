@@ -1709,8 +1709,8 @@ function _initFWMap(){
   if(!el)return;
   var center=_gpsPos?[_gpsPos.lat,_gpsPos.lng]:[12.9716,77.5946];
   _fwMap=L.map('fw-map',{zoomControl:true}).setView(center,13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{
-    attribution:'© OpenStreetMap © CARTO',maxZoom:19,subdomains:'abcd'
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors',maxZoom:19,subdomains:'abc'
   }).addTo(_fwMap);
   // Tech's own location — blue dot
   if(_gpsPos){
