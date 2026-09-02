@@ -497,7 +497,7 @@ function makeTopInIcon(){
 async function loadTopIndofastStations(){
   if(!K||K===ANON_KEY)return;
   try{
-    var res=await fetch(SB_URL+'/rest/v1/indofast_top_stations?select=*&order=avg_bikes_visited.desc&limit=10',
+    var res=await fetch(SB_URL+'/rest/v1/indofast_top_stations?select=*&order=total_bikes_visited.desc&limit=10',
       {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     if(!res.ok)return;
     _topInStations=await res.json();
