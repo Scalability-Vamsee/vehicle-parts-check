@@ -330,6 +330,7 @@ function dismissPwaInstall(){
 
 // ── State ──
 var _userId=null;
+var K=ANON_KEY;
 var _tickets=[];
 var _gpsMap={};
 var _hunterLat=null,_hunterLng=null;
@@ -410,6 +411,7 @@ async function loadAndApplyPermissions(session){
 function logPageView(email){try{fetch(SB_URL+'/rest/v1/page_events',{method:'POST',headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_email:email,page:'trace-hunter.html'})});}catch(_){}}
 async function activateSession(session){
   _userId=session.user.id;
+  K=session.access_token||ANON_KEY;
   var ok=await loadAndApplyPermissions(session);
   if(!ok)return;
   logPageView(session.user.email);
