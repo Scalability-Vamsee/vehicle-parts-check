@@ -13,11 +13,12 @@ Status legend: 🔧 In progress · 🟡 PR open, awaiting review · ✅ Merged t
 
 | Bug | File(s) | Branch | PR | Merged to staging | Status |
 |---|---|---|---|---|---|
-| Unstyled white-box Pin button on RSA Warroom sidebar | `v8/rsa.html` | `feature/fix-rsa-warroom-pin-btn` | [#5](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/5) | 2026-08-17 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9) staging→main) |
-| Hardcoded `vamsee@scalability.club` bypass in Permission Manager pre-auth email gate — reintroduced a pattern `CLAUDE.md` says was removed 2026-08-12; restored the `is_approved_user` RPC check | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — merged directly to staging (commit `e8e14de`, no PR opened) | 2026-08-22 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
-| Login error message wasn't displaying on Permission Manager's magic-link screen | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — same branch as above | 2026-08-22 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
-| Unstyled white-box Pin button on Trace (`trace-ho.html`) sidebar — `sidebar.js` injects the button markup on every page, but the base `.pin-btn` CSS has to be defined per-page; `trace-ho.html` never got it | `v8/trace-ho.html` | `fix/trace-sidebar-white-pin-btn` | [#10](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/10) | 2026-08-24 | ✅ (bundled in [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
-| FW Pending Map had no city concept at all (no toggle, bike data fetched with zero city filtering). Added city toggle (All/BLR/NCR/HYD) mirroring RSA Warroom's `CITY_CONFIG` + `inferCity()` + pan/zoom-on-selection-change exactly — bikes bucketed by lat/lng since `fw_bikes_live`/`mcu_bikes_live` have no city column. Defaults to All (not BLR, unlike RSA). Mumbai intentionally not included — separate follow-up pending confirmed operational data | `v8/fw-map.html` | `feature/fw-map-city-toggle` | none — merged directly to staging (commit `7c4c815`, no PR opened) | 2026-08-25 | ✅ confirmed working on bounceops.info by Manasa |
+| Unstyled white-box Pin button on RSA Warroom sidebar | `v8/rsa.html` | `feature/fix-rsa-warroom-pin-btn` | [#5](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/5) | 2026-08-17 | 🚀 live in prod (via [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9), merged 2026-08-31) |
+| Hardcoded `vamsee@scalability.club` bypass in Permission Manager pre-auth email gate — reintroduced a pattern `CLAUDE.md` says was removed 2026-08-12; restored the `is_approved_user` RPC check | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — merged directly to staging (commit `e8e14de`, no PR opened) | 2026-08-22 | 🚀 live in prod (via [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
+| Login error message wasn't displaying on Permission Manager's magic-link screen | `v8/admin-permissions.html` | `feature/fix-rsa-warroom-pin-btn` | none — same branch as above | 2026-08-22 | 🚀 live in prod (via [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
+| Unstyled white-box Pin button on Trace (`trace-ho.html`) sidebar — `sidebar.js` injects the button markup on every page, but the base `.pin-btn` CSS has to be defined per-page; `trace-ho.html` never got it | `v8/trace-ho.html` | `fix/trace-sidebar-white-pin-btn` | [#10](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/10) | 2026-08-24 | 🚀 live in prod (via [#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)) |
+| FW Pending Map had no city concept at all (no toggle, bike data fetched with zero city filtering). Added city toggle (All/BLR/NCR/HYD) mirroring RSA Warroom's `CITY_CONFIG` + `inferCity()` + pan/zoom-on-selection-change exactly — bikes bucketed by lat/lng since `fw_bikes_live`/`mcu_bikes_live` have no city column. Defaults to All (not BLR, unlike RSA). Mumbai intentionally not included — separate follow-up pending confirmed operational data | `v8/fw-map.html` | `feature/fw-map-city-toggle` | none — merged directly to staging (commit `7c4c815`, no PR opened) | 2026-08-25 | ✅ confirmed working on bounceops.info by Manasa; queued in [#11](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/11) for prod |
+| Dead orphaned technician app (`tech.html`, `tech-manifest.json`, `tech-sw.js`) — original technician app, fully superseded by `rsa-tech.html`, zero real references anywhere in the codebase. Root-level `/tech.html` redirect stub deliberately left in place pending confirmation it was never handed out to technicians directly | `v8/tech.html`, `v8/tech-manifest.json`, `v8/tech-sw.js` | `chore/remove-dead-tech-app` | none — merged directly to staging (commit `71714ba`, no PR opened) | 2026-09-02 | ✅ merged to staging |
 
 ## In progress
 
@@ -41,7 +42,6 @@ Status legend: 🔧 In progress · 🟡 PR open, awaiting review · ✅ Merged t
 | Same `#perm-veil` retirement + permissions-first ordering needed | `v8/maintenance.html`, `v8/queue.html`, `v8/deployment.html`, `v8/fw-map.html` | Medium |
 | Missing superadmin short-circuit (superadmin without an explicit group row gets bounced to `index.html`) | `v8/maintenance.html`, `v8/queue.html`, `v8/deployment.html`, `v8/rsa.html` | Medium |
 | `checkGlobalLogout()` ("force logout all sessions") not wired up | `v8/maintenance.html`, `v8/queue.html` | Low |
-| Dead/orphaned page, zero references anywhere in the codebase, fully superseded by `rsa-tech.html` | `v8/tech.html` + `tech-manifest.json` + `tech-sw.js` | Cleanup, no urgency |
 
 ## Reported, decision pending
 
@@ -53,5 +53,8 @@ Status legend: 🔧 In progress · 🟡 PR open, awaiting review · ✅ Merged t
 
 ## Production promotion
 
-All rows marked ✅ above flow into the standing **staging → main** PR:
-**[#9](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/9)** — this is the one PR that actually needs Vamsee's review to reach `bounceops.online`. Individual fix PRs (like #5, #10) merging into `staging` update #9's diff automatically; no separate action needed once they're in.
+PR #9 (`staging → main`) merged on 2026-08-31 — everything through the FW Map city toggle is now live on `bounceops.online`.
+
+The **current** standing staging → main PR is **[#11](https://github.com/Scalability-Vamsee/vehicle-parts-check/pull/11)** — rows marked ✅ above dated after 2026-08-31 (FW Map city toggle confirmation, dead tech-app cleanup) flow into this one. Individual fix branches merging into `staging` update #11's diff automatically; no separate action needed once they're in. Once #11 merges, a new standing PR will need to be tracked here the same way.
+
+Also worth noting: two fixes landed on `staging` from outside this session's workflow and are included in #11 — a switch from CARTO map tiles (now key-gated) to OpenStreetMap tiles across all map pages (commit `261c9f5`, already separately merged to `main`), and the Indofast top-stations query fix (commits `d97aef6` + `57e3ed6`, the second commit correcting a wrong column name — `avg_bikes_visited` doesn't exist, `total_bikes_visited` does — caught by verifying directly against the live database before recommending merge).
