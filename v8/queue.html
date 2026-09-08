@@ -405,13 +405,23 @@ async function enforce24hReauth(userId){
   }catch(e){console.warn('24h check failed:',e);}
 }
 
+async function checkGlobalLogout(userId){
+  try{
+    var[r1,r2]=await Promise.all([
+      sbClient.from('user_last_login').select('last_login_at').eq('user_id',userId).single(),
+      sbClient.from('app_settings').select('value').eq('key','global_logout_at').single()
+    ]);
+    if(r1.data&&r2.data&&new Date(r1.data.last_login_at)<new Date(r2.data.value))await sbClient.auth.signOut();
+  }catch(e){}
+}
+
 (async function(){
   var mainLogo=document.querySelector('.sb-brand img');
   if(mainLogo)document.getElementById('auth-logo-img').src=mainLogo.src;
   var isHashLogin=window.location.hash.includes('access_token');
   var{data:{session}}=await sbClient.auth.getSession();
   if(session){
-    if(!isHashLogin){await enforce24hReauth(session.user.id);}
+    if(!isHashLogin){await enforce24hReauth(session.user.id);await checkGlobalLogout(session.user.id);}
     var{data:{session:s2}}=await sbClient.auth.getSession();
     if(!s2){showAuthScreen();return;}
     K=s2.access_token;CURRENT_USER_EMAIL=s2.user.email;
@@ -423,6 +433,7 @@ async function enforce24hReauth(userId){
     if((event==='SIGNED_IN'||event==='INITIAL_SESSION')&&session){
       if(event==='INITIAL_SESSION'){
         await enforce24hReauth(session.user.id);
+        await checkGlobalLogout(session.user.id);
         var{data:{session:s2}}=await sbClient.auth.getSession();
         if(!s2)return;
         K=s2.access_token;CURRENT_USER_EMAIL=s2.user.email;
@@ -451,6 +462,12 @@ async function enforce24hReauth(userId){
     document.addEventListener(e,_resetIdle,true);
   });
   _resetIdle();
+
+  // Global logout check every 5 min
+  setInterval(async function(){
+    var{data:{session:s}}=await sbClient.auth.getSession();
+    if(s)await checkGlobalLogout(s.user.id);
+  },5*60*1000);
 })();
 
 // ── Sidebar ──────────────────────────────────────────────────────────
