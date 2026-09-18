@@ -5,7 +5,21 @@ const SB_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RESEND  = Deno.env.get('RESEND_API_KEY')!;
 const MB_URL  = 'http://metabaselatest-dy7gqwqrma-el.a.run.app';
 const MB_CARD = '703fa2b6-0b00-4383-aead-9b06ae176a3b';
+
+// Primary recipient
 const ALERT_TO = 'vamsee@bounceshare.com';
+
+// Always CC'd on every alert
+const FIXED_CC = [
+  'shivani.vavilapalli@bounceshare.com',
+  'nithish@bounceshare.com',
+  'mohithml@bounceshare.com',
+  'uppu.mubarak@bounceshare.com',
+  'vishnu.rc@bounceshare.com',
+  'niranjan.tn@bounceshare.com',
+  'hemanth.k@bounceshare.com',
+  'machannagari.prakash@bounceshare.com',
+];
 
 interface Row {
   id: string;
@@ -84,7 +98,25 @@ Deno.serve(async () => {
   if (newFailures.length === 0)
     return new Response('No new failures to alert', { status: 200 });
 
-  // 5. Build email
+  // 5. Look up hub-specific HM/SM emails by hub_name (more reliable than hub_id format)
+  const affectedHubNames = [...new Set(
+    newFailures.map(r => r.hub_name).filter(Boolean)
+  )];
+
+  let hubCC: string[] = [];
+  if (affectedHubNames.length > 0) {
+    const { data: contacts } = await sb
+      .from('hub_contacts')
+      .select('hub_name, hm_email, sm_email')
+      .in('hub_name', affectedHubNames);
+    hubCC = (contacts || []).flatMap((c: any) =>
+      [c.hm_email, c.sm_email].filter(Boolean)
+    );
+  }
+
+  const allCC = [...FIXED_CC, ...hubCC];
+
+  // 6. Build email
   const fmtTime = (ts: string) => {
     try {
       return new Date(ts).toLocaleString('en-IN', {
@@ -127,13 +159,14 @@ Deno.serve(async () => {
       </p>
     </div>`;
 
-  // 6. Send email
+  // 7. Send email
   const emailRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: 'FleetPro Alerts <alerts@bounceops.online>',
       to: ALERT_TO,
+      cc: allCC,
       subject: `${subjectPrefix}${newFailures.length} JC creation failure${newFailures.length > 1 ? 's' : ''} — ${new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })}`,
       html
     })
@@ -144,10 +177,13 @@ Deno.serve(async () => {
     return new Response(`Resend failed: ${err}`, { status: 500 });
   }
 
-  // 7. Log alerted IDs
+  // 8. Log alerted IDs
   await sb.from('jc_failure_alert_log').insert(
     newFailures.map(r => ({ job_card_id: parseInt(r.id), status: r.status }))
   );
 
-  return new Response(`Alerted: ${newFailures.length} failures (${intripCount} running repair)`, { status: 200 });
+  return new Response(
+    `Alerted: ${newFailures.length} failures (${intripCount} running repair) · CC: ${allCC.join(', ')}`,
+    { status: 200 }
+  );
 });
