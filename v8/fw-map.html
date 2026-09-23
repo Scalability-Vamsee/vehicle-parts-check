@@ -235,15 +235,15 @@ body.pinned #main{margin-left:var(--sb-width)}
       <h2 id="map-title">📍 FW Flash Pending — Live Map</h2>
       <span class="count-pill" id="count-pill">Loading…</span>
       <div class="fw-toggle-group" id="city-toggle-group">
-        <button class="fw-toggle active" id="city-all" onclick="setCityFilter('ALL')">All</button>
-        <button class="fw-toggle" id="city-blr" onclick="setCityFilter('BLR')">BLR</button>
+        <button class="fw-toggle" id="city-all" onclick="setCityFilter('ALL')">All</button>
+        <button class="fw-toggle active" id="city-blr" onclick="setCityFilter('BLR')">BLR</button>
         <button class="fw-toggle" id="city-ncr" onclick="setCityFilter('NCR')">NCR</button>
         <button class="fw-toggle" id="city-hyd" onclick="setCityFilter('HYD')">HYD</button>
       </div>
       <div class="fw-toggle-group">
         <button class="fw-toggle" id="toggle-diu" onclick="toggleFwMode('diu')">DIU FW</button>
-        <button class="fw-toggle active" id="toggle-mcu" onclick="toggleFwMode('mcu')">MCU 60A</button>
-        <button class="fw-toggle" id="toggle-speedo" onclick="toggleFwMode('speedo')">🔧 Speedometer</button>
+        <button class="fw-toggle" id="toggle-mcu" onclick="toggleFwMode('mcu')">MCU 60A</button>
+        <button class="fw-toggle active" id="toggle-speedo" onclick="toggleFwMode('speedo')">🔧 Speedometer</button>
       </div>
       <input id="search-input" type="text" placeholder="🔍 Search reg / phone…" oninput="renderFiltered()" autocomplete="off"/>
       <select id="hub-filter" onchange="renderFiltered()">
@@ -296,7 +296,7 @@ var CITY_CONFIG={
   'NCR':{center:[28.62,77.22],zoom:12,bounds:[[28.38,76.80],[28.90,77.65]]},
   'HYD':{center:[17.38,78.48],zoom:12,bounds:[[17.15,78.20],[17.62,78.80]]}
 };
-var _cityActive=[]; // active city codes; [] = All (no filter)
+var _cityActive=['BLR']; // active city codes; [] = All (no filter) — defaults to BLR
 var _lastCitySel=null;
 
 // Infer a bike's city from its GPS coordinates (fw_bikes_live/mcu_bikes_live have no city column)
@@ -419,7 +419,7 @@ async function loadRsaLocations(){
 var _allPending=[];
 var _allMcu=[];
 var _allSpeedo=[];
-var _fwModes=new Set(['mcu']); // MCU 60A on by default; DIU toggleable; speedo mutually exclusive
+var _fwModes=new Set(['speedo']); // Speedometer on by default; DIU/MCU toggleable; speedo mutually exclusive
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
@@ -924,8 +924,12 @@ async function loadMapData(){
   }
 
   // Step 2: Fetch DIU + MCU in parallel (no sync yet — show fast)
+  // Speedo fetched alongside so it's ready immediately when it's the default
+  // active mode on boot, not just when the user later clicks the toggle.
   try{
-    var[pending,mcu]=await Promise.all([fetchFreshData(),fetchMcuData()]);
+    var promises=[fetchFreshData(),fetchMcuData()];
+    if(_fwModes.has('speedo')&&!_allSpeedo.length)promises.push(fetchSpeedoData());
+    var[pending,mcu]=await Promise.all(promises);
     _allMcu=mcu;
     try{localStorage.setItem(FW_CACHE_KEY,JSON.stringify({pending:pending,mcu:mcu,ts:Date.now()}));}catch(e){}
     applyPending(pending,false,null);

@@ -87,6 +87,9 @@ Deno.serve(async (_req: Request) => {
       const rrwb = v(row, "rr_wheel_bearing_status")    as string | null;
       const sss  = v(row, "side_stand_spring_status")   as string | null;
       const mss  = v(row, "main_stand_spring_status")   as string | null;
+      // New front/rear tyre split (populated once Metabase query is updated)
+      const fts  = v(row, "front_tyre_status")          as string | null;
+      const rts  = v(row, "rear_tyre_status")           as string | null;
 
       let brake_status: string | null = null;
       let brake_km_since: unknown = null, brake_km_remaining: unknown = null;
@@ -102,7 +105,9 @@ Deno.serve(async (_req: Request) => {
         last_brake_replaced_date = v(row, "last_rear_brake_replaced_date");
         last_brake_replaced_hub = v(row, "last_rear_brake_replaced_hub");
       }
-      const allStatuses = [fbs, rbs, ts, frcs, rrcs, bss, cos, frds, rrds, bos, frwb, rrwb, sss, mss];
+      // overall_urgency uses active components only (cables, brake oil, brake shoe spring, main stand spring removed 2026-09-23)
+      // front/rear tyre split replaces combined tyre once Metabase query is updated
+      const allStatuses = [fbs, rbs, (fts||ts), (rts||ts), cos, frds, rrds, frwb, rrwb, sss].filter(Boolean);
       return {
         bike_id: v(row, "bike_id"), reg_number: v(row, "reg_number"),
         dms_bike_model_id: v(row, "dms_bike_model_id"),
@@ -122,6 +127,15 @@ Deno.serve(async (_req: Request) => {
         tyre_km_remaining: v(row, "tyre_km_remaining"),
         last_tyre_replaced_date: v(row, "last_tyre_replaced_date"),
         last_tyre_replaced_hub: v(row, "last_tyre_replaced_hub"),
+        // Front/rear tyre split — populated once Metabase query adds these columns
+        front_tyre_status: fts, front_tyre_km_since: v(row, "front_tyre_km_since"),
+        front_tyre_km_remaining: v(row, "front_tyre_km_remaining"),
+        last_front_tyre_replaced_date: v(row, "last_front_tyre_replaced_date"),
+        last_front_tyre_replaced_hub: v(row, "last_front_tyre_replaced_hub"),
+        rear_tyre_status: rts, rear_tyre_km_since: v(row, "rear_tyre_km_since"),
+        rear_tyre_km_remaining: v(row, "rear_tyre_km_remaining"),
+        last_rear_tyre_replaced_date: v(row, "last_rear_tyre_replaced_date"),
+        last_rear_tyre_replaced_hub: v(row, "last_rear_tyre_replaced_hub"),
         fr_brake_cable_status: frcs, fr_brake_cable_km_since: v(row, "fr_brake_cable_km_since"),
         fr_brake_cable_km_remaining: v(row, "fr_brake_cable_km_remaining"),
         last_fr_brake_cable_replaced_date: v(row, "last_fr_brake_cable_replaced_date"),
