@@ -1528,7 +1528,6 @@ async function loadAdminData(){
     const resolvedNames=new Set((aliasRows||[]).map(a=>a.technician_name));
     ALL_SYSTEM_NAMES=[...new Set((sysNames||[]).map(r=>r.tech_name))].filter(n=>!resolvedNames.has(n)).sort();
 
-    renderTechTable(ALL_TECHS_DATA);
   }catch(e){
     console.error('Admin data error:',e);
   }
@@ -1689,24 +1688,6 @@ function toggleBurnRow(week){
 
 let ALL_TECHS_DATA=[];
 
-function filterTechTable(){
-  const q=(document.getElementById('tech-search')?.value||'').toLowerCase();
-  const f=document.getElementById('tech-filter-status')?.value||'';
-  const filtered=ALL_TECHS_DATA.filter(t=>{
-    const jcNames=Array.isArray(t.name_in_system)?t.name_in_system:[];
-    const mapped=jcNames.length>0;
-    if(f==='unmapped'&&mapped)return false;
-    if(f==='active'&&!t.active)return false;
-    if(f==='inactive'&&t.active)return false;
-    if(q){
-      const hay=`${t.name_normalized||''} ${t.email||''} ${t.hub_name||''} ${t.employee_id||''}`.toLowerCase();
-      if(!hay.includes(q))return false;
-    }
-    return true;
-  });
-  renderTechTable(filtered);
-}
-
 // Track which JC names are claimed by which tech (techId)
 let CLAIMED_JC_NAMES={}; // jcName → techId
 let ACTIVE_DROPDOWN_ID=null; // only one open at a time
@@ -1752,101 +1733,6 @@ function filterJcList(tid){
   });
 }
 
-function renderTechTable(techs){
-  const tbody=document.getElementById('tech-tbody');
-  const countEl=document.getElementById('tech-count');
-  if(countEl)countEl.textContent=`${techs.length} of ${ALL_TECHS_DATA.length} techs`;
-  buildClaimedMap();
-
-  tbody.innerHTML=techs.map(t=>{
-    const currentJcNames=Array.isArray(t.name_in_system)?t.name_in_system:(t.name_in_system?[t.name_in_system]:[]);
-    const mapped=currentJcNames.length>0;
-    const tid=t.id;
-
-    // Chips (closed state)
-    const chipsHtml=currentJcNames.length>0
-      ?currentJcNames.map(n=>`<span style="display:inline-block;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:12px;padding:2px 8px;font-size:.68rem;font-weight:600;white-space:nowrap;">${n}</span>`).join('')
-      :'<span style="font-size:.72rem;color:#9CA3AF;font-style:italic;">None selected</span>';
-
-    // Checkbox list
-    const checkboxItems=ALL_SYSTEM_NAMES.map(n=>{
-      const isChecked=currentJcNames.includes(n);
-      const claimedBy=CLAIMED_JC_NAMES[n];
-      const takenByOther=claimedBy&&claimedBy!==tid;
-      return`<label style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:${takenByOther?'not-allowed':'pointer'};opacity:${takenByOther?'0.35':'1'};${takenByOther?'':''}hover:background:#F9FAFB;">
-        <input type="checkbox" value="${n}" ${isChecked?'checked':''} ${takenByOther?'disabled':''}
-          style="accent-color:#E8191C;cursor:${takenByOther?'not-allowed':'pointer'};"
-          onchange="refreshChips('${tid}')"/>
-        <span style="font-size:.72rem;color:#0F172A;">${n}</span>
-        ${takenByOther?`<span style="font-size:.62rem;color:#9CA3AF;margin-left:auto;">taken</span>`:''}
-      </label>`;
-    }).join('');
-
-    const liveHub=TECH_HUB_MAP[t.name_normalized]||{};
-    const hubDisplay=liveHub.hub_name||t.hub_name||'—';
-    const cityDisplay=liveHub.city||t.city||'—';
-    const rowBg=!mapped?'background:#FEF2F2':'';
-
-    return`<tr style="${rowBg}" id="row-${tid}">
-      <td style="font-size:.75rem;color:var(--muted);font-weight:600;white-space:nowrap;">${t.employee_id||'—'}</td>
-      <td>
-        <div style="font-size:.82rem;font-weight:700;color:#0F172A;">${t.name_normalized||'—'}</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">${t.email||'—'}</div>
-      </td>
-      <td>
-        <div style="font-size:.78rem;font-weight:600;color:#0F172A;">${hubDisplay}</div>
-        <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">${cityDisplay}</div>
-      </td>
-      <td>
-        <input id="norm-name-${tid}" value="${(t.name_normalized||'').replace(/"/g,'&quot;')}"
-          style="width:140px;font-size:.75rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;"
-          placeholder="Correct spelling…"/>
-      </td>
-      <td style="min-width:220px;">
-        <!-- Chips view (closed) -->
-        <div id="jc-chips-${tid}" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px;align-items:center;">
-          ${chipsHtml}
-        </div>
-        <!-- Dropdown (open) -->
-        <div id="jc-dropdown-${tid}" style="display:none;">
-          <input id="jc-search-${tid}" type="text" placeholder="Search JC names…" oninput="filterJcList('${tid}')"
-            style="width:100%;font-size:.72rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;margin-bottom:4px;"/>
-          <div id="jc-list-${tid}" style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:4px;background:#fff;">
-            ${checkboxItems}
-          </div>
-          <button onclick="closeJcDropdown('${tid}')"
-            style="margin-top:5px;font-size:.68rem;padding:4px 10px;background:#0F172A;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;">
-            Done
-          </button>
-        </div>
-        <!-- Edit button -->
-        <button onclick="openJcDropdown('${tid}')" id="jc-edit-btn-${tid}"
-          style="margin-top:4px;font-size:.65rem;padding:3px 8px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;color:var(--muted);">
-          ✏️ Edit
-        </button>
-      </td>
-      <td style="text-align:center;">
-        <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer;">
-          <input type="checkbox" ${t.active?'checked':''} onchange="toggleTechActive('${tid}',this.checked)"
-            style="opacity:0;width:0;height:0;position:absolute"/>
-          <span style="position:absolute;inset:0;border-radius:20px;background:${t.active?'#16A34A':'#D1D5DB'};transition:.2s;">
-            <span style="position:absolute;top:2px;left:${t.active?'18':'2'}px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;"></span>
-          </span>
-        </label>
-      </td>
-      <td>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          <button onclick="saveTechMapping('${tid}')"
-            style="font-size:.68rem;padding:5px 10px;background:#E8191C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;white-space:nowrap;">
-            Save &amp; Sync
-          </button>
-          <span id="sys-status-${tid}" style="font-size:.65rem;color:#16A34A;min-height:14px;"></span>
-        </div>
-      </td>
-    </tr>`;
-  }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--muted);">No results</td></tr>';
-}
-
 // Legacy stubs — no longer used (directory moved to hr_employees + jc_name_aliases)
 async function saveTechDetails(techId){console.warn('saveTechDetails: legacy, no-op');}
 
@@ -1878,111 +1764,6 @@ async function triggerSync(){
   }
 }
 
-function handleFileSelect(){}
-function processUpload(){}
-
-async function processUpload(){
-  if(!selectedFile)return;
-  const btn=document.getElementById('process-btn');
-  btn.disabled=true;btn.textContent='Processing…';
-
-  try{
-    const data=await selectedFile.arrayBuffer();
-    const wb=XLSX.read(data,{type:'array',cellDates:true});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{raw:true});
-
-    if(!rows.length){alert('No data in file');btn.textContent='Process Upload';btn.disabled=false;return;}
-
-    // Normalize names and upsert
-    const insertRows=[];
-    const unresolvedNames=new Set();
-
-    rows.forEach(row=>{
-      // Support both snake_case (Metabase export) and Title Case column names
-      const rawName=row['technician_name']||row['Technician Name']||'';
-      const normalized=NAME_MAP[rawName]||rawName;
-      if(!NAME_MAP[rawName])unresolvedNames.add(rawName);
-
-      // Normalise date/datetime — handle string 'yyyy-mm-dd', ISO, JS Date, or Excel serial number
-      const excelToDate=n=>{const d=new Date((n-25569)*86400000);return d;};
-      const toDateStr=v=>{
-        if(!v)return null;
-        if(v instanceof Date)return v.toISOString().split('T')[0];
-        const s=String(v).trim();
-        if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.slice(0,10);
-        const n=Number(s);
-        if(!isNaN(n)&&n>40000&&n<60000)return excelToDate(n).toISOString().split('T')[0];
-        return null;
-      };
-      const toDtStr=v=>{
-        if(!v)return null;
-        if(v instanceof Date)return v.toISOString().replace('Z','');
-        const s=String(v).trim();
-        if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.replace(' ','T').replace(/(\.\d{3})\d*/,'$1');
-        const n=Number(s);
-        if(!isNaN(n)&&n>40000&&n<60000)return excelToDate(n).toISOString().replace('Z','');
-        return null;
-      };
-      const billedDate=toDateStr(row['jc_billed_date']||row['JC Billed Date']);
-      const billedDt=toDtStr(row['jc_billed_datetime']||row['JC Billed DateTime']);
-      const intrip=row['intrip']!=null?row['intrip']:(row['Intrip']||0);
-      const regNum=row['reg_number']||row['Reg Number']||null;
-      const bikeModel=row['bike_model']||row['Bike Model']||null;
-      const hubName=row['hub_name']||row['Hub Name']||null;
-      const city=row['city']||row['City']||null;
-      const rrCount=row['rr_count_3d_comeback']!=null?row['rr_count_3d_comeback']:0;
-      const isVoid=rrCount>0||(row['is_void']||row['Is Void']||false);
-      const firstComeback=row['first_comeback_datetime']||row['First Comeback DateTime']||null;
-
-      // Compute week_start (Monday of billed date)
-      let weekStart=null;
-      if(billedDate){
-        const d=new Date(billedDate);
-        const day=d.getDay();
-        const diff=d.getDate()-(day===0?6:day-1);
-        const mon=new Date(d.setDate(diff));
-        weekStart=mon.toISOString().split('T')[0];
-      }
-
-      insertRows.push({
-        jc_billed_date:billedDate,
-        jc_billed_datetime:billedDt,
-        intrip:Number(intrip),
-        reg_number:regNum,
-        bike_model:bikeModel,
-        technician_name_raw:rawName,
-        technician_name:normalized,
-        hub_name:hubName,
-        city:city,
-        is_void:Boolean(isVoid),
-        first_comeback_datetime:firstComeback||null,
-        week_start:weekStart
-      });
-    });
-
-    // Upsert to DB
-    const{error}=await sbClient.from('incentive_jc_log').upsert(insertRows,{onConflict:'jc_billed_datetime,technician_name,reg_number'});
-    if(error)throw error;
-
-    // Show unresolved names
-    if(unresolvedNames.size>0){
-      const panel=document.getElementById('unresolved-panel');
-      document.getElementById('unresolved-list').innerHTML=[...unresolvedNames].map(n=>`• ${n}`).join('<br/>');
-      panel.style.display='block';
-    }
-
-    alert(`Uploaded ${insertRows.length} rows successfully!`);
-    btn.textContent='Process Upload';
-    btn.disabled=false;
-    await loadDashboard();
-  }catch(e){
-    console.error('Upload error:',e);
-    alert('Error: '+e.message);
-    btn.textContent='Process Upload';
-    btn.disabled=false;
-  }
-}
 
 
 /* ── HUB LEADERBOARD ── */

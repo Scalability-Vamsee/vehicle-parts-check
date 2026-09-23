@@ -2800,13 +2800,19 @@ async function assignVehicle(){
   }else{alert('Failed to assign bike');}
 }
 function toggleSidebar(){var sb=document.getElementById('sb'),ov=document.getElementById('ov');sb.classList.toggle('open');ov.classList.toggle('show');}
-async function loadAndApplyPermissions(userId){
+async function loadAndApplyPermissions(session){
+  var userId=session.user.id;
   try{
-    var{data:r1}=await sbClient.from('user_groups').select('group_id').eq('user_id',userId);
-    if(!r1||!r1.length){window.location.href='./index.html';return;}
-    var{data:r2}=await sbClient.from('group_features').select('feature_key').in('group_id',r1.map(function(r){return r.group_id;}));
-    var f={};(r2||[]).forEach(function(r){f[r.feature_key]=true;});
-    if(!f['rsa-warroom']){window.location.href='./index.html';return;}
+    var f={};
+    if(session.user.app_metadata&&session.user.app_metadata.is_superadmin){
+      f['rsa-warroom']=true;f['rsa-admin']=true;
+    }else{
+      var{data:r1}=await sbClient.from('user_groups').select('group_id').eq('user_id',userId);
+      if(!r1||!r1.length){window.location.href='./index.html';return;}
+      var{data:r2}=await sbClient.from('group_features').select('feature_key').in('group_id',r1.map(function(r){return r.group_id;}));
+      (r2||[]).forEach(function(r){f[r.feature_key]=true;});
+      if(!f['rsa-warroom']){window.location.href='./index.html';return;}
+    }
     var v=document.getElementById('perm-veil');if(v)v.remove();
     document.querySelectorAll('[data-feature]').forEach(function(el){if(!f[el.getAttribute('data-feature')])el.style.display='none';});
   }catch(e){console.warn('[FP] Permission check failed',e);}
@@ -2845,7 +2851,7 @@ async function loadAndApplyPermissions(userId){
     hideAuthScreen();
     document.getElementById('logout-btn').style.display='block';
     _authReady=true;
-    loadAndApplyPermissions(session.user.id);
+    loadAndApplyPermissions(session);
     // No triggerSync on load — cron handles every 2 min; only manual Refresh triggers sync
     setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
     openTicketsPanel();
@@ -2858,7 +2864,7 @@ async function loadAndApplyPermissions(userId){
       hideAuthScreen();
       document.getElementById('logout-btn').style.display='block';
       _authReady=true;
-      loadAndApplyPermissions(session.user.id);
+      loadAndApplyPermissions(session);
       setTimeout(function(){fetchAndLoad(false);loadRsaBikes().then(loadRsaLocations);loadHubs();},800);
       openTicketsPanel();
     }else if(event==='SIGNED_OUT'){
