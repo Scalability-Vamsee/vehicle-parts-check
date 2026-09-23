@@ -130,7 +130,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 @keyframes btn-spin{to{transform:rotate(360deg)}}
 .fw-toggle-group{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
 .fw-toggle{padding:5px 11px;font-size:.75rem;font-weight:700;font-family:'Inter',sans-serif;background:#fff;border:none;cursor:pointer;color:#6B7280;transition:all .15s;white-space:nowrap}
-.fw-toggle:first-child{border-right:1px solid var(--border)}
+.fw-toggle:not(:last-child){border-right:1px solid var(--border)}
 .fw-toggle.active{background:#E8191C;color:#fff}
 #map-error{display:none;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;font-size:.78rem;padding:8px 14px;border-radius:8px;margin:0 16px 8px;}
 #map{flex:1;min-height:400px;}
@@ -232,7 +232,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 
   <div id="map-wrap">
     <div id="map-topbar">
-      <h2>📍 FW Flash Pending — Live Map</h2>
+      <h2 id="map-title">📍 FW Flash Pending — Live Map</h2>
       <span class="count-pill" id="count-pill">Loading…</span>
       <div class="fw-toggle-group" id="city-toggle-group">
         <button class="fw-toggle active" id="city-all" onclick="setCityFilter('ALL')">All</button>
@@ -243,6 +243,7 @@ body.pinned #main{margin-left:var(--sb-width)}
       <div class="fw-toggle-group">
         <button class="fw-toggle" id="toggle-diu" onclick="toggleFwMode('diu')">DIU FW</button>
         <button class="fw-toggle active" id="toggle-mcu" onclick="toggleFwMode('mcu')">MCU 60A</button>
+        <button class="fw-toggle" id="toggle-speedo" onclick="toggleFwMode('speedo')">🔧 Speedometer</button>
       </div>
       <input id="search-input" type="text" placeholder="🔍 Search reg / phone…" oninput="renderFiltered()" autocomplete="off"/>
       <select id="hub-filter" onchange="renderFiltered()">
@@ -324,6 +325,7 @@ function setCityFilter(code){
 // Returns only FW-pending bikes (~1,366 rows) vs fetching all 3 tables (~20k rows)
 var FW_LIVE_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/fw_bikes_live?select=chassis_number,reg_number,hub,lat,lng,loc_time,current_soc,vehicle_status,rider_name,rider_phone&limit=5000';
 var MCU_LIVE_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/mcu_bikes_live?select=chassis_number,reg_number,hub,lat,lng,loc_time,current_soc,vehicle_status,rider_name,rider_phone&limit=5000';
+var SPEEDO_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/speedometer_pending?select=serial_number,reg_number,hub,zone,lat,lng,loc_time,vehicle_status,completion,technician_name&completion=eq.Pending&limit=1000';
 var HUB_LOCATION_URL='https://clkfvmmlgwcvntxnolsv.supabase.co/rest/v1/rental_locations?select=id,location_name,lat,lng,short_address,status&status=eq.active&city_id=eq.1';
 
 // Darkstore/charge station data (embedded)
@@ -416,7 +418,8 @@ async function loadRsaLocations(){
 // Global state
 var _allPending=[];
 var _allMcu=[];
-var _fwModes=new Set(['mcu']); // MCU 60A on by default; DIU toggleable
+var _allSpeedo=[];
+var _fwModes=new Set(['mcu']); // MCU 60A on by default; DIU toggleable; speedo mutually exclusive
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
@@ -522,8 +525,8 @@ async function loadTopIndofastStations(){
         .bindPopup(popup)
         .addTo(topInMarkerGroup);
     });
-    // Visible only when MCU mode is active
-    if(_fwModes.has('mcu')){
+    // Visible only when MCU mode is active (not DIU-only or speedo)
+    if(_fwModes.has('mcu')&&!_fwModes.has('speedo')){
       if(!leafMap.hasLayer(topInMarkerGroup))leafMap.addLayer(topInMarkerGroup);
     }
   }catch(e){console.warn('loadTopIndofastStations:',e);}
@@ -585,6 +588,36 @@ function makeHighlightIcon(loc_time){
   return L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:3px solid #fff;box-shadow:0 0 0 3px '+c+',0 2px 8px rgba(0,0,0,.4)"></div>',iconSize:[16,16],iconAnchor:[8,8]});
 }
 
+// Diamond-shaped orange icon for speedometer bikes
+function makeSpeedoIcon(){
+  return L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#EA580C;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);transform:rotate(45deg)"></div>',iconSize:[12,12],iconAnchor:[6,6]});
+}
+
+function speedoPopup(b){
+  var locAge='—';
+  if(b.loc_time){
+    var ts=b.loc_time.toString().trim().replace(' ','T').replace(/(Z|[+-]\d{2}(:?\d{2})?)$/,'');
+    var lt=new Date(ts+'Z');
+    if(!isNaN(lt.getTime())){
+      var mins=(Date.now()-lt.getTime())/60000;
+      var h=Math.floor(mins/60),m=Math.floor(mins%60);
+      locAge=h>0?h+'h '+(m?m+'m ':'')+'ago':m+'m ago';
+    }
+  }
+  var rows='<tr><td style="color:#6B7280;padding:2px 0;white-space:nowrap">Serial No</td><td style="text-align:right;font-weight:500;padding-left:8px;font-size:11px">'+b.chassis+'</td></tr>'+
+    '<tr><td style="color:#6B7280;padding:2px 0">Hub</td><td style="text-align:right;font-weight:500;padding-left:8px">'+b.hub+'</td></tr>'+
+    '<tr><td style="color:#6B7280;padding:2px 0">Zone</td><td style="text-align:right;font-weight:500;padding-left:8px">'+(b.zone||'—')+'</td></tr>'+
+    '<tr><td style="color:#6B7280;padding:2px 0">GPS age</td><td style="text-align:right;font-weight:500;padding-left:8px">'+locAge+'</td></tr>';
+  if(b.technician_name)rows+='<tr><td style="color:#6B7280;padding:2px 0">Technician</td><td style="text-align:right;font-weight:500;padding-left:8px">'+b.technician_name+'</td></tr>';
+  var gmapsUrl='https://www.google.com/maps/dir/?api=1&destination='+b.lat+','+b.lng;
+  return '<div style="min-width:200px;font-family:Inter,sans-serif;">'+
+    '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">'+b.reg+'</div>'+
+    '<div style="font-size:11px;color:#EA580C;font-weight:600;margin-bottom:6px;">🔧 Speedometer Pending</div>'+
+    '<table style="font-size:12px;width:100%;border-collapse:collapse;">'+rows+'</table>'+
+    '<a href="'+gmapsUrl+'" target="_blank" style="display:block;margin-top:10px;text-align:center;background:#EA580C;color:#fff;padding:6px 0;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;">🗺️ Get Directions</a>'+
+    '</div>';
+}
+
 function renderFiltered(){
   var raw=(document.getElementById('search-input').value||'').trim();
   var q=normReg(raw);
@@ -605,16 +638,25 @@ function renderFiltered(){
     return true;
   });
   var focusMarker=null;
+  var isSpeedo=_fwModes.has('speedo');
   filtered.forEach(function(b){
-    var isOnly=(filtered.length===1&&raw);
+    if(!b.lat||!b.lng)return; // skip bikes without GPS
+    var isOnly=(filtered.length===1&&raw)||(filtered.filter(function(x){return x.lat&&x.lng;}).length===1&&raw);
     (function(bike){
-      var m=L.marker([bike.lat,bike.lng],{icon:isOnly?makeHighlightIcon(bike.loc_time):makeBikeIcon(bike.loc_time)})
-        .bindPopup(function(){return bikePopup(bike);},{maxWidth:280})
+      var icon=isOnly?makeHighlightIcon(bike.loc_time):(isSpeedo?makeSpeedoIcon():makeBikeIcon(bike.loc_time));
+      var popup=isSpeedo?speedoPopup(bike):bikePopup(bike);
+      var m=L.marker([bike.lat,bike.lng],{icon:icon})
+        .bindPopup(function(){return popup;},{maxWidth:280})
         .addTo(markerGroup);
       if(isOnly)focusMarker=m;
     })(b);
   });
-  document.getElementById('count-pill').textContent=filtered.length+(raw||hub?' filtered':' bikes pending');
+  var onMap=filtered.filter(function(b){return b.lat&&b.lng;}).length;
+  var noGps=filtered.length-onMap;
+  var suffix=isSpeedo
+    ?(raw||hub?' filtered':' speedometer pending')+(noGps?' ('+noGps+' no GPS)':'')
+    :(raw||hub?' filtered':' bikes pending');
+  document.getElementById('count-pill').textContent=onMap+suffix;
   if(typeof updateClearBtn==='function')updateClearBtn();
   // City pan/zoom: only refit when city selection changes (mirrors rsa.html)
   var cityKey=_cityActive.slice().sort().join(',');
@@ -703,6 +745,7 @@ var FW_CACHE_KEY='fw_map_pending_v8';
 
 // Rebuild hub filter dropdown from the active mode's data
 function getMergedSource(){
+  if(_fwModes.has('speedo'))return _allSpeedo;
   if(_fwModes.has('diu')&&_fwModes.has('mcu')){
     // Merge both; dedup by chassis (prefer DIU entry if clash)
     var seen={};
@@ -732,13 +775,28 @@ function rebuildHubFilter(){
   });
 }
 
-// Toggle individual FW mode on/off (at least one must remain active)
+// Toggle FW mode — speedo is mutually exclusive with DIU/MCU
 function toggleFwMode(mode){
-  if(_fwModes.has(mode)&&_fwModes.size===1)return; // keep at least one active
-  if(_fwModes.has(mode))_fwModes.delete(mode);
-  else _fwModes.add(mode);
+  if(mode==='speedo'){
+    if(_fwModes.has('speedo'))return; // already active, no-op
+    _fwModes=new Set(['speedo']);
+    if(!_allSpeedo.length)fetchSpeedoData();
+  }else{
+    // Activating DIU or MCU: deactivate speedo if it was on
+    if(_fwModes.has('speedo')){
+      _fwModes=new Set([mode]);
+    }else{
+      if(_fwModes.has(mode)&&_fwModes.size===1)return; // keep at least one active
+      if(_fwModes.has(mode))_fwModes.delete(mode);
+      else _fwModes.add(mode);
+    }
+  }
   document.getElementById('toggle-diu').classList.toggle('active',_fwModes.has('diu'));
   document.getElementById('toggle-mcu').classList.toggle('active',_fwModes.has('mcu'));
+  document.getElementById('toggle-speedo').classList.toggle('active',_fwModes.has('speedo'));
+  // Update page title
+  var titleEl=document.getElementById('map-title');
+  if(titleEl)titleEl.textContent=_fwModes.has('speedo')?'🔧 Speedometer Pending — Live Map':'📍 FW Flash Pending — Live Map';
   document.getElementById('search-input').value='';
   rebuildHubFilter();
   renderFiltered();
@@ -812,6 +870,35 @@ async function fetchMcuData(){
       rider_phone:b.rider_phone||''
     };
   });
+}
+
+async function fetchSpeedoData(){
+  try{
+    var res=await fetch(SPEEDO_URL,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+    if(!res.ok)throw new Error('Speedo fetch error '+res.status);
+    var rows=await res.json();
+    _allSpeedo=rows.map(function(r){
+      return {
+        chassis:r.serial_number||'',
+        reg:r.reg_number||'',
+        lat:r.lat,
+        lng:r.lng,
+        loc_time:r.loc_time,
+        hub:r.hub||'',
+        zone:r.zone||'',
+        technician_name:r.technician_name||'',
+        completion:r.completion||'Pending',
+        soc:null,
+        rider_name:'',
+        rider_phone:''
+      };
+    });
+    if(_fwModes.has('speedo')){rebuildHubFilter();renderFiltered();}
+    var now=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    document.getElementById('updated-at').textContent='Data as of '+now+' · '+_allSpeedo.length+' speedometer pending';
+  }catch(e){
+    console.warn('[fw-map] fetchSpeedoData:',e);
+  }
 }
 
 async function loadMapData(){
