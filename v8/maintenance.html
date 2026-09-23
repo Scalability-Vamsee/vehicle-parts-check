@@ -746,6 +746,23 @@ var THRESH_DRUM={
 
 function sr(s){return s==='Overdue'?1:s==='Due Soon'?2:s==='OK'?3:s==='N/A'?5:4;}
 
+// A bike that has never had a given part replaced shows 'No Data' from the
+// SQL, even at 40,000km with a factory-original part well past due — the
+// query has no replacement event to anchor km_since to. The factory-fitted
+// part has been on the bike since km 0 of its life, not since some unknown
+// date, so treat "No Data + no last-replaced date" as km_since = the
+// bike's whole-life odo (estimated_current_odo) instead of leaving it
+// blank. Only kicks in when there's truly zero history (ld null) — a part
+// that HAS a real last-replaced date but genuinely missing odo context
+// stays untouched.
+function zeroKmFallback(p,estOdo){
+  if(p.st!=='No Data'||p.ld||estOdo==null||!p.th)return p;
+  var ks=estOdo;
+  var kr=p.th-ks;
+  var st=kr<0?'Overdue':kr<=1000?'Due Soon':'OK';
+  return {label:p.label,st:st,ks:ks,kr:kr,ld:p.ld,lh:p.lh,th:p.th};
+}
+
 function partCard(label,status,kmSince,kmRem,lastDate,lastHub,thresh){
   var s=status||'No Data';
   if(s==='N/A'){
@@ -816,6 +833,7 @@ function card(v){
       {label:'Rear Wheel Bearing',st:v.rr_wheel_bearing_status,ks:v.rr_wheel_bearing_km_since,kr:v.rr_wheel_bearing_km_remaining,ld:v.last_rr_wheel_bearing_replaced_date,lh:v.last_rr_wheel_bearing_replaced_hub,th:T.rr_wheel_bearing},
       {label:'Side Stand Spring',st:v.side_stand_spring_status,ks:v.side_stand_spring_km_since,kr:v.side_stand_spring_km_remaining,ld:v.last_side_stand_spring_replaced_date,lh:v.last_side_stand_spring_replaced_hub,th:T.side_stand_spring}
     ];
+    parts=parts.map(function(p){return zeroKmFallback(p,v.estimated_current_odo);});
     parts.sort(function(a,b){return sr(a.st)-sr(b.st);});
     var cov=parts.filter(function(p){return p.st==='Overdue';}).length;
     var cds=parts.filter(function(p){return p.st==='Due Soon';}).length;
