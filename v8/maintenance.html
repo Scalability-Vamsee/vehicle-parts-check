@@ -368,17 +368,8 @@ body.pinned #main{margin-left:var(--sb-width)}
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="si" type="text" placeholder="e.g. KA05AQ6570" autocomplete="off" spellcheck="false"/>
       </div>
-      <div class="hint" id="hint-area">Try:
-        <span class="ex" data-reg="KA05AQ6570">KA05AQ6570</span>
-        <span class="ex" data-reg="NCRBD00238">NCRBD00238</span>
-        <span class="ex" data-reg="DL9EV7460">DL9EV7460</span>
-      </div>
       <div id="sync-time" style="text-align:center;color:rgba(255,255,255,.3);font-size:.68rem;margin-top:10px;display:none">
         Parts data as of: <span id="sync-time-val">—</span><span id="parts-next-run" style="display:none"> · Next run: <span id="parts-next-run-val">—</span></span>
-      </div>
-      <div id="jc-sync-bar" style="text-align:center;color:rgba(255,255,255,.3);font-size:.68rem;margin-top:5px;display:none">
-        📋 JC History as of: <span id="jc-sync-time-val" style="color:rgba(255,255,255,.55);font-weight:500">—</span><span id="jc-next-run-wrap" style="display:none"> · Next run: <span id="jc-next-run-val" style="color:rgba(255,255,255,.55);font-weight:500">—</span></span>
-        <button id="jc-global-sync-btn" onclick="syncAllJC(this)" style="margin-left:8px;background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;padding:2px 9px;font-size:.64rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;vertical-align:middle">↺ Sync All</button>
       </div>
     </div>
   </section>
@@ -522,29 +513,6 @@ function loadPostAuthData(){
       var nrw=document.getElementById('parts-next-run');if(nrw)nrw.style.display='';
     }
   }).catch(function(){});
-  // JC History sync time (3-hour cron)
-  fetch(SB+'/rest/v1/jc_history?select=synced_at&order=synced_at.desc&limit=1',
-    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    var bar=document.getElementById('jc-sync-bar');if(bar)bar.style.display='block';
-    if(d&&d.length){
-      var el=document.getElementById('jc-sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].synced_at);
-      var nr=document.getElementById('jc-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
-      var nrw=document.getElementById('jc-next-run-wrap');if(nrw)nrw.style.display='';
-    }
-  }).catch(function(){});
-  // Random critical bikes for Try hints
-  fetch(SB+'/rest/v1/vehicle_parts_check_flag?select=reg_number&overall_urgency=in.(1,2)&limit=100',
-    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(!d||d.length<3)return;
-    for(var i=d.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=d[i];d[i]=d[j];d[j]=tmp;}
-    var picks=d.slice(0,3).map(function(v){return v.reg_number;});
-    var hintEl=document.getElementById('hint-area');
-    if(hintEl)hintEl.innerHTML='Try: '+picks.map(function(r){return '<span class="ex" data-reg="'+r+'">'+r+'</span>';}).join(' ');
-  }).catch(function(){});
 }
 
 (async function(){
@@ -616,7 +584,6 @@ document.getElementById('ov').addEventListener('click',closeSidebar);
 var si=document.getElementById('si');
 var rv=document.getElementById('res');
 var t;
-document.body.addEventListener('click',function(e){var el=e.target.closest('.ex');if(el){go(el.dataset.reg);}});
 si.addEventListener('input',function(){
   clearTimeout(t);
   var q=si.value.trim().toUpperCase().replace(/[\s\-]/g,'');
@@ -624,7 +591,6 @@ si.addEventListener('input',function(){
   rv.innerHTML='<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
   t=setTimeout(function(){run(q);},300);
 });
-function go(v){si.value=v;si.dispatchEvent(new Event('input'));}
 function run(q){
   fetch(SB+'/rest/v1/vehicle_parts_check_flag?reg_number=ilike.'+encodeURIComponent('%'+q+'%')+'&limit=20&select=*&order=overall_urgency.asc',
     {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
@@ -759,7 +725,10 @@ function zeroKmFallback(p,estOdo){
   if(p.st!=='No Data'||p.ld||estOdo==null||!p.th)return p;
   var ks=estOdo;
   var kr=p.th-ks;
-  var st=kr<0?'Overdue':kr<=1000?'Due Soon':'OK';
+  // Due Soon = within 10% of threshold on EITHER side of the line (not just before it) —
+  // avoids a bike snapping straight to red the instant it crosses, with no amber buffer.
+  var band=p.th*0.1;
+  var st=kr<-band?'Overdue':kr<=band?'Due Soon':'OK';
   return {label:p.label,st:st,ks:ks,kr:kr,ld:p.ld,lh:p.lh,th:p.th};
 }
 
@@ -926,6 +895,10 @@ function buildJCSection(section,rows,bikeId,reg){
     +'<span class="jc-count">'+rows.length+' entries · '+Object.keys(jcSet).length+' JCs</span>'
     +'</div>';
   var html='<div class="jc-hdr"><div class="jc-hdr-title">JC History</div><div style="display:flex;gap:8px;align-items:center"><button class="dl-btn" style="margin-top:0;background:#374151" id="jc-sync-btn-'+bikeId+'" onclick="forceRefreshJC('+bikeId+',\''+reg+'\',this)">↺ Sync Now</button><button class="dl-btn" style="margin-top:0" onclick="dlCSV('+bikeId+',\''+reg+'\')">⬇ Download CSV</button></div></div>'
+    +'<div class="jc-sync-line" style="color:var(--muted);font-size:.68rem;margin:-4px 0 10px">'
+    +'📋 JC History as of: <span class="jc-sync-time-val" style="color:#374151;font-weight:500">—</span><span class="jc-next-run-wrap" style="display:none"> · Next run: <span class="jc-next-run-val" style="color:#374151;font-weight:500">—</span></span>'
+    +' <button class="dl-btn jc-global-sync-btn" style="margin-top:0;background:rgba(0,0,0,.06);color:#374151;padding:2px 9px;font-size:.64rem" onclick="syncAllJC(this)">↺ Sync All</button>'
+    +'</div>'
     +filterHtml
     +'<div class="jc-wrap"><table class="jc-tbl"><thead><tr><th>JC No</th><th>Date</th><th>Hub</th><th>ODO</th><th>Service</th><th>Type</th><th>Item</th><th>Qty</th><th>Amount</th><th>Technician</th></tr></thead><tbody></tbody></table></div>';
   section.innerHTML=html;
@@ -933,6 +906,15 @@ function buildJCSection(section,rows,bikeId,reg){
   var itemInput=section.querySelector('.jc-f-item');
   if(itemInput){var jcIt;itemInput.addEventListener('input',function(){clearTimeout(jcIt);jcIt=setTimeout(function(){renderJCRows(section,rows);},200);});}
   renderJCRows(section,rows);
+  fetch(SB+'/rest/v1/jc_history?select=synced_at&order=synced_at.desc&limit=1',
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d||!d.length)return;
+    var el=section.querySelector('.jc-sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].synced_at);
+    var nr=section.querySelector('.jc-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
+    var nrw=section.querySelector('.jc-next-run-wrap');if(nrw)nrw.style.display='';
+  }).catch(function(){});
 }
 function clearJCFilters(btn){
   var section=btn.closest('.jc-section');
@@ -997,14 +979,16 @@ function forceRefreshJC(bikeId,reg,btn){
 }
 function syncAllJC(btn){
   btn.disabled=true;btn.innerHTML='↺ Syncing…';
+  var line=btn.closest('.jc-sync-line');
   fetch(SB+'/functions/v1/jc-history-sync',{
     method:'POST',
     headers:{apikey:ANON_KEY,'Authorization':'Bearer '+K,'Content-Type':'application/json'},
     body:'{}'
   }).then(function(r){if(!r.ok)r.text().then(function(t){console.warn('jc-history-sync',r.status,t);});})
   .catch(function(){});
-  // Poll max synced_at every 10s for up to 120s; update bar when timestamp changes
-  var prev=document.getElementById('jc-sync-time-val')?document.getElementById('jc-sync-time-val').textContent:'';
+  // Poll max synced_at every 10s for up to 120s; update line when timestamp changes
+  var timeEl=line?line.querySelector('.jc-sync-time-val'):null;
+  var prev=timeEl?timeEl.textContent:'';
   var elapsed=0,poll=setInterval(function(){
     elapsed+=10000;
     fetch(SB+'/rest/v1/jc_history?select=synced_at&order=synced_at.desc&limit=1',
@@ -1015,9 +999,9 @@ function syncAllJC(btn){
         var next=fmtSyncTime(d[0].synced_at);
         if(next!==prev){
           clearInterval(poll);
-          var el=document.getElementById('jc-sync-time-val');if(el)el.textContent=next;
-          var nr=document.getElementById('jc-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
-          var nrw=document.getElementById('jc-next-run-wrap');if(nrw)nrw.style.display='';
+          var el=line?line.querySelector('.jc-sync-time-val'):null;if(el)el.textContent=next;
+          var nr=line?line.querySelector('.jc-next-run-val'):null;if(nr)nr.textContent=calcNextRun(d[0].synced_at,3*3600000);
+          var nrw=line?line.querySelector('.jc-next-run-wrap'):null;if(nrw)nrw.style.display='';
           btn.disabled=false;btn.innerHTML='↺ Sync All';
         }
       }
