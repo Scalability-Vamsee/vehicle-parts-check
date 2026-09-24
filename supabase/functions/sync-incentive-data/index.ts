@@ -1,8 +1,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-// v21 — restored from v20 after incorrect session edits (v17/v18 were based on stale v16 fork)
-// v20 features retained: purge_stale_jc_log_rows, toIstTimestamptz, jcsl_id, jc_weight
-// isVoid logic unchanged: trusts Metabase rr_count_3d_comeback directly (no datetime filter)
+// v22 — techName fix: always use legacyNameMap (DMS name → incentive_technicians.name_normalized)
+// so all raw-name variants of the same person resolve to the same display name.
+// The rebuild's merged CTE collapses by tech_name — no need for jc_name_aliases for merge.
+// v21 features retained: purge_stale_jc_log_rows, toIstTimestamptz, jcsl_id, jc_weight
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -68,7 +69,7 @@ Deno.serve(async (req) => {
 
   try {
     // 1. Fetch from Metabase public API — /query/json has no 2000-row API cap
-    console.log(`[sync-incentive v19] Fetching from Metabase card ${CARD_UUID}`);
+    console.log(`[sync-incentive v22] Fetching from Metabase card ${CARD_UUID}`);
     const mbRes = await fetch(`${METABASE_BASE}/api/public/card/${CARD_UUID}/query/json`);
     if (!mbRes.ok) throw new Error(`Metabase fetch failed: ${mbRes.status}`);
     // /query/json returns a flat array of row objects: [{col: val, ...}, ...]
@@ -77,11 +78,12 @@ Deno.serve(async (req) => {
       throw new Error(`Metabase /query/json returned non-array: ${JSON.stringify(parsed).slice(0, 300)}`);
     }
     const rawRows: Record<string, unknown>[] = parsed;
-    console.log(`[sync-incentive v19] Metabase returned ${rawRows.length} rows`);
+    console.log(`[sync-incentive v22] Metabase returned ${rawRows.length} rows`);
 
     const col = (row: Record<string, unknown>, name: string) => row[name];
 
     // 2. Load jc_name_aliases: normalized JC name → employee_id
+    //    (kept for employee_id assignment on payroll export, NOT used as merge key)
     const { data: aliases } = await supabase
       .from('jc_name_aliases')
       .select('technician_name, employee_id');
@@ -90,23 +92,27 @@ Deno.serve(async (req) => {
     for (const a of aliases ?? []) {
       aliasMap[a.technician_name] = a.employee_id;
     }
-    console.log(`[sync-incentive v19] Loaded ${Object.keys(aliasMap).length} aliases`);
+    console.log(`[sync-incentive v22] Loaded ${Object.keys(aliasMap).length} aliases`);
 
-    // 3. Load legacy name mappings from incentive_technicians (raw → normalized display name)
-    // This handles the old mapping system — will be phased out as aliases take over
+    // 3. Load DMS name → display name mappings from incentive_technicians
+    //    name_in_system contains DMS raw names; name_normalized is the canonical display name.
+    //    This is the PRIMARY merge key: all raw-name variants that map to the same name_normalized
+    //    will produce the same technician_name → rebuild's merged CTE collapses them.
     const { data: techDir } = await supabase
       .from('incentive_technicians')
-      .select('name_normalized, name_in_system')
+      .select('employee_id, name_normalized, name_in_system')
       .not('name_in_system', 'is', null);
 
-    const legacyNameMap: Record<string, string> = {};
+    const legacyNameMap: Record<string, string> = {};   // raw DMS name → name_normalized
+    const empIdByNormalized: Record<string, string> = {}; // name_normalized → employee_id
     for (const t of techDir ?? []) {
       const jcNames: string[] = Array.isArray(t.name_in_system) ? t.name_in_system : [];
       for (const raw of jcNames) {
-        if (raw && t.name_normalized && raw !== t.name_normalized) legacyNameMap[raw] = t.name_normalized;
+        if (raw && t.name_normalized) legacyNameMap[raw] = t.name_normalized;
       }
+      if (t.employee_id && t.name_normalized) empIdByNormalized[t.name_normalized] = t.employee_id;
     }
-    console.log(`[sync-incentive v19] Loaded ${Object.keys(legacyNameMap).length} legacy name mappings`);
+    console.log(`[sync-incentive v22] Loaded ${Object.keys(legacyNameMap).length} DMS→display name mappings`);
 
     // 4. Build jc_log rows
     const jcLogRows = rawRows.map((row) => {
@@ -123,15 +129,17 @@ Deno.serve(async (req) => {
       const jcslId = col(row, 'jcsl_id') as number | null;
 
       const rawName = (col(row, 'technician_name') as string) ?? '';
-      const normalizedName = normalizeJcName(rawName);  // Layer 2
+      const normalizedName = normalizeJcName(rawName);  // Layer 2: whitespace/dash normalisation
       const isVoid = Number(col(row, 'rr_count_3d_comeback') ?? 0) > 0;
 
-      // Resolve employee_id: alias map keyed by normalized name (Layer 2 → Layer 3)
-      const employeeId = aliasMap[normalizedName] ?? null;
+      // technician_name display: always prefer legacyNameMap (DMS raw name → incentive_technicians.name_normalized)
+      // so that all raw-name variants of the same person resolve to the same display name.
+      // employee_id is kept for payroll export but is NOT the merge key — the rebuild's secondary
+      // GROUP BY tech_name (merged CTE) collapses name variants that share the same display name.
+      const techName = legacyNameMap[rawName] ?? normalizedName;
 
-      // technician_name display: if alias resolves this name, use normalized (canonical);
-      // only fall back to legacyNameMap for names that have NO alias, to avoid wrong name overrides
-      const techName = employeeId ? normalizedName : (legacyNameMap[rawName] ?? normalizedName);
+      // Resolve employee_id: alias map keyed by normalized name, OR look up by display name
+      const employeeId = aliasMap[normalizedName] ?? empIdByNormalized[techName] ?? null;
 
       return {
         jcsl_id: jcslId,
@@ -142,8 +150,8 @@ Deno.serve(async (req) => {
         bike_model: (col(row, 'bike_model') as string) ?? '',
         technician_name_raw: rawName,                  // Layer 1: as-is from Metabase
         technician_name_normalized: normalizedName,    // Layer 2: trimmed, spaces collapsed, dash standardized
-        technician_name: techName,                     // display name (legacy map or normalized)
-        employee_id: employeeId,                       // Layer 3: resolved via jc_name_aliases
+        technician_name: techName,                     // display name from incentive_technicians.name_normalized
+        employee_id: employeeId,                       // from jc_name_aliases or incentive_technicians lookup
         hub_name: (col(row, 'hub_name') as string) ?? '',
         city: (col(row, 'city') as string) ?? '',
         is_void: isVoid,
@@ -167,30 +175,21 @@ Deno.serve(async (req) => {
     }
 
     // 6a. Purge stale phantom rows in open weeks.
-    // These are rows synced by old function versions (before technician_name_normalized was
-    // populated). They're no longer returned by Metabase but persist in the log.
-    // Cause: rebuild groups by COALESCE(employee_id, technician_name), producing two rows
-    // with the same tech_name → UNIQUE(tech_name, week_start) violation → rebuild silently
-    // rolls back → stats shows stale data. Fix: delete before rebuild each sync.
     const { error: purgeErr } = await supabase.rpc('purge_stale_jc_log_rows');
     if (purgeErr) {
-      // Non-fatal — log but continue (worst case: next rebuild may still fail for this week)
-      console.warn(`[sync-incentive v20] purge_stale_jc_log_rows warning: ${purgeErr.message}`);
+      console.warn(`[sync-incentive v22] purge_stale_jc_log_rows warning: ${purgeErr.message}`);
     }
 
     // 6b. Freeze completed weeks, then rebuild open weeks only
-    // Completed = week's Sunday has passed; those rows are locked and never overwritten
     const { error: freezeErr } = await supabase.rpc('freeze_completed_weeks');
     if (freezeErr) throw new Error(`freeze_completed_weeks: ${freezeErr.message}`);
     const { error: rebuildErr } = await supabase.rpc('rebuild_incentive_weekly_stats');
     if (rebuildErr) throw new Error(`weekly_stats rebuild: ${rebuildErr.message}`);
 
     // 7. Backfill employee_id on all historical rows that now have an alias but no employee_id yet
-    //    (handles case where admin adds a new alias between syncs)
     const { error: backfillErr } = await supabase.rpc('backfill_employee_ids');
     if (backfillErr) {
-      // Non-fatal — log but don't fail the sync
-      console.warn(`[sync-incentive v19] backfill_employee_ids warning: ${backfillErr.message}`);
+      console.warn(`[sync-incentive v22] backfill_employee_ids warning: ${backfillErr.message}`);
     }
 
     const resolvedCount = jcLogRows.filter(r => r.employee_id).length;
@@ -200,13 +199,13 @@ Deno.serve(async (req) => {
       rows_fetched: rawRows.length,
       rows_upserted: upserted,
       alias_mappings_loaded: Object.keys(aliasMap).length,
-      legacy_mappings_loaded: Object.keys(legacyNameMap).length,
+      dms_display_mappings_loaded: Object.keys(legacyNameMap).length,
       employee_id_resolved: resolvedCount,
       employee_id_unresolved: jcLogRows.length - resolvedCount,
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   } catch (err) {
-    console.error('[sync-incentive v19] ERROR:', err);
+    console.error('[sync-incentive v22] ERROR:', err);
     return new Response(JSON.stringify({ ok: false, error: String(err) }), {
       status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
