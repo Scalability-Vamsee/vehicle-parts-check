@@ -501,15 +501,17 @@ function calcNextRun(tsStr,intervalMs){
 }
 
 function loadPostAuthData(){
-  // Parts data sync time (hourly Metabase cron)
-  fetch(SB+'/rest/v1/vehicle_parts_check_flag?select=created_at&order=created_at.desc&limit=1',
+  // Parts data sync time (hourly Metabase cron) — reads sync_heartbeats, not
+  // vehicle_parts_check_flag.created_at (which is set once on INSERT and never
+  // touched again once every bike row already exists, so it goes stale).
+  fetch(SB+'/rest/v1/sync_heartbeats?select=synced_at&function_name=eq.metabase-sync&status=eq.success&order=synced_at.desc&limit=1',
     {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
   .then(function(r){return r.json();})
   .then(function(d){
     if(d&&d.length){
-      var el=document.getElementById('sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].created_at);
+      var el=document.getElementById('sync-time-val');if(el)el.textContent=fmtSyncTime(d[0].synced_at);
       var st=document.getElementById('sync-time');if(st)st.style.display='block';
-      var nr=document.getElementById('parts-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].created_at,3600000);
+      var nr=document.getElementById('parts-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3600000);
       var nrw=document.getElementById('parts-next-run');if(nrw)nrw.style.display='';
     }
   }).catch(function(){});
@@ -866,7 +868,7 @@ function buildJCSection(section,rows,bikeId,reg){
   var jcSet={};rows.forEach(function(r){if(r.jc_no)jcSet[r.jc_no]=1;});
   var filterHtml='<div class="jc-filters">'
     +'<select class="jc-filter jc-f-hub"><option value="">All Hubs</option>'+hubs.map(function(h){return '<option>'+h+'</option>';}).join('')+'</select>'
-    +'<select class="jc-filter jc-f-type"><option value="">All Types</option>'+types.map(function(t){return '<option value="'+t+'">'+(t==='labour'?'Labour':t==='parts'?'Parts':'Old DMS')+'</option>';}).join('')+'</select>'
+    +'<select class="jc-filter jc-f-type"><option value="">All Types</option>'+types.map(function(t){return '<option value="'+t+'"'+(t==='parts'?' selected':'')+'>'+(t==='labour'?'Labour':t==='parts'?'Parts':'Old DMS')+'</option>';}).join('')+'</select>'
     +'<select class="jc-filter jc-f-svc"><option value="">All Services</option>'+svcs.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select>'
     +'<input type="text" class="jc-filter jc-f-item" placeholder="Search item…" style="min-width:130px"/>'
     +'<button class="jc-filter-clear" onclick="clearJCFilters(this)">✕ Clear</button>'

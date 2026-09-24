@@ -264,9 +264,9 @@ body.pinned #hbg{display:none}
           <div class="tile-title">Preventive Maintenance</div>
           <div class="tile-desc">Component health &amp; service schedule</div>
           <div id="pm-stat-row" class="tile-stat-row tile-loading">
-            <div class="tile-stat-col"><div id="pm-stat-overdue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#DC2626">Overdue</div></div>
-            <div class="tile-stat-col"><div id="pm-stat-duesoon" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#D97706">Due Soon</div></div>
-            <div class="tile-stat-col"><div id="pm-stat-noissue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#16A34A">No Issue</div></div>
+            <div class="tile-stat-col"><div id="pm-stat-overdue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#DC2626">Overdue (6000+ km)</div></div>
+            <div class="tile-stat-col"><div id="pm-stat-duesoon" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#D97706">Due Soon (4500-6000 km)</div></div>
+            <div class="tile-stat-col"><div id="pm-stat-noissue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#16A34A">No Issue (&lt;4500 km)</div></div>
           </div>
           <button class="tile-cta" style="background:#FEF2F2;color:#E8191C">Open →</button>
         </div>
@@ -586,6 +586,8 @@ async function loadTileStats(){
   // PM stats — Overdue/Due Soon/No Issue tiers by days_since_last_jc
   // (>60d Overdue / 45-60d Due Soon / <45d No Issue). use count=exact header
   // to bypass server max-rows cap.
+  // Tile labels show km-equivalent (100km/day proxy: 60d=6000km, 45d=4500km)
+  // per Vamsee — display only, thresholds below are still days, not km.
   var pmH={headers:Object.assign({},h.headers,{'Prefer':'count=exact','Range':'0-0'})};
   Promise.all([
     fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gt.60',pmH),
