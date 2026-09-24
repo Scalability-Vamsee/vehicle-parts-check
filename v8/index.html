@@ -129,6 +129,10 @@ body.pinned #main{margin-left:var(--sb-width)}
 .tile-stat-label{font-size:.75rem;color:var(--muted);font-weight:500;margin-bottom:10px}
 .tile-breakdown{font-size:.74rem;color:var(--muted);margin-bottom:16px}
 .tile-breakdown b{font-weight:700}
+.tile-stat-row{display:flex;gap:14px;margin-bottom:16px}
+.tile-stat-col{flex:1;text-align:left}
+.tile-stat-sm{font-size:1.6rem;font-weight:900;letter-spacing:-.02em;line-height:1}
+.tile-stat-label-sm{font-size:.68rem;font-weight:600;margin-top:2px}
 .tile-cta{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:10px;font-size:.78rem;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:auto;align-self:flex-start}
 .tile-loading{font-size:.8rem;color:var(--muted);animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
@@ -259,9 +263,11 @@ body.pinned #hbg{display:none}
           <div class="tile-icon">🔭</div>
           <div class="tile-title">Preventive Maintenance</div>
           <div class="tile-desc">Component health &amp; service schedule</div>
-          <div id="pm-stat" class="tile-stat tile-loading">—</div>
-          <div id="pm-label" class="tile-stat-label tile-loading">loading…</div>
-          <div id="pm-breakdown" class="tile-breakdown"></div>
+          <div id="pm-stat-row" class="tile-stat-row tile-loading">
+            <div class="tile-stat-col"><div id="pm-stat-overdue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#DC2626">Overdue</div></div>
+            <div class="tile-stat-col"><div id="pm-stat-duesoon" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#D97706">Due Soon</div></div>
+            <div class="tile-stat-col"><div id="pm-stat-noissue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#16A34A">No Issue</div></div>
+          </div>
           <button class="tile-cta" style="background:#FEF2F2;color:#E8191C">Open →</button>
         </div>
       </a>
@@ -577,32 +583,28 @@ async function loadTileStats(){
   var h={headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}};
   var base=SB+'/rest/v1/';
 
-  // PM stats — PM Due = days_since_last_jc thresholds (>60d red / 45-60d amber),
-  // not part-level check_required/overall_urgency. use count=exact header to bypass
-  // server max-rows cap.
+  // PM stats — Overdue/Due Soon/No Issue tiers by days_since_last_jc
+  // (>60d Overdue / 45-60d Due Soon / <45d No Issue). use count=exact header
+  // to bypass server max-rows cap.
   var pmH={headers:Object.assign({},h.headers,{'Prefer':'count=exact','Range':'0-0'})};
   Promise.all([
     fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gt.60',pmH),
-    fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gte.45&days_since_last_jc=lte.60',pmH)
+    fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gte.45&days_since_last_jc=lte.60',pmH),
+    fetch(base+'vehicle_parts_check_flag?select=bike_id',pmH)
   ]).then(function(rs){
     function getCount(r){var cr=r.headers.get('Content-Range');return cr?parseInt(cr.split('/')[1])||0:0;}
     var overdue=getCount(rs[0]);
     var dueSoon=getCount(rs[1]);
-    var pmDue=overdue+dueSoon;
-    var el=document.getElementById('pm-stat');
-    el.textContent=pmDue;
-    el.className='tile-stat';
-    el.style.color='#E8191C';
-    document.getElementById('pm-label').textContent='PM Due';
-    document.getElementById('pm-label').className='tile-stat-label';
-    document.getElementById('pm-breakdown').innerHTML=
-      (overdue?'<b style="color:#DC2626">'+overdue+' Overdue</b>':'')
-      +(overdue&&dueSoon?' · ':'')
-      +(dueSoon?'<b style="color:#D97706">'+dueSoon+' Due Soon</b>':'')
-      +(!overdue&&!dueSoon?'<b style="color:#16A34A">All bikes OK ✓</b>':'');
+    var total=getCount(rs[2]);
+    var noIssue=Math.max(0,total-overdue-dueSoon);
+    document.getElementById('pm-stat-row').className='tile-stat-row';
+    document.getElementById('pm-stat-overdue').textContent=overdue;
+    document.getElementById('pm-stat-duesoon').textContent=dueSoon;
+    document.getElementById('pm-stat-noissue').textContent=noIssue;
   }).catch(function(){
-    document.getElementById('pm-stat').textContent='—';
-    document.getElementById('pm-label').textContent='error loading';
+    document.getElementById('pm-stat-overdue').textContent='—';
+    document.getElementById('pm-stat-duesoon').textContent='—';
+    document.getElementById('pm-stat-noissue').textContent='—';
   });
 
   // OOS stats — count=exact for total, small fetch for hub/time breakdown
