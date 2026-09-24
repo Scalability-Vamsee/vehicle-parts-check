@@ -167,7 +167,7 @@ body.pinned #hbg{display:none}
 <div id="auth-screen" class="hidden">
   <div class="auth-card">
     <div class="auth-logo">
-     <img id="auth-logo-img" src="logo.jpg" width="44" height="44" style="border-radius:10px;object-fit:cover;flex-shrink:0"/>
+      <img id="auth-logo-img" width="44" height="44" style="border-radius:10px;object-fit:cover;flex-shrink:0"/>
       <div>
         <div class="auth-logo-name">Bounce Daily</div>
         <div class="auth-logo-sub">FleetPro</div>
@@ -514,8 +514,8 @@ function applyTilePermissions(features){
 }
 
 (async function(){
-  // var mainLogo=document.querySelector('.sb-brand img');
-  // if(mainLogo)document.getElementById('auth-logo-img').src=mainLogo.src;
+  var mainLogo=document.querySelector('.sb-brand img');
+  if(mainLogo)document.getElementById('auth-logo-img').src=mainLogo.src;
   var isHashLogin=window.location.hash.includes('access_token');
   var{data:{session}}=await sbClient.auth.getSession();
   var _authReady=false;
@@ -577,22 +577,23 @@ async function loadTileStats(){
   var h={headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}};
   var base=SB+'/rest/v1/';
 
-  // PM stats — use count=exact header to bypass server max-rows cap
+  // PM stats — PM Due = days_since_last_jc thresholds (>60d red / 45-60d amber),
+  // not part-level check_required/overall_urgency. use count=exact header to bypass
+  // server max-rows cap.
   var pmH={headers:Object.assign({},h.headers,{'Prefer':'count=exact','Range':'0-0'})};
   Promise.all([
-    fetch(base+'vehicle_parts_check_flag?select=overall_urgency&check_required=eq.true',pmH),
-    fetch(base+'vehicle_parts_check_flag?select=overall_urgency&check_required=eq.true&overall_urgency=eq.1',pmH),
-    fetch(base+'vehicle_parts_check_flag?select=overall_urgency&check_required=eq.true&overall_urgency=eq.2',pmH)
+    fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gt.60',pmH),
+    fetch(base+'vehicle_parts_check_flag?select=bike_id&days_since_last_jc=gte.45&days_since_last_jc=lte.60',pmH)
   ]).then(function(rs){
     function getCount(r){var cr=r.headers.get('Content-Range');return cr?parseInt(cr.split('/')[1])||0:0;}
-    var attention=getCount(rs[0]);
-    var overdue=getCount(rs[1]);
-    var dueSoon=getCount(rs[2]);
+    var overdue=getCount(rs[0]);
+    var dueSoon=getCount(rs[1]);
+    var pmDue=overdue+dueSoon;
     var el=document.getElementById('pm-stat');
-    el.textContent=attention;
+    el.textContent=pmDue;
     el.className='tile-stat';
     el.style.color='#E8191C';
-    document.getElementById('pm-label').textContent='bikes need attention';
+    document.getElementById('pm-label').textContent='PM Due';
     document.getElementById('pm-label').className='tile-stat-label';
     document.getElementById('pm-breakdown').innerHTML=
       (overdue?'<b style="color:#DC2626">'+overdue+' Overdue</b>':'')
