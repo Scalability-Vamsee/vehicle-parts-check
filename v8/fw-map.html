@@ -609,6 +609,11 @@ function speedoPopup(b){
     '<tr><td style="color:#6B7280;padding:2px 0">Zone</td><td style="text-align:right;font-weight:500;padding-left:8px">'+(b.zone||'—')+'</td></tr>'+
     '<tr><td style="color:#6B7280;padding:2px 0">GPS age</td><td style="text-align:right;font-weight:500;padding-left:8px">'+locAge+'</td></tr>';
   if(b.technician_name)rows+='<tr><td style="color:#6B7280;padding:2px 0">Technician</td><td style="text-align:right;font-weight:500;padding-left:8px">'+b.technician_name+'</td></tr>';
+  var _rd=_riderMap[b.chassis]||{};
+  var _rname=b.rider_name||_rd.rider_name||'';
+  var _rphone=b.rider_phone||_rd.rider_phone||'';
+  if(_rname)rows+='<tr><td style="color:#6B7280;padding:2px 0">Rider</td><td style="text-align:right;font-weight:500;padding-left:8px">'+_rname+'</td></tr>';
+  if(_rphone){var sph=normPhone(_rphone);rows+='<tr><td style="color:#6B7280;padding:2px 0">Phone</td><td style="text-align:right;font-weight:500;padding-left:8px"><a href="tel:'+sph+'" style="color:#E8191C;text-decoration:none">'+_rphone+'</a></td></tr>';}
   var gmapsUrl='https://www.google.com/maps/dir/?api=1&destination='+b.lat+','+b.lng;
   return '<div style="min-width:200px;font-family:Inter,sans-serif;">'+
     '<div style="font-size:14px;font-weight:700;margin-bottom:2px;">'+b.reg+'</div>'+
@@ -893,6 +898,19 @@ async function fetchSpeedoData(){
         rider_phone:''
       };
     });
+    // Enrich speedo bikes with rider data (some may be on active rental)
+    var speedoRegs=_allSpeedo.map(function(b){return b.reg;}).filter(Boolean);
+    if(speedoRegs.length){
+      try{
+        var riderRes=await fetch(SB_URL+'/rest/v1/bike_rider_cache?select=reg_number,rider_name,rider_phone&reg_number=in.('+speedoRegs.join(',')+')',{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+        if(riderRes.ok){
+          var riderRows=await riderRes.json();
+          var riderByReg={};
+          (riderRows||[]).forEach(function(r){riderByReg[r.reg_number]={rider_name:r.rider_name||'',rider_phone:r.rider_phone||''};});
+          _allSpeedo.forEach(function(b){var rd=riderByReg[b.reg];if(rd){b.rider_name=rd.rider_name;b.rider_phone=rd.rider_phone;}});
+        }
+      }catch(e){/* silent — rider data is optional for speedo view */}
+    }
     if(_fwModes.has('speedo')){rebuildHubFilter();renderFiltered();}
     var now=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     document.getElementById('updated-at').textContent='Data as of '+now+' · '+_allSpeedo.length+' speedometer pending';
