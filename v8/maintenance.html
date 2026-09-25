@@ -203,6 +203,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 .pg{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
 @media(max-width:900px){.pg{grid-template-columns:repeat(3,1fr)}}@media(max-width:520px){.pg{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:340px){.pg{grid-template-columns:1fr}}
+.all-clear{color:#16A34A;font-weight:600;font-size:.85rem;padding:14px 0;margin-bottom:14px}
 .pc{border-radius:12px;background:#F8FAFC;border:1.5px solid var(--border);position:relative;overflow:hidden;transition:box-shadow .15s}
 .pc:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .pc.pov{background:var(--overdue-bg);border-color:#FECACA}
@@ -785,32 +786,36 @@ function card(v){
     parts.sort(function(a,b){return sr(a.st)-sr(b.st);});
     var cov=parts.filter(function(p){return p.st==='Overdue';}).length;
     var cds=parts.filter(function(p){return p.st==='Due Soon';}).length;
-    var cok=parts.filter(function(p){return p.st==='OK';}).length;
-    var counts=(cov?'<span class="sc sc-ov">'+cov+' Overdue</span>':'')+(cds?'<span class="sc sc-ds">'+cds+' Due Soon</span>':'')+(cok?'<span class="sc sc-ok">'+cok+' OK</span>':'');
+    var counts=(cov?'<span class="sc sc-ov">'+cov+' Overdue</span>':'')+(cds?'<span class="sc sc-ds">'+cds+' Due Soon</span>':'');
+    // Only parts needing attention are shown — OK and No Data tiles are hidden entirely.
+    var needsAttention=parts.filter(function(p){return p.st==='Overdue'||p.st==='Due Soon';});
     partsHtml='<div class="sec-hd"><div class="sec-title">Component Health Matrix</div><div class="sec-counts">'+counts+'</div></div>'
-      +'<div class="pg">'+parts.map(function(p){return partCard(p.label,p.st,p.ks,p.kr,p.ld,p.lh,p.th);}).join('')+'</div>';
+      +(needsAttention.length
+        ?'<div class="pg">'+needsAttention.map(function(p){return partCard(p.label,p.st,p.ks,p.kr,p.ld,p.lh,p.th);}).join('')+'</div>'
+        :'<div class="all-clear">✓ No parts need attention</div>');
   } else {
+    var legacyParts=[
+      {label:'Brake',st:v.brake_status,ks:v.brake_km_since,kr:v.brake_km_remaining,ld:v.last_brake_replaced_date,lh:v.last_brake_replaced_hub,th:THRESH.brake},
+      {label:'Tyre',st:v.tyre_status,ks:v.tyre_km_since,kr:v.tyre_km_remaining,ld:v.last_tyre_replaced_date,lh:v.last_tyre_replaced_hub,th:THRESH.tyre}
+    ];
+    var legacyNeedsAttention=legacyParts.filter(function(p){return p.st==='Overdue'||p.st==='Due Soon';});
     partsHtml='<div class="sec-hd"><div class="sec-title">Component Health</div></div>'
-      +'<div class="pg">'
-      +partCard('Brake',v.brake_status,v.brake_km_since,v.brake_km_remaining,v.last_brake_replaced_date,v.last_brake_replaced_hub,THRESH.brake)
-      +partCard('Tyre',v.tyre_status,v.tyre_km_since,v.tyre_km_remaining,v.last_tyre_replaced_date,v.last_tyre_replaced_hub,THRESH.tyre)
-      +'</div>';
+      +(legacyNeedsAttention.length
+        ?'<div class="pg">'+legacyNeedsAttention.map(function(p){return partCard(p.label,p.st,p.ks,p.kr,p.ld,p.lh,p.th);}).join('')+'</div>'
+        :'<div class="all-clear">✓ No parts need attention</div>');
   }
   // Firmware / IoT status tags
   function fwTag(label,pending){
-    if(pending===null||pending===undefined)return '';
+    if(pending===null||pending===undefined)return '<span style="font-size:.7rem;font-weight:600;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px">✓ '+label+': N/A</span>';
     if(pending)return '<span style="font-size:.7rem;font-weight:600;color:#D97706;background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:3px 9px">⚠ '+label+': Pending</span>';
     return '<span style="font-size:.7rem;font-weight:600;color:#16A34A;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:3px 9px">✓ '+label+': Done / N/A</span>';
   }
-  var hasFw=(v.diu_check_status!==null&&v.diu_check_status!==undefined)||(v.iot_glue_status!==null&&v.iot_glue_status!==undefined)||(v.mcu_fw_60a_status!==null&&v.mcu_fw_60a_status!==undefined);
-  var fwHtml=hasFw
-    ?'<div class="sec-hd" style="margin-top:12px"><div class="sec-title">Firmware / IoT</div></div>'
+  var fwHtml='<div class="sec-hd" style="margin-top:12px"><div class="sec-title">Firmware / IoT</div></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 0 8px">'
       +fwTag('DIU Check',v.diu_check_status)
       +fwTag('IoT Glue',v.iot_glue_status)
       +fwTag('MCU FW (60A)',v.mcu_fw_60a_status)
-      +'</div>'
-    :'';
+      +'</div>';
   var flags='<div class="flags">';
   // PM Due tiers match the index.html tile: >60d red (Overdue), 45-60d amber (Due Soon), <45d not due.
   if(v.days_since_last_jc>60)flags+='<div class="chk pms">⚠ PM Overdue — '+v.days_since_last_jc+' days since JC</div>';
@@ -819,13 +824,8 @@ function card(v){
   return '<div class="card">'
     +'<div class="ch"><div><div class="reg">'+v.reg_number+'</div>'
     +'<div class="bid">Bike #'+v.bike_id+(v.dms_bike_model_id?' · '+(MODEL_NAMES[Number(v.dms_bike_model_id)]||('Model '+v.dms_bike_model_id))+' ('+(isDisc?'Disc':'Drum')+')'  :'')+'</div></div></div>'
-    +(v.deployed_hub||v.last_service_hub?
-      '<div class="vinfo">'
-      +(v.deployed_hub?'<span>Deployed Hub: <b>'+v.deployed_hub+'</b></span>':'')
-      +(v.last_service_hub?'<span>Last Service Hub: <b>'+v.last_service_hub+'</b></span>':'')
-      +'</div>':'')
     +'<div class="odo-strip">'
-    +'<div class="odo-stat"><div class="odo-lbl">Est. Current</div><div class="odo-val">'+fm(v.estimated_current_odo)+'</div><div class="odo-sub">km</div></div>'
+    +'<div class="odo-stat"><div class="odo-lbl">Current Odometer</div><div class="odo-val">'+fm(v.estimated_current_odo)+'</div><div class="odo-sub">km</div></div>'
     +'<div class="odo-stat"><div class="odo-lbl">Last JC Odo</div><div class="odo-val">'+fm(v.last_jc_odo)+'</div><div class="odo-sub">km</div></div>'
     +'<div class="odo-stat"><div class="odo-lbl">Days Since JC</div><div class="odo-val">'+(v.days_since_last_jc!=null?v.days_since_last_jc:'--')+'</div><div class="odo-sub">days</div></div>'
     +'</div>'
@@ -841,13 +841,9 @@ function jcTagCls(r){var src=r.source||'';var lt=(r.line_type||'').toLowerCase()
 function renderJCRows(section,rows){
   var hub=section.querySelector('.jc-f-hub').value;
   var type=section.querySelector('.jc-f-type').value;
-  var svc=section.querySelector('.jc-f-svc').value;
-  var item=(section.querySelector('.jc-f-item').value||'').trim().toLowerCase();
   var filtered=rows.filter(function(r){
     if(hub&&(r.hub_name||'')!==hub)return false;
     if(type){var tc=jcTagCls(r);if(tc!==type)return false;}
-    if(svc&&(r.service_type||'')!==svc)return false;
-    if(item&&(r.item_name||'').toLowerCase().indexOf(item)<0)return false;
     return true;
   });
   var jcSet={};filtered.forEach(function(r){if(r.jc_no)jcSet[r.jc_no]=1;});
@@ -855,22 +851,20 @@ function renderJCRows(section,rows){
   section.querySelector('.jc-count').textContent=filtered.length+' entries · '+jcCount+' JCs';
   var tbody=section.querySelector('.jc-tbl tbody');
   if(!tbody)return;
-  if(!filtered.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted)">No matching entries</td></tr>';return;}
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">No matching entries</td></tr>';return;}
   tbody.innerHTML=filtered.map(function(r){
     var tc=jcTagCls(r);
-    return '<tr>'+'<td class="jc-no">'+(r.jc_no||'--')+'</td>'+'<td>'+fd(r.jc_date)+'</td>'+'<td>'+(r.hub_name||'--')+'</td>'+'<td>'+(r.bike_odo!=null?fm(r.bike_odo):'--')+'</td>'+'<td>'+(r.service_type||'--')+'</td>'+'<td><span class="jc-tag '+tc+'">'+(r.line_type||'--')+'</span></td>'+'<td style="white-space:normal;min-width:150px;max-width:240px;line-height:1.35;cursor:default" title="'+(r.item_name||'')+'">'+(r.item_name||'--')+'</td>'+'<td>'+(r.qty!=null?r.qty:'--')+'</td>'+'<td class="jc-amt">'+(r.amount!=null?'₹'+fm(r.amount):'--')+'</td>'+'<td>'+(r.technician_name||'--')+'</td>'+'</tr>';
+    return '<tr>'+'<td class="jc-no">'+(r.jc_no||'--')+'</td>'+'<td>'+fd(r.jc_date)+'</td>'+'<td>'+(r.hub_name||'--')+'</td>'+'<td>'+(r.bike_odo!=null?fm(r.bike_odo):'--')+'</td>'+'<td><span class="jc-tag '+tc+'">'+(r.line_type||'--')+'</span></td>'+'<td style="white-space:normal;min-width:150px;max-width:240px;line-height:1.35;cursor:default" title="'+(r.item_name||'')+'">'+(r.item_name||'--')+'</td>'+'<td>'+(r.qty!=null?r.qty:'--')+'</td>'+'<td class="jc-amt">'+(r.amount!=null?'₹'+fm(r.amount):'--')+'</td>'+'<td>'+(r.technician_name||'--')+'</td>'+'</tr>';
   }).join('');
 }
 function buildJCSection(section,rows,bikeId,reg){
-  var hubs=[],types=[],svcs=[];var hubSet={},typeSet={},svcSet={};
-  rows.forEach(function(r){if(r.hub_name&&!hubSet[r.hub_name]){hubSet[r.hub_name]=1;hubs.push(r.hub_name);}var tc=jcTagCls(r);if(!typeSet[tc]){typeSet[tc]=1;types.push(tc);}if(r.service_type&&!svcSet[r.service_type]){svcSet[r.service_type]=1;svcs.push(r.service_type);}});
-  hubs.sort();svcs.sort();
+  var hubs=[],types=[];var hubSet={},typeSet={};
+  rows.forEach(function(r){if(r.hub_name&&!hubSet[r.hub_name]){hubSet[r.hub_name]=1;hubs.push(r.hub_name);}var tc=jcTagCls(r);if(!typeSet[tc]){typeSet[tc]=1;types.push(tc);}});
+  hubs.sort();
   var jcSet={};rows.forEach(function(r){if(r.jc_no)jcSet[r.jc_no]=1;});
   var filterHtml='<div class="jc-filters">'
     +'<select class="jc-filter jc-f-hub"><option value="">All Hubs</option>'+hubs.map(function(h){return '<option>'+h+'</option>';}).join('')+'</select>'
     +'<select class="jc-filter jc-f-type"><option value="">All Types</option>'+types.map(function(t){return '<option value="'+t+'"'+(t==='parts'?' selected':'')+'>'+(t==='labour'?'Labour':t==='parts'?'Parts':'Old DMS')+'</option>';}).join('')+'</select>'
-    +'<select class="jc-filter jc-f-svc"><option value="">All Services</option>'+svcs.map(function(s){return '<option>'+s+'</option>';}).join('')+'</select>'
-    +'<input type="text" class="jc-filter jc-f-item" placeholder="Search item…" style="min-width:130px"/>'
     +'<button class="jc-filter-clear" onclick="clearJCFilters(this)">✕ Clear</button>'
     +'<span class="jc-count">'+rows.length+' entries · '+Object.keys(jcSet).length+' JCs</span>'
     +'</div>';
@@ -880,7 +874,7 @@ function buildJCSection(section,rows,bikeId,reg){
     +' <button class="dl-btn jc-global-sync-btn" style="margin-top:0;background:rgba(0,0,0,.06);color:#374151;padding:2px 9px;font-size:.64rem" onclick="syncAllJC(this)">↺ Sync All</button>'
     +'</div>'
     +filterHtml
-    +'<div class="jc-wrap"><table class="jc-tbl"><thead><tr><th>JC No</th><th>Date</th><th>Hub</th><th>ODO</th><th>Service</th><th>Type</th><th>Item</th><th>Qty</th><th>Amount</th><th>Technician</th></tr></thead><tbody></tbody></table></div>';
+    +'<div class="jc-wrap"><table class="jc-tbl"><thead><tr><th>JC No</th><th>Date</th><th>Hub</th><th>ODO</th><th>Type</th><th>Item</th><th>Qty</th><th>Amount</th><th>Technician</th></tr></thead><tbody></tbody></table></div>';
   section.innerHTML=html;
   section.querySelectorAll('select.jc-filter').forEach(function(el){el.addEventListener('change',function(){renderJCRows(section,rows);});});
   var itemInput=section.querySelector('.jc-f-item');
@@ -899,7 +893,6 @@ function buildJCSection(section,rows,bikeId,reg){
 function clearJCFilters(btn){
   var section=btn.closest('.jc-section');
   section.querySelectorAll('select.jc-filter').forEach(function(el){el.value='';});
-  var itemEl=section.querySelector('.jc-f-item');if(itemEl)itemEl.value='';
   var bikeId=section.dataset.bikeId;if(bikeId&&JC_CACHE[bikeId])renderJCRows(section,JC_CACHE[bikeId]);
 }
 function showJCHistory(bikeId,reg,btn){
@@ -1001,8 +994,8 @@ function dlCSV(bikeId,reg){
     var rows=Array.isArray(data)?data:[];
     var lines=[];
     lines.push('JC History - '+reg+' (downloaded '+today+')');
-    lines.push(csvRow(['JC No','Date','Hub','ODO','Service Type','Item Type','Item Name','Qty','Amount (Rs)','Technician','Source']));
-    rows.forEach(function(r){lines.push(csvRow([r.jc_no,r.jc_date,r.hub_name,r.bike_odo,r.service_type,r.line_type,r.item_name,r.qty,r.amount,r.technician_name,r.source]));});
+    lines.push(csvRow(['JC No','Date','Hub','ODO','Item Type','Item Name','Qty','Amount (Rs)','Technician','Source']));
+    rows.forEach(function(r){lines.push(csvRow([r.jc_no,r.jc_date,r.hub_name,r.bike_odo,r.line_type,r.item_name,r.qty,r.amount,r.technician_name,r.source]));});
     if(!rows.length)lines.push('No JC history found for this vehicle');
     var blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8;'});
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='JC_History_'+reg+'_'+today+'.csv';a.click();
