@@ -832,8 +832,8 @@ function card(v){
     +'<div class="bid">Bike #'+v.bike_id+(v.dms_bike_model_id?' · '+(MODEL_NAMES[Number(v.dms_bike_model_id)]||('Model '+v.dms_bike_model_id))+' ('+(isDisc?'Disc':'Drum')+')'  :'')+'</div></div></div>'
     +'<div class="odo-strip">'
     +'<div class="odo-stat"><div class="odo-lbl">Current Odometer</div><div class="odo-val">'+fm(v.estimated_current_odo)+'</div><div class="odo-sub">km</div></div>'
-    +'<div class="odo-stat"><div class="odo-lbl">Last JC Odo</div><div class="odo-val">'+fm(v.last_jc_odo)+'</div><div class="odo-sub">km</div></div>'
-    +'<div class="odo-stat"><div class="odo-lbl">Days Since JC</div><div class="odo-val">'+(v.days_since_last_jc!=null?v.days_since_last_jc:'--')+'</div><div class="odo-sub">days</div></div>'
+    +'<div class="odo-stat"><div class="odo-lbl">Last Billed JC Odo</div><div class="odo-val">'+fm(v.last_jc_odo)+'</div><div class="odo-sub">km</div></div>'
+    +'<div class="odo-stat"><div class="odo-lbl">Days Since Billed JC</div><div class="odo-val">'+(v.days_since_last_jc!=null?v.days_since_last_jc:'--')+'</div><div class="odo-sub">days</div></div>'
     +'</div>'
     +'<div class="cb">'+partsHtml+fwHtml+flags
     +'<button class="dl-btn" onclick="showJCHistory('+v.bike_id+',\''+v.reg_number+'\',this)">📋 View JC History</button>'
