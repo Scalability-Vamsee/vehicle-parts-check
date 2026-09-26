@@ -397,7 +397,6 @@ body.pinned #main{margin-left:var(--sb-width)}
           <option value="cone_set">Cone Set — Overdue / Due Soon</option>
           <option value="bearing">Wheel Bearing — Overdue / Due Soon</option>
           <option value="brake_disc">Brake Disc — Overdue / Due Soon</option>
-          <option value="spring">Side Stand Spring — Overdue / Due Soon</option>
         </select>
         <button class="jc-filter-clear" onclick="clearResFilters()">✕ Clear</button>
         <span id="filter-count" style="font-size:.72rem;color:var(--muted);margin-left:auto;white-space:nowrap"></span>
@@ -630,7 +629,6 @@ function compCheck(v,comp){
   if(comp==='cone_set')return ck(v.cone_set_status);
   if(comp==='bearing')return ck(v.fr_wheel_bearing_status)||ck(v.rr_wheel_bearing_status);
   if(comp==='brake_disc')return ck(v.fr_brake_disc_status)||ck(v.rr_brake_disc_status);
-  if(comp==='spring')return ck(v.side_stand_spring_status);
   return false;
 }
 
@@ -697,21 +695,21 @@ function fd(d){return d?new Date(d).toLocaleDateString('en-IN',{day:'numeric',mo
 
 // Disc brake models (model IDs 1,2,3 — e.1x+/e.1x/e.1xc+)
 var THRESH_DISC={
-  front_brake:6000, rear_brake:6000,
-  front_tyre:12000, rear_tyre:15000,
-  cone_set:12000,
-  fr_brake_disc:18000, rr_brake_disc:18000,
-  fr_wheel_bearing:12000, rr_wheel_bearing:12000,
-  side_stand_spring:12000
+  front_brake:10000, rear_brake:12000,
+  front_tyre:15000, rear_tyre:15000,
+  cone_set:10000,
+  fr_brake_disc:20000, rr_brake_disc:25000,
+  fr_wheel_bearing:6000, rr_wheel_bearing:9000
 };
 // Drum brake models (e.3, Star, Low Speed variants)
 var THRESH_DRUM={
-  front_brake:10000, rear_brake:10000,
-  front_tyre:12000, rear_tyre:10000,
-  cone_set:12000,
-  fr_wheel_bearing:12000, rr_wheel_bearing:12000,
-  side_stand_spring:12000
+  front_brake:12000, rear_brake:14000,
+  front_tyre:15000, rear_tyre:15000,
+  cone_set:10000,
+  fr_wheel_bearing:6000, rr_wheel_bearing:9000
 };
+// Legacy (pre-split) bikes with no front/rear brake or tyre distinction — generic bearing value.
+var THRESH={brake:12000, tyre:15000};
 
 function sr(s){return s==='Overdue'?1:s==='Due Soon'?2:s==='OK'?3:s==='N/A'?5:4;}
 
@@ -770,8 +768,7 @@ function card(v){
       {label:'Front Brake Disc',st:v.fr_brake_disc_status,ks:v.fr_brake_disc_km_since,kr:v.fr_brake_disc_km_remaining,ld:v.last_fr_brake_disc_replaced_date,lh:v.last_fr_brake_disc_replaced_hub,th:T.fr_brake_disc},
       {label:'Rear Brake Disc',st:v.rr_brake_disc_status,ks:v.rr_brake_disc_km_since,kr:v.rr_brake_disc_km_remaining,ld:v.last_rr_brake_disc_replaced_date,lh:v.last_rr_brake_disc_replaced_hub,th:T.rr_brake_disc},
       {label:'Front Wheel Bearing',st:v.fr_wheel_bearing_status,ks:v.fr_wheel_bearing_km_since,kr:v.fr_wheel_bearing_km_remaining,ld:v.last_fr_wheel_bearing_replaced_date,lh:v.last_fr_wheel_bearing_replaced_hub,th:T.fr_wheel_bearing},
-      {label:'Rear Wheel Bearing',st:v.rr_wheel_bearing_status,ks:v.rr_wheel_bearing_km_since,kr:v.rr_wheel_bearing_km_remaining,ld:v.last_rr_wheel_bearing_replaced_date,lh:v.last_rr_wheel_bearing_replaced_hub,th:T.rr_wheel_bearing},
-      {label:'Side Stand Spring',st:v.side_stand_spring_status,ks:v.side_stand_spring_km_since,kr:v.side_stand_spring_km_remaining,ld:v.last_side_stand_spring_replaced_date,lh:v.last_side_stand_spring_replaced_hub,th:T.side_stand_spring}
+      {label:'Rear Wheel Bearing',st:v.rr_wheel_bearing_status,ks:v.rr_wheel_bearing_km_since,kr:v.rr_wheel_bearing_km_remaining,ld:v.last_rr_wheel_bearing_replaced_date,lh:v.last_rr_wheel_bearing_replaced_hub,th:T.rr_wheel_bearing}
     ]:[
       // ── Drum brake models (e.3, Star, Low Speed variants) ──
       {label:'Front Brake Shoe',st:v.front_brake_status,ks:v.front_brake_km_since,kr:v.front_brake_km_remaining,ld:v.last_front_brake_replaced_date,lh:v.last_front_brake_replaced_hub,th:T.front_brake},
@@ -780,8 +777,7 @@ function card(v){
       {label:'Rear Tyre',st:v.rear_tyre_status,ks:v.rear_tyre_km_since,kr:v.rear_tyre_km_remaining,ld:v.last_rear_tyre_replaced_date,lh:v.last_rear_tyre_replaced_hub,th:T.rear_tyre},
       {label:'Cone Set',st:v.cone_set_status,ks:v.cone_set_km_since,kr:v.cone_set_km_remaining,ld:v.last_cone_set_replaced_date,lh:v.last_cone_set_replaced_hub,th:T.cone_set},
       {label:'Front Wheel Bearing',st:v.fr_wheel_bearing_status,ks:v.fr_wheel_bearing_km_since,kr:v.fr_wheel_bearing_km_remaining,ld:v.last_fr_wheel_bearing_replaced_date,lh:v.last_fr_wheel_bearing_replaced_hub,th:T.fr_wheel_bearing},
-      {label:'Rear Wheel Bearing',st:v.rr_wheel_bearing_status,ks:v.rr_wheel_bearing_km_since,kr:v.rr_wheel_bearing_km_remaining,ld:v.last_rr_wheel_bearing_replaced_date,lh:v.last_rr_wheel_bearing_replaced_hub,th:T.rr_wheel_bearing},
-      {label:'Side Stand Spring',st:v.side_stand_spring_status,ks:v.side_stand_spring_km_since,kr:v.side_stand_spring_km_remaining,ld:v.last_side_stand_spring_replaced_date,lh:v.last_side_stand_spring_replaced_hub,th:T.side_stand_spring}
+      {label:'Rear Wheel Bearing',st:v.rr_wheel_bearing_status,ks:v.rr_wheel_bearing_km_since,kr:v.rr_wheel_bearing_km_remaining,ld:v.last_rr_wheel_bearing_replaced_date,lh:v.last_rr_wheel_bearing_replaced_hub,th:T.rr_wheel_bearing}
     ];
     parts.sort(function(a,b){return sr(a.st)-sr(b.st);});
     var cov=parts.filter(function(p){return p.st==='Overdue';}).length;

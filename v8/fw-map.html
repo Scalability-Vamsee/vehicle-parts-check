@@ -898,16 +898,17 @@ async function fetchSpeedoData(){
         rider_phone:''
       };
     });
-    // Enrich speedo bikes with rider data (some may be on active rental)
-    var speedoRegs=_allSpeedo.map(function(b){return b.reg;}).filter(Boolean);
-    if(speedoRegs.length){
+    // Enrich speedo bikes with rider data (some may be on active rental).
+    // bike_rider_cache has no reg_number column — it's keyed by chassis_number.
+    var speedoChassis=_allSpeedo.map(function(b){return b.chassis;}).filter(Boolean);
+    if(speedoChassis.length){
       try{
-        var riderRes=await fetch(SB_URL+'/rest/v1/bike_rider_cache?select=reg_number,rider_name,rider_phone&reg_number=in.('+speedoRegs.join(',')+')',{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
+        var riderRes=await fetch(SB_URL+'/rest/v1/bike_rider_cache?select=chassis_number,rider_name,rider_phone&chassis_number=in.('+speedoChassis.join(',')+')',{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
         if(riderRes.ok){
           var riderRows=await riderRes.json();
-          var riderByReg={};
-          (riderRows||[]).forEach(function(r){riderByReg[r.reg_number]={rider_name:r.rider_name||'',rider_phone:r.rider_phone||''};});
-          _allSpeedo.forEach(function(b){var rd=riderByReg[b.reg];if(rd){b.rider_name=rd.rider_name;b.rider_phone=rd.rider_phone;}});
+          var riderByChassis={};
+          (riderRows||[]).forEach(function(r){riderByChassis[r.chassis_number]={rider_name:r.rider_name||'',rider_phone:r.rider_phone||''};});
+          _allSpeedo.forEach(function(b){var rd=riderByChassis[b.chassis];if(rd){b.rider_name=rd.rider_name;b.rider_phone=rd.rider_phone;}});
         }
       }catch(e){/* silent — rider data is optional for speedo view */}
     }
