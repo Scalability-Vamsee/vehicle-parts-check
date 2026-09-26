@@ -257,32 +257,38 @@ body.pinned #hbg{display:none}
     <div class="tile-grid">
 
       <!-- PM Tile — Fleet Health dept → red -->
-      <a class="tile" href="./maintenance.html" data-feature="maintenance">
+      <a class="tile" href="./maintenance.html" data-feature="maintenance" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#E8191C,#F97316)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">🔭</div>
-          <div class="tile-title">Preventive Maintenance</div>
-          <div class="tile-desc">Component health &amp; service schedule</div>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">🔭</div>
+            <div class="tile-title">Preventive Maintenance</div>
+            <div class="tile-desc">Component health &amp; service schedule</div>
+          </div>
           <div id="pm-stat-row" class="tile-stat-row tile-loading">
             <div class="tile-stat-col"><div id="pm-stat-overdue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#DC2626">Overdue (6000+ km)</div></div>
             <div class="tile-stat-col"><div id="pm-stat-duesoon" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#D97706">Due Soon (4500-6000 km)</div></div>
             <div class="tile-stat-col"><div id="pm-stat-noissue" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#16A34A">No Issue (&lt;4500 km)</div></div>
           </div>
-          <button class="tile-cta" style="background:#FEF2F2;color:#E8191C">Open →</button>
+          <button class="tile-cta" style="background:#FEF2F2;color:#E8191C;align-self:center">Open →</button>
         </div>
       </a>
 
       <!-- OOS Tile — Workshop dept → blue -->
-      <a class="tile" href="./queue.html" data-feature="oos-queue">
+      <a class="tile" href="./queue.html" data-feature="oos-queue" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#1D4ED8,#0891B2)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">🔧</div>
-          <div class="tile-title">Pending OOS Vehicles</div>
-          <div class="tile-desc">FIFO repair queue by hub</div>
-          <div id="oos-stat" class="tile-stat tile-loading">—</div>
-          <div id="oos-label" class="tile-stat-label tile-loading">loading…</div>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">🔧</div>
+            <div class="tile-title">Pending OOS Vehicles</div>
+            <div class="tile-desc">FIFO repair queue by hub</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:baseline">
+            <div id="oos-stat" class="tile-stat tile-loading">—</div>
+            <div id="oos-label" class="tile-stat-label tile-loading" style="font-size:.75rem">loading…</div>
+          </div>
           <div id="oos-breakdown" class="tile-breakdown"></div>
-          <button class="tile-cta" style="background:#EFF6FF;color:#1D4ED8">Open →</button>
+          <button class="tile-cta" style="background:#EFF6FF;color:#1D4ED8;align-self:center">Open →</button>
         </div>
       </a>
 
@@ -305,35 +311,41 @@ body.pinned #hbg{display:none}
       </a>
 
       <!-- FW Pending Map Tile -->
-      <a class="tile" href="./fw-map.html" data-feature="fw-map">
+      <a class="tile" href="./fw-map.html" data-feature="fw-map" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#0369A1,#0891B2)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">🗺️</div>
-          <div class="tile-title">FW Pending Map</div>
-          <div class="tile-desc">Geo view of firmware-pending vehicles by hub</div>
-          <button class="tile-cta" style="background:#EFF6FF;color:#0369A1">Open →</button>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">🗺️</div>
+            <div class="tile-title">FW Pending Map</div>
+            <div class="tile-desc">Geo view of firmware-pending vehicles by hub</div>
+          </div>
+          <button class="tile-cta" style="background:#EFF6FF;color:#0369A1;align-self:center">Open →</button>
         </div>
       </a>
-      <a class="tile" href="./rsa.html" data-feature="rsa-warroom">
+      <a class="tile" href="./rsa.html" data-feature="rsa-warroom" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#7C3AED,#A855F7)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">🦺</div>
-          <div class="tile-title">RSA Warroom</div>
-          <div class="tile-desc">Live RSA tickets across Bangalore with technician locations</div>
-          <button class="tile-cta" style="background:#F5F3FF;color:#7C3AED">Open →</button>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">🦺</div>
+            <div class="tile-title">RSA Warroom</div>
+            <div class="tile-desc">Live RSA tickets across Bangalore with technician locations</div>
+          </div>
+          <button class="tile-cta" style="background:#F5F3FF;color:#7C3AED;align-self:center">Open →</button>
         </div>
       </a>
-      <a class="tile" href="./rsa-tech.html" data-feature="tech-app">
+      <a class="tile" href="./rsa-tech.html" data-feature="tech-app" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#0891B2,#06B6D4)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">📱</div>
-          <div class="tile-title">RSA Tech App</div>
-          <div class="tile-desc">Field tech PWA — start/end duty, log your shift</div>
-          <button class="tile-cta" style="background:#ECFEFF;color:#0891B2">Open →</button>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">📱</div>
+            <div class="tile-title">RSA Tech App</div>
+            <div class="tile-desc">Field tech PWA — start/end duty, log your shift</div>
+          </div>
+          <button class="tile-cta" style="background:#ECFEFF;color:#0891B2;align-self:center">Open →</button>
         </div>
       </a>
 
-      <!-- FPI Recovery — full-width row (2→1→2→1 pattern) -->
+      <!-- FPI Recovery -->
       <a class="tile" href="./trace-ho.html" data-feature="trace-ho" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div>
         <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
@@ -351,13 +363,15 @@ body.pinned #hbg{display:none}
       </a>
 
       <!-- RFD Check tile — Admin only -->
-      <a class="tile" href="./rfd-check.html" data-feature="rfd-check">
+      <a class="tile" href="./rfd-check.html" data-feature="rfd-check" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#374151,#6B7280)"></div>
-        <div class="tile-body">
-          <div class="tile-icon">🚦</div>
-          <div class="tile-title">RFD Check</div>
-          <div class="tile-desc">Verify IoT, MCU &amp; JC billing status before marking a bike RFD</div>
-          <button class="tile-cta" style="background:#F3F4F6;color:#374151">Check Bike →</button>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">🚦</div>
+            <div class="tile-title">RFD Check</div>
+            <div class="tile-desc">Verify IoT, MCU &amp; JC billing status before marking a bike RFD</div>
+          </div>
+          <button class="tile-cta" style="background:#F3F4F6;color:#374151;align-self:center">Check Bike →</button>
         </div>
       </a>
 
