@@ -381,23 +381,6 @@ body.pinned #main{margin-left:var(--sb-width)}
   </section>
 
   <section class="content-section">
-    <div id="fleet-avg-card" style="display:none;background:#fff;border-radius:16px;padding:20px 22px;margin-top:20px;border:1px solid var(--border);box-shadow:var(--shadow)">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-        <div style="font-size:.95rem;font-weight:700;color:#111827">Design vs Observed — Fleet Average</div>
-        <div style="font-size:.66rem;color:var(--muted)">Observed = avg km since last replacement, fleet-wide (right-censored — bikes still on their current part count from replacement to today, not to their eventual next replacement, so true averages run higher than shown)</div>
-      </div>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:.78rem">
-          <thead><tr style="text-align:left;color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.5px">
-            <th style="padding:6px 10px 8px 0">Component</th>
-            <th style="padding:6px 10px 8px;text-align:right">Design</th>
-            <th style="padding:6px 10px 8px;text-align:right">Observed Avg</th>
-            <th style="padding:6px 0 8px 10px;text-align:right">% of Design</th>
-          </tr></thead>
-          <tbody id="fleet-avg-rows"></tbody>
-        </table>
-      </div>
-    </div>
     <div id="filter-bar" style="display:none;background:#fff;border-radius:16px;padding:14px 16px;margin-top:20px;border:1px solid var(--border);box-shadow:var(--shadow)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);white-space:nowrap;flex-shrink:0">Filter</span>
@@ -535,53 +518,6 @@ function loadPostAuthData(){
       var st=document.getElementById('sync-time');if(st)st.style.display='block';
       var nr=document.getElementById('parts-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3600000);
       var nrw=document.getElementById('parts-next-run');if(nrw)nrw.style.display='';
-    }
-  }).catch(function(){});
-  loadFleetAverages();
-}
-
-var FLEET_AVG_PARTS=[
-  {key:'front_brake',label:'Front Brake Pad / Shoe',disc:10000,drum:12000},
-  {key:'rear_brake',label:'Rear Brake Pad / Shoe',disc:12000,drum:14000},
-  {key:'front_tyre',label:'Front Tyre',disc:15000,drum:15000},
-  {key:'rear_tyre',label:'Rear Tyre',disc:15000,drum:15000},
-  {key:'cone_set',label:'Cone Set',disc:10000,drum:10000},
-  {key:'fr_brake_disc',label:'Front Brake Disc',disc:20000,drum:null},
-  {key:'rr_brake_disc',label:'Rear Brake Disc',disc:25000,drum:null},
-  {key:'fr_wheel_bearing',label:'Front Wheel Bearing',disc:6000,drum:6000},
-  {key:'rr_wheel_bearing',label:'Rear Wheel Bearing',disc:9000,drum:9000}
-];
-function loadFleetAverages(){
-  fetch(SB+'/rest/v1/rpc/get_part_design_vs_actual',{
-    method:'POST',
-    headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json'},
-    body:JSON.stringify({})
-  })
-  .then(function(r){return r.json();})
-  .then(function(rows){
-    if(!rows||!rows.length)return;
-    var byKey={};
-    rows.forEach(function(r){byKey[r.part_group]=r;});
-    var html=FLEET_AVG_PARTS.map(function(p){
-      var r=byKey[p.key];
-      if(!r||!r.sample_n)return '';
-      // Design shown as disc/drum range when they differ; N/A parts (disc-only) show disc value alone.
-      var designTxt=(p.drum===null)?fm(p.disc)+'km':(p.disc===p.drum?fm(p.disc)+'km':fm(p.disc)+'-'+fm(p.drum)+'km');
-      var designMid=(p.drum===null)?p.disc:(p.disc+p.drum)/2;
-      var obs=Number(r.observed_avg);
-      var pct=designMid?Math.round((obs/designMid)*100):null;
-      var pctColor=pct==null?'':(pct>110?'color:var(--overdue);font-weight:700':pct<80?'color:var(--muted)':'color:var(--ok);font-weight:600');
-      var pctTxt=pct==null?'--':(pct>100?'▲ ':'')+pct+'%';
-      return '<tr style="border-top:1px solid var(--border)">'
-        +'<td style="padding:8px 10px 8px 0;color:#374151;font-weight:600">'+p.label+'</td>'
-        +'<td style="padding:8px 10px;text-align:right;color:var(--muted)">'+designTxt+'</td>'
-        +'<td style="padding:8px 10px;text-align:right;color:#374151;font-weight:600">'+fm(obs)+'km</td>'
-        +'<td style="padding:8px 0 8px 10px;text-align:right;'+pctColor+'">'+pctTxt+'</td>'
-        +'</tr>';
-    }).join('');
-    if(html){
-      document.getElementById('fleet-avg-rows').innerHTML=html;
-      document.getElementById('fleet-avg-card').style.display='block';
     }
   }).catch(function(){});
 }
@@ -762,23 +698,26 @@ function renderCards(data){
 function fm(v){return v!=null?Number(v).toLocaleString('en-IN'):'--';}
 function fd(d){return d?new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'2-digit'}):'--';}
 
+// Thresholds are OBSERVED fleet-wide average part life (real replacement-to-
+// replacement km, not design-life spec) — per Vamsee, design specs understated
+// actual field life. Source: "Observed part life vs design life" tracker.
 // Disc brake models (model IDs 1,2,3 — e.1x+/e.1x/e.1xc+)
 var THRESH_DISC={
-  front_brake:10000, rear_brake:12000,
-  front_tyre:15000, rear_tyre:15000,
-  cone_set:10000,
-  fr_brake_disc:20000, rr_brake_disc:25000,
-  fr_wheel_bearing:6000, rr_wheel_bearing:9000
+  front_brake:14175, rear_brake:14123,
+  front_tyre:17505, rear_tyre:21146,
+  cone_set:16717,
+  fr_brake_disc:21796, rr_brake_disc:25233,
+  fr_wheel_bearing:19217, rr_wheel_bearing:20084
 };
 // Drum brake models (e.3, Star, Low Speed variants)
 var THRESH_DRUM={
-  front_brake:12000, rear_brake:14000,
-  front_tyre:15000, rear_tyre:15000,
-  cone_set:10000,
-  fr_wheel_bearing:6000, rr_wheel_bearing:9000
+  front_brake:15750, rear_brake:12088,
+  front_tyre:17505, rear_tyre:21146,
+  cone_set:16717,
+  fr_wheel_bearing:19217, rr_wheel_bearing:20084
 };
 // Legacy (pre-split) bikes with no front/rear brake or tyre distinction — generic bearing value.
-var THRESH={brake:12000, tyre:15000};
+var THRESH={brake:14175, tyre:22620};
 
 function sr(s){return s==='Overdue'?1:s==='Due Soon'?2:s==='OK'?3:s==='N/A'?5:4;}
 
