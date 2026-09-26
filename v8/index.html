@@ -274,6 +274,24 @@ body.pinned #hbg{display:none}
         </div>
       </a>
 
+      <!-- Bike Status Tile — live vehicle_status/rental_status snapshot, 15-min sync -->
+      <a class="tile" href="./bike-status.html" data-feature="bike-status" style="grid-column:1/-1">
+        <div class="tile-accent" style="background:linear-gradient(90deg,#0F766E,#0891B2)"></div>
+        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div class="tile-icon">📊</div>
+            <div class="tile-title">Bike Status</div>
+            <div class="tile-desc">Live Active Rental / RFD / OOS breakdown · synced every 15 min</div>
+          </div>
+          <div id="bs-stat-row" class="tile-stat-row tile-loading">
+            <div class="tile-stat-col"><div id="bs-stat-active" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#15803D">Active Rental</div></div>
+            <div class="tile-stat-col"><div id="bs-stat-rfd" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#1D4ED8">RFD</div></div>
+            <div class="tile-stat-col"><div id="bs-stat-oos" class="tile-stat-sm">—</div><div class="tile-stat-label-sm" style="color:#B91C1C">OOS</div></div>
+          </div>
+          <button class="tile-cta" style="background:#F0FDFA;color:#0F766E;align-self:center">Open →</button>
+        </div>
+      </a>
+
       <!-- OOS Tile — Workshop dept → blue -->
       <a class="tile" href="./queue.html" data-feature="oos-queue" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#1D4ED8,#0891B2)"></div>
@@ -654,6 +672,25 @@ async function loadTileStats(){
   }).catch(function(){
     document.getElementById('oos-stat').textContent='—';
     document.getElementById('oos-label').textContent='error loading';
+  });
+
+  // Bike Status stats — live vehicle_status/rental_status breakdown from
+  // bike_status_cache (15-min Metabase sync). Active Rental combines Paid+Not Paid.
+  fetch(base+'bike_status_cache?select=status',h)
+  .then(function(r){return r.json();})
+  .then(function(rows){
+    if(!Array.isArray(rows))throw new Error('bad response');
+    var counts={};
+    rows.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+    var active=(counts['Active Rental Paid']||0)+(counts['Active Rental Not Paid']||0);
+    document.getElementById('bs-stat-active').textContent=active;
+    document.getElementById('bs-stat-rfd').textContent=counts['RFD']||0;
+    document.getElementById('bs-stat-oos').textContent=counts['OOS']||0;
+    document.getElementById('bs-stat-row').className='tile-stat-row';
+  }).catch(function(){
+    ['bs-stat-active','bs-stat-rfd','bs-stat-oos'].forEach(function(id){
+      document.getElementById(id).textContent='—';
+    });
   });
 
   // Trace stats — count pending recovery tickets (not cancelled/at_hub)

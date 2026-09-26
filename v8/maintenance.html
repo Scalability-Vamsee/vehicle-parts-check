@@ -692,6 +692,41 @@ function renderCards(data){
         });
       });
     }).catch(function(){});
+
+    // Live Bike Status (Active Rental / RFD / OOS / etc.) + Current Assigned Hub —
+    // from bike_status_cache (15-min Metabase sync of bike.vehicle_status +
+    // bike.rental_status), distinct from last_service_hub which is where the last
+    // BILLED job card happened, not where the bike sits today.
+    fetch(SB+'/rest/v1/bike_status_cache?reg_number=in.('+regs.map(function(r){return '"'+r+'"';}).join(',')+')&select=reg_number,status,hub_name',
+      {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.json();})
+    .then(function(statusRows){
+      if(!statusRows||!statusRows.length)return;
+      var statusMap={};
+      statusRows.forEach(function(r){if(r.reg_number)statusMap[r.reg_number]=r;});
+      var statusColors={
+        'OOS':{bg:'#FEF2F2',border:'#FCA5A5',color:'#B91C1C'},
+        'RFD':{bg:'#EFF6FF',border:'#93C5FD',color:'#1D4ED8'},
+        'Active Rental Paid':{bg:'#F0FDF4',border:'#86EFAC',color:'#15803D'},
+        'Active Rental Not Paid':{bg:'#FFFBEB',border:'#FCD34D',color:'#B45309'},
+        'Marked For Recovery':{bg:'#FEF2F2',border:'#FCA5A5',color:'#B91C1C'},
+        'Recovered':{bg:'#F3F4F6',border:'#D1D5DB',color:'#374151'},
+        'PDI':{bg:'#F5F3FF',border:'#C4B5FD',color:'#6D28D9'},
+        'Internal Use':{bg:'#F3F4F6',border:'#D1D5DB',color:'#374151'},
+        'Marketing':{bg:'#F3F4F6',border:'#D1D5DB',color:'#374151'}
+      };
+      var cards=rv.querySelectorAll('.card');
+      cards.forEach(function(el){
+        var regEl=el.querySelector('.reg');
+        var reg=regEl?regEl.textContent.trim():null;
+        var s=reg?statusMap[reg]:null;
+        var badgeEl=el.querySelector('.bike-status-badge');
+        if(!s||!badgeEl)return;
+        var c=statusColors[s.status]||{bg:'#F3F4F6',border:'#D1D5DB',color:'#374151'};
+        badgeEl.innerHTML='<span style="font-size:.7rem;font-weight:700;color:'+c.color+';background:'+c.bg+';border:1px solid '+c.border+';border-radius:6px;padding:3px 9px;white-space:nowrap">'+s.status+'</span>'
+          +(s.hub_name?'<div style="font-size:.68rem;color:#6B7280;margin-top:4px">📍 '+s.hub_name+'</div>':'');
+      });
+    }).catch(function(){});
   }
 }
 
@@ -829,7 +864,10 @@ function card(v){
   flags+='</div>';
   return '<div class="card">'
     +'<div class="ch"><div><div class="reg">'+v.reg_number+'</div>'
-    +'<div class="bid">Bike #'+v.bike_id+(v.dms_bike_model_id?' · '+(MODEL_NAMES[Number(v.dms_bike_model_id)]||('Model '+v.dms_bike_model_id))+' ('+(isDisc?'Disc':'Drum')+')'  :'')+'</div></div></div>'
+    +'<div class="bid">Bike #'+v.bike_id+(v.dms_bike_model_id?' · '+(MODEL_NAMES[Number(v.dms_bike_model_id)]||('Model '+v.dms_bike_model_id))+' ('+(isDisc?'Disc':'Drum')+')'  :'')+'</div>'
+    +(v.last_service_hub?'<div style="font-size:.7rem;color:#9CA3AF;margin-top:3px">🔧 Last Serviced: '+v.last_service_hub+'</div>':'')
+    +'</div>'
+    +'<div class="bike-status-badge" style="text-align:right"></div></div>'
     +'<div class="odo-strip">'
     +'<div class="odo-stat"><div class="odo-lbl">Current Odometer</div><div class="odo-val">'+fm(v.estimated_current_odo)+'</div><div class="odo-sub">km</div></div>'
     +'<div class="odo-stat"><div class="odo-lbl">Last Billed JC Odo</div><div class="odo-val">'+fm(v.last_jc_odo)+'</div><div class="odo-sub">km</div></div>'
