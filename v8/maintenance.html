@@ -213,7 +213,6 @@ body.pinned #main{margin-left:var(--sb-width)}
 .pc-inner{padding:10px 11px 9px 13px}
 .pc-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
 .pn{font-size:.59rem;font-weight:700;text-transform:uppercase;letter-spacing:.65px;color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pthresh{font-size:.6rem;color:#94A3B8;font-weight:700;letter-spacing:.3px;flex-shrink:0;margin-left:5px}
 .ps{font-size:.85rem;font-weight:700;margin-bottom:4px;line-height:1.2}
 .ps.sov{color:var(--overdue)}
 .ps.sds{color:var(--due)}
@@ -228,11 +227,17 @@ body.pinned #main{margin-left:var(--sb-width)}
 .pb-fill.fok{background:var(--ok)}
 .pb-fill.fnd{background:#E2E8F0}
 .pb-rem{font-size:.64rem;font-weight:700;flex-shrink:0;white-space:nowrap}
-.pd-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;margin-bottom:3px}
+.pd-grid{margin-bottom:3px}
 .pd{font-size:.68rem;color:var(--muted);line-height:1.5}
 .pd b{color:#374151;font-weight:600}
 .pd-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.4px;opacity:.55;display:block;line-height:1.2}
 .pd-hub{font-size:.66rem;color:#64748B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-top:1px solid rgba(0,0,0,.06);padding-top:4px;margin-top:2px;cursor:default}
+.pda-row{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;margin-bottom:5px;padding:6px 8px;background:rgba(255,255,255,.55);border-radius:7px}
+.pda{font-size:.68rem;color:var(--muted);line-height:1.4}
+.pda-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.4px;opacity:.55;display:block;line-height:1.2}
+.pda b{font-size:.78rem;color:#374151;font-weight:700}
+.pda.pda-actual b.over{color:var(--overdue)}
+.pda.pda-actual b.dueb{color:var(--due)}
 .neg{color:var(--overdue)!important}
 .pos{color:var(--ok)!important}
 .pc-na{opacity:.35}
@@ -376,6 +381,23 @@ body.pinned #main{margin-left:var(--sb-width)}
   </section>
 
   <section class="content-section">
+    <div id="fleet-avg-card" style="display:none;background:#fff;border-radius:16px;padding:20px 22px;margin-top:20px;border:1px solid var(--border);box-shadow:var(--shadow)">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+        <div style="font-size:.95rem;font-weight:700;color:#111827">Design vs Observed — Fleet Average</div>
+        <div style="font-size:.66rem;color:var(--muted)">Observed = avg km since last replacement, fleet-wide (right-censored — bikes still on their current part count from replacement to today, not to their eventual next replacement, so true averages run higher than shown)</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+          <thead><tr style="text-align:left;color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.5px">
+            <th style="padding:6px 10px 8px 0">Component</th>
+            <th style="padding:6px 10px 8px;text-align:right">Design</th>
+            <th style="padding:6px 10px 8px;text-align:right">Observed Avg</th>
+            <th style="padding:6px 0 8px 10px;text-align:right">% of Design</th>
+          </tr></thead>
+          <tbody id="fleet-avg-rows"></tbody>
+        </table>
+      </div>
+    </div>
     <div id="filter-bar" style="display:none;background:#fff;border-radius:16px;padding:14px 16px;margin-top:20px;border:1px solid var(--border);box-shadow:var(--shadow)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);white-space:nowrap;flex-shrink:0">Filter</span>
@@ -513,6 +535,53 @@ function loadPostAuthData(){
       var st=document.getElementById('sync-time');if(st)st.style.display='block';
       var nr=document.getElementById('parts-next-run-val');if(nr)nr.textContent=calcNextRun(d[0].synced_at,3600000);
       var nrw=document.getElementById('parts-next-run');if(nrw)nrw.style.display='';
+    }
+  }).catch(function(){});
+  loadFleetAverages();
+}
+
+var FLEET_AVG_PARTS=[
+  {key:'front_brake',label:'Front Brake Pad / Shoe',disc:10000,drum:12000},
+  {key:'rear_brake',label:'Rear Brake Pad / Shoe',disc:12000,drum:14000},
+  {key:'front_tyre',label:'Front Tyre',disc:15000,drum:15000},
+  {key:'rear_tyre',label:'Rear Tyre',disc:15000,drum:15000},
+  {key:'cone_set',label:'Cone Set',disc:10000,drum:10000},
+  {key:'fr_brake_disc',label:'Front Brake Disc',disc:20000,drum:null},
+  {key:'rr_brake_disc',label:'Rear Brake Disc',disc:25000,drum:null},
+  {key:'fr_wheel_bearing',label:'Front Wheel Bearing',disc:6000,drum:6000},
+  {key:'rr_wheel_bearing',label:'Rear Wheel Bearing',disc:9000,drum:9000}
+];
+function loadFleetAverages(){
+  fetch(SB+'/rest/v1/rpc/get_part_design_vs_actual',{
+    method:'POST',
+    headers:{apikey:ANON_KEY,Authorization:'Bearer '+K,'Content-Type':'application/json'},
+    body:JSON.stringify({})
+  })
+  .then(function(r){return r.json();})
+  .then(function(rows){
+    if(!rows||!rows.length)return;
+    var byKey={};
+    rows.forEach(function(r){byKey[r.part_group]=r;});
+    var html=FLEET_AVG_PARTS.map(function(p){
+      var r=byKey[p.key];
+      if(!r||!r.sample_n)return '';
+      // Design shown as disc/drum range when they differ; N/A parts (disc-only) show disc value alone.
+      var designTxt=(p.drum===null)?fm(p.disc)+'km':(p.disc===p.drum?fm(p.disc)+'km':fm(p.disc)+'-'+fm(p.drum)+'km');
+      var designMid=(p.drum===null)?p.disc:(p.disc+p.drum)/2;
+      var obs=Number(r.observed_avg);
+      var pct=designMid?Math.round((obs/designMid)*100):null;
+      var pctColor=pct==null?'':(pct>110?'color:var(--overdue);font-weight:700':pct<80?'color:var(--muted)':'color:var(--ok);font-weight:600');
+      var pctTxt=pct==null?'--':(pct>100?'▲ ':'')+pct+'%';
+      return '<tr style="border-top:1px solid var(--border)">'
+        +'<td style="padding:8px 10px 8px 0;color:#374151;font-weight:600">'+p.label+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:var(--muted)">'+designTxt+'</td>'
+        +'<td style="padding:8px 10px;text-align:right;color:#374151;font-weight:600">'+fm(obs)+'km</td>'
+        +'<td style="padding:8px 0 8px 10px;text-align:right;'+pctColor+'">'+pctTxt+'</td>'
+        +'</tr>';
+    }).join('');
+    if(html){
+      document.getElementById('fleet-avg-rows').innerHTML=html;
+      document.getElementById('fleet-avg-card').style.display='block';
     }
   }).catch(function(){});
 }
@@ -733,20 +802,22 @@ function partCard(label,status,kmSince,kmRem,lastDate,lastHub,thresh){
   if(thresh&&kmSince!=null)pct=Math.min(100,Math.round((kmSince/thresh)*100));
   var remColor=(kmRem!=null&&kmRem<0)?'neg':(kmRem!=null&&s==='OK'?'pos':'');
   var remTxt=kmRem!=null?(kmRem<0?fm(Math.abs(kmRem))+'km over':fm(kmRem)+'km rem'):'--';
+  var actualCls=s==='Overdue'?'over':s==='Due Soon'?'dueb':'';
   var hubDisplay=lastHub?lastHub.replace(/bounce electric \d+ private ltd[\s\-–]*/i,'').trim()||lastHub:'';
   return '<div class="pc '+tc+'">'
     +'<div class="pc-stripe" style="background:'+str+'"></div>'
     +'<div class="pc-inner">'
-    +'<div class="pc-head"><span class="pn">'+label+'</span><span class="pthresh">'+threshLabel+'</span></div>'
+    +'<div class="pc-head"><span class="pn">'+label+'</span></div>'
     +'<div class="ps '+sc+'">'+icon+s+'</div>'
+    +'<div class="pda-row">'
+    +'<div class="pda"><span class="pda-lbl">Design</span><b>'+(thresh?fm(thresh)+'km':'--')+'</b></div>'
+    +'<div class="pda pda-actual"><span class="pda-lbl">Actual</span><b class="'+actualCls+'">'+(kmSince!=null?fm(kmSince)+'km':'--')+'</b></div>'
+    +'</div>'
     +'<div class="pb-wrap"><div class="pb-row">'
     +'<div class="pb-track"><div class="pb-fill '+fc+'" style="width:'+pct+'%"></div></div>'
     +'<span class="pb-rem '+remColor+'">'+remTxt+'</span>'
     +'</div></div>'
-    +'<div class="pd-grid">'
-    +(kmSince!=null?'<div class="pd"><span class="pd-lbl">Since</span><b>'+fm(kmSince)+'km</b></div>':'<div></div>')
-    +(lastDate?'<div class="pd"><span class="pd-lbl">Last</span><b>'+fd(lastDate)+'</b></div>':'<div></div>')
-    +'</div>'
+    +(lastDate?'<div class="pd-grid"><div class="pd"><span class="pd-lbl">Last Replaced</span><b>'+fd(lastDate)+'</b></div></div>':'')
     +(hubDisplay?'<div class="pd-hub" title="'+(lastHub||'')+'">'+hubDisplay+'</div>':'')
     +'</div></div>';
 }
