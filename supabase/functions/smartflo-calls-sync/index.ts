@@ -7,7 +7,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 // Backfill: POST { card_id?, start_date: "YYYY-MM-DD", end_date: "YYYY-MM-DD" } (UTC clock, end exclusive;
 // use ~7-10 day chunks). Upserts on call_id, prunes calls older than 35 days.
 // Pairing calls to RSA tickets is NOT done here: pg_cron runs public.rsa_cc_calls_rebuild() after the sync.
-// Guard: if the card does not return call_id + connected columns nothing is written (409).
+// Inbound calls only (RSA makes no outbound calls). Guard: if the card does not return call_id + connected columns nothing is written (409).
 
 const CARD_ID      = "27babdaa-3cff-4c07-9998-df87afdef037";   // "Smartflo calls — raw feed" (body.card_id overrides)
 const METABASE     = "https://metabaselatest-dy7gqwqrma-el.a.run.app/api/public/card";
@@ -40,6 +40,19 @@ function mapRow(r: any, syncedAt: string) {
     legs:        num(r.legs),
     did:         txt(r.did),
     recording_url: txt(r.recording_url),
+    answered_by_agent: txt(r.answered_by_agent),
+    call_solution: txt(r.call_solution),
+    inbound_queue: txt(r.inbound_queue),
+    conversation_secs: num(r.conversation_secs),
+    skill_name: txt(r.skill_name),
+    ucid: txt(r.ucid),
+    analysis_issue_category: txt(r.analysis_issue_category),
+    analysis_secondary_category: txt(r.analysis_secondary_category),
+    analysis_summary: txt(r.analysis_summary),
+    analysis_resolved: txt(r.analysis_resolved),
+    analysis_language: txt(r.analysis_language),
+    analysis_outcome: txt(r.analysis_outcome),
+    analysis_sentiment: txt(r.analysis_sentiment),
     synced_at:   syncedAt,
   };
 }
@@ -87,7 +100,8 @@ Deno.serve(async (req: Request) => {
 
     const syncedAt = new Date().toISOString();
     const byId = new Map<string, any>();
-    for (const r of rows) if (r.call_id && r.call_time) { const m = mapRow(r, syncedAt); byId.set(m.call_id, m); };
+    // RSA does no outbound calling: inbound only (the card filters too; this is the safety net)
+    for (const r of rows) if (r.call_id && r.call_time && r.direction === "Inbound") { const m = mapRow(r, syncedAt); byId.set(m.call_id, m); }
     const recs = [...byId.values()];
 
     for (let i = 0; i < recs.length; i += BATCH) {
