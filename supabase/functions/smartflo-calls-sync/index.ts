@@ -46,6 +46,7 @@ function mapRow(r: any, syncedAt: string) {
     conversation_secs: num(r.conversation_secs),
     skill_name: txt(r.skill_name),
     ucid: txt(r.ucid),
+    disposition: txt(r.disposition),   // CC agent's tag ("Disposition Names"); null when untagged
     // analysis_* are filled in Supabase by smartflo_calls_attach_analysis() (join on ucid), not by this sync
     synced_at:   syncedAt,
   };
