@@ -46,13 +46,7 @@ function mapRow(r: any, syncedAt: string) {
     conversation_secs: num(r.conversation_secs),
     skill_name: txt(r.skill_name),
     ucid: txt(r.ucid),
-    analysis_issue_category: txt(r.analysis_issue_category),
-    analysis_secondary_category: txt(r.analysis_secondary_category),
-    analysis_summary: txt(r.analysis_summary),
-    analysis_resolved: txt(r.analysis_resolved),
-    analysis_language: txt(r.analysis_language),
-    analysis_outcome: txt(r.analysis_outcome),
-    analysis_sentiment: txt(r.analysis_sentiment),
+    // analysis_* are filled in Supabase by smartflo_calls_attach_analysis() (join on ucid), not by this sync
     synced_at:   syncedAt,
   };
 }
