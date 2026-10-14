@@ -8,6 +8,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>FW Pending Map — FleetPro</title>
 <link rel="icon" type="image/jpeg" href="/v8/logo.jpg">
+<script>
+// Embed mode (?embed=1): this page is shown inside the RSA Warroom "FW Map" tab (rsa.html).
+// It hides the page's own topbar/sidebar (the parent provides them) and leaves session lifetime to the parent.
+// Standalone use (no ?embed=1) is completely unchanged.
+var FW_EMBED=/[?&]embed=1(&|$)/.test(location.search);
+if(FW_EMBED)document.documentElement.classList.add('embed');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -149,6 +156,11 @@ body.pinned #main{margin-left:var(--sb-width)}
 .layer-badge{font-size:.65rem;color:#9CA3AF;font-weight:500;}
 .layer-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 #perm-veil{position:fixed;inset:0;background:#fff;z-index:8000}
+
+/* ── Embed mode (?embed=1) — shown inside the RSA Warroom "FW Map" tab ── */
+html.embed,html.embed body{overflow:hidden}
+html.embed #topbar,html.embed #sb,html.embed #ov,html.embed #settings-modal{display:none!important}
+html.embed body.pinned #main{margin-left:0!important}
 </style>
 </head>
 <body>
@@ -1085,6 +1097,22 @@ async function loadUserPermissions(userId){
 function fpCan(featureKey){
   return !!(window.FP_FEATURES&&window.FP_FEATURES[featureKey]);
 }
+// Embed only: rsa.html already let this user in. If that was its superadmin shortcut (app_metadata.is_superadmin,
+// no group rows), mirror it here instead of re-denying inside the frame. Standalone keeps its own group check (unchanged).
+function fwSuper(session){
+  return !!(FW_EMBED&&session&&session.user&&session.user.app_metadata&&session.user.app_metadata.is_superadmin);
+}
+// No fw-map access: standalone page → back to the hub; embedded in rsa.html → block the view in place
+// (never load index.html inside the frame — the parent hides the tab for users without the feature anyway).
+function fwDeny(){
+  if(!FW_EMBED){window.location.href='./index.html';return;}
+  var v=document.getElementById('perm-veil');
+  if(v){
+    v.style.display='flex';v.style.alignItems='center';v.style.justifyContent='center';
+    v.style.font='600 .9rem Inter,sans-serif';v.style.color='#6B7280';
+    v.textContent='⛔ You don’t have access to the FW Map — contact your admin.';
+  }
+}
 // Show access denied on auth screen
 function showAccessDenied(){
   var el=document.getElementById('auth-msg');
@@ -1108,8 +1136,9 @@ var _authReady=false;
     _authReady=true;
     setTimeout(function(){setMapHeight();loadMapData();loadHubMarkers();loadRsaBikes().then(loadRsaLocations);triggerSyncFireAndForget();loadTopIndofastStations();},100);
     loadUserPermissions(session.user.id).then(function(features){
+      if(fwSuper(session))features['fw-map']=true;
       window.FP_FEATURES=features;
-      if(!fpCan('fw-map')){window.location.href='./index.html';return;}
+      if(!fpCan('fw-map')){fwDeny();return;}
       var v=document.getElementById('perm-veil');if(v)v.remove();
       document.querySelectorAll('[data-feature]').forEach(function(el){if(!features[el.getAttribute('data-feature')])el.style.display='none';});
       enforce12hReauth(session.user.id).then(function(){checkGlobalLogout(session.user.id);});
@@ -1121,8 +1150,9 @@ var _authReady=false;
       // Fresh sign-in (magic link) — check permissions before showing map
       K=session.access_token;CURRENT_USER_EMAIL=session.user.email;
       var features=await loadUserPermissions(session.user.id);
+      if(fwSuper(session))features['fw-map']=true;
       window.FP_FEATURES=features;
-      if(!fpCan('fw-map')){window.location.href='./index.html';return;}
+      if(!fpCan('fw-map')){fwDeny();return;}
       var v=document.getElementById('perm-veil');if(v)v.remove();
       document.querySelectorAll('[data-feature]').forEach(function(el){if(!features[el.getAttribute('data-feature')])el.style.display='none';});
       // Record login so enforce12hReauth clock stays fresh
@@ -1145,11 +1175,28 @@ var _authReady=false;
   function _isPollIdle(){return Date.now()-_lastFwActivity>_POLL_IDLE_MS;}
   function _resetIdle(){
     _lastFwActivity=Date.now();
+    if(FW_EMBED)return; // embedded in rsa.html: the parent page owns the session lifetime (a hidden frame sees no activity and must not sign the user out)
     clearTimeout(_idleTimer);
     _idleTimer=setTimeout(async function(){await sbClient.auth.signOut();},_idleMs);
   }
   ['click','keydown','mousemove','touchstart'].forEach(function(ev){document.addEventListener(ev,_resetIdle,{passive:true});});
   _resetIdle();
+
+  // Embed mode: rsa.html pings us every time the "FW Map" tab is shown again after being hidden —
+  // re-measure the map (a hidden frame has no size) and refresh if the data went stale meanwhile.
+  if(FW_EMBED){
+    var _embedRefreshedAt=Date.now();
+    window.addEventListener('message',function(e){
+      if(e.origin!==location.origin||!e.data||e.data.type!=='fw-embed-show')return;
+      _resetIdle(); // counts as activity → polling resumes
+      setMapHeight();setTimeout(setMapHeight,150);
+      if(!_authReady||!K||K===ANON_KEY)return;
+      if(Date.now()-_embedRefreshedAt>2*60*1000){
+        _embedRefreshedAt=Date.now();
+        triggerSyncFireAndForget();loadMapData();loadTopIndofastStations();loadRsaLocations();
+      }
+    });
+  }
 
   // Global logout check every 5 min
   setInterval(async function(){

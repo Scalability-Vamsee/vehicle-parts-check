@@ -177,10 +177,14 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
 .av-reg{font-weight:700;font-size:.82rem;color:#1D4ED8}
 .av-unassign{background:none;border:none;color:#EF4444;cursor:pointer;font-size:.9rem;padding:2px 5px;border-radius:4px}
 .av-unassign:hover{background:#FEF2F2}
-/* View tabs (Map | Metrics | Admin) */
+/* View tabs (Map | Metrics | Admin | FW Map) */
 .view-tab-btn{padding:4px 13px;border-radius:7px;font-size:.74rem;font-weight:600;border:none;background:transparent;color:#6B7280;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap}
 .view-tab-btn.active{background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .view-tab-btn:hover:not(.active){color:#374151;background:rgba(255,255,255,.6)}
+/* FW Map tab — fw-map.html embedded as a lazy-loaded iframe (?embed=1 hides its own topbar/sidebar) */
+#fw-view{flex:1;min-height:0;position:relative;display:none;background:#F8FAFC}
+#fw-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+#fw-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:600;color:#6B7280}
 /* Roster tab */
 .roster-sec{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
 .roster-sec-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#9CA3AF;margin-bottom:12px}
@@ -307,6 +311,7 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
     <button class="view-tab-btn active" id="view-map-btn" onclick="showView('map')">🗺 Map</button>
     <button class="view-tab-btn" id="view-dash-btn" onclick="showView('dash')">📊 Metrics</button>
     <button class="view-tab-btn" id="view-admin-btn" data-feature="rsa-admin" onclick="showView('admin')">⚙ Admin</button>
+    <button class="view-tab-btn" id="view-fw-btn" data-feature="fw-map" onclick="showView('fw')">📍 FW Map</button>
   </div>
   <div class="tb-right">
     <button class="tb-btn" id="logout-btn" style="display:none" onclick="signOut()">Sign out</button>
@@ -618,6 +623,12 @@ body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;height:100v
       </div>
     </div>
   </div>
+</div>
+
+<!-- FW Map view — fw-map.html embedded (iframe is loaded on first open; the standalone page is unchanged) -->
+<div id="fw-view">
+  <div id="fw-loading">Loading FW Map…</div>
+  <iframe id="fw-frame" title="FW Pending Map" allow="geolocation"></iframe>
 </div>
 
 <!-- Dashboard view -->
@@ -1795,7 +1806,7 @@ document.addEventListener('click',function(e){
   if(panel.classList.contains('show')&&!panel.contains(e.target)&&!e.target.closest('.layers-toggle'))panel.classList.remove('show');
 });
 
-// ── View toggle (Map / Metrics / Admin) ──
+// ── View toggle (Map / Metrics / Admin / FW Map) ──
 var _currentView='map';
 function showView(v){
   _currentView=v;
@@ -1803,7 +1814,8 @@ function showView(v){
   var dashView=document.getElementById('dashboard-view');
   var adminView=document.getElementById('admin-panel');
   var filterBar=document.getElementById('filter-bar');
-  ['map','dash','admin'].forEach(function(n){
+  var fwView=document.getElementById('fw-view');
+  ['map','dash','admin','fw'].forEach(function(n){
     var btn=document.getElementById('view-'+n+'-btn');
     if(btn)btn.classList.toggle('active',n===v);
   });
@@ -1811,8 +1823,23 @@ function showView(v){
   filterBar.style.display=v==='map'?'':'none';
   dashView.style.display=v==='dash'?'flex':'none';
   adminView.classList.toggle('open',v==='admin');
+  // FW Map brings its own city / search / hub filters — hide the RSA ticket City+Date bar and tiles while it is open
+  document.getElementById('global-bar').style.display=v==='fw'?'none':'';
+  document.getElementById('summary-bar').style.display=v==='fw'?'none':'';
+  fwView.style.display=v==='fw'?'block':'none';
   if(v==='dash')renderDashboard();
   if(v==='admin'&&_adminTab==='vehicles')loadAdminVehicles();
+  if(v==='fw')openFwView();
+}
+// FW Map tab: fw-map.html is embedded (?embed=1) and only loaded the first time the tab is opened,
+// so users who never open it pay nothing (no extra queries / sync calls / polling).
+var _fwLoaded=false;
+function openFwView(){
+  var f=document.getElementById('fw-frame');
+  if(!f)return;
+  if(!_fwLoaded){_fwLoaded=true;f.src='./fw-map.html?embed=1';return;}
+  // Already loaded: tell the frame it is visible again (re-measure the map, refresh if the data went stale)
+  try{f.contentWindow.postMessage({type:'fw-embed-show'},location.origin);}catch(e){}
 }
 
 // ── Dashboard rendering ──
@@ -2805,7 +2832,7 @@ async function loadAndApplyPermissions(session){
   try{
     var f={};
     if(session.user.app_metadata&&session.user.app_metadata.is_superadmin){
-      f['rsa-warroom']=true;f['rsa-admin']=true;
+      f['rsa-warroom']=true;f['rsa-admin']=true;f['fw-map']=true; // fw-map = the "FW Map" tab (embeds fw-map.html)
     }else{
       var{data:r1}=await sbClient.from('user_groups').select('group_id').eq('user_id',userId);
       if(!r1||!r1.length){window.location.href='./index.html';return;}
