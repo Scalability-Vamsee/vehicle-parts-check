@@ -431,7 +431,8 @@ async function loadRsaLocations(){
 var _allPending=[];
 var _allMcu=[];
 var _allSpeedo=[];
-var _fwModes=new Set(['speedo']); // Speedometer on by default; DIU/MCU toggleable; speedo mutually exclusive
+var _fwModes=new Set(['speedo']); // exactly one of 'diu' | 'mcu' | 'speedo' is active at a time (Speedometer by default)
+var _speedoAt=0;                  // when the speedometer list was last fetched (ms)
 var _riderMap={};
 var _currentPanelBike=null;
 var _layerVisible={hubs:false,sw:false,fk:false,ze:false,bl:false,yu:false,in:false};
@@ -792,22 +793,12 @@ function rebuildHubFilter(){
   });
 }
 
-// Toggle FW mode — speedo is mutually exclusive with DIU/MCU
+// Toggle FW mode — one at a time: DIU FW, MCU 60A or Speedometer (clicking the active one does nothing)
 function toggleFwMode(mode){
-  if(mode==='speedo'){
-    if(_fwModes.has('speedo'))return; // already active, no-op
-    _fwModes=new Set(['speedo']);
-    if(!_allSpeedo.length)fetchSpeedoData();
-  }else{
-    // Activating DIU or MCU: deactivate speedo if it was on
-    if(_fwModes.has('speedo')){
-      _fwModes=new Set([mode]);
-    }else{
-      if(_fwModes.has(mode)&&_fwModes.size===1)return; // keep at least one active
-      if(_fwModes.has(mode))_fwModes.delete(mode);
-      else _fwModes.add(mode);
-    }
-  }
+  if(_fwModes.size===1&&_fwModes.has(mode))return; // already the active mode
+  _fwModes=new Set([mode]);
+  // Speedometer list: fetch the first time, and again when the copy on screen is older than 2 minutes
+  if(mode==='speedo'&&(!_allSpeedo.length||Date.now()-_speedoAt>2*60*1000))fetchSpeedoData();
   document.getElementById('toggle-diu').classList.toggle('active',_fwModes.has('diu'));
   document.getElementById('toggle-mcu').classList.toggle('active',_fwModes.has('mcu'));
   document.getElementById('toggle-speedo').classList.toggle('active',_fwModes.has('speedo'));
@@ -894,6 +885,7 @@ async function fetchSpeedoData(){
     var res=await fetch(SPEEDO_URL,{headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}});
     if(!res.ok)throw new Error('Speedo fetch error '+res.status);
     var rows=await res.json();
+    _speedoAt=Date.now();
     _allSpeedo=rows.map(function(r){
       return {
         chassis:r.serial_number||'',
@@ -959,7 +951,7 @@ async function loadMapData(){
   // active mode on boot, not just when the user later clicks the toggle.
   try{
     var promises=[fetchFreshData(),fetchMcuData()];
-    if(_fwModes.has('speedo')&&!_allSpeedo.length)promises.push(fetchSpeedoData());
+    if(_fwModes.has('speedo'))promises.push(fetchSpeedoData()); // every load / Refresh (it used to fetch only when the list was empty, so Refresh left it stale)
     var[pending,mcu]=await Promise.all(promises);
     _allMcu=mcu;
     try{localStorage.setItem(FW_CACHE_KEY,JSON.stringify({pending:pending,mcu:mcu,ts:Date.now()}));}catch(e){}
