@@ -12,13 +12,13 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 | queue.html | (free) | — | — |
 | maintenance.html | (free) | — | — |
 | deployment.html | (free) | — | — |
-| fw-map.html | (free) | — | — |
-| rsa-tech.html | (free) | — | — |
+| fw-map.html | (free) | — | 2026-10-14: embed mode LIVE (PR #30, main 29b5ac2); toggle one-at-a-time + Refresh fix LIVE (staging b689e20, PR #31, main 2d9278f). |
+| rsa.html | (free) | — | 2026-10-14: "FW Map" tab LIVE on prod (staging 981cd88, PR #30, main 29b5ac2). |
 | trace-ho.html | (free) | — | — |
 | trace-hunter.html | (free) | — | — |
 | admin-techs.html | (free) | — | — |
 | admin-permissions.html | (free) | — | — |
 | rfd-check.html | (free) | — | — |
 | sidebar.js | (free) | — | — |
-| supabase/functions (edge fn source) | (free) | — | — |
-| docs (context/checklists) | (free) | — | — |
+| supabase/functions (edge fn source) | (free) | — | 2026-10-14: rsa-raw-sync v1 deployed via MCP (new fn → rsa_tickets_raw, crons 117/118); local source added, NOT yet pushed to vehicle-parts-check. Prior: 2026-09-29: jc-history-sync fixed — was crashing (HTTP 546 WORKER_RESOURCE_LIMIT) on every scheduled run since 2026-09-28 08:00 UTC after the 45->60 day window widening roughly doubled per-run row volume (~100k -> ~140k+). Split into two invocations via new start_offset_days/end_offset_days query params (0-30d, 30-60d), each its own pg_cron job (jc-history-sync-recent-30d :15/3h, jc-history-sync-older-30-60d :45/3h) — replaced the old duplicate jc-history-2h-sync (2h) + jc-history-sync-3h (3h) jobs that were both hitting the unwindowed URL. Verified both halves succeed (v23 deployed): recent 30d = 63,894 upserted; older 30-60d = 69,876 upserted. Local file (this repo, was stale at SYNC_DAYS=90, several versions behind the live v20-23) updated to match deployed source — still needs a real commit + push, not yet done. | 2026-09-29: jc-history-sync fixed — was crashing (HTTP 546 WORKER_RESOURCE_LIMIT) on every scheduled run since 2026-09-28 08:00 UTC after the 45->60 day window widening roughly doubled per-run row volume (~100k -> ~140k+). Split into two invocations via new start_offset_days/end_offset_days query params (0-30d, 30-60d), each its own pg_cron job (jc-history-sync-recent-30d :15/3h, jc-history-sync-older-30-60d :45/3h) — replaced the old duplicate jc-history-2h-sync (2h) + jc-history-sync-3h (3h) jobs that were both hitting the unwindowed URL. Verified both halves succeed (v23 deployed): recent 30d = 63,894 upserted; older 30-60d = 69,876 upserted. Local file (this repo, was stale at SYNC_DAYS=90, several versions behind the live v20-23) updated to match deployed source — still needs a real commit + push, not yet done. |
+| docs (context/checklists) | (free) | — | 2026-10-14: FW Map docs updated with the live SHAs (CLAUDE.md Pending Deploys, Fleetpro-context.md, PUSH-DISCIPLINE PR note); pushed to staging. |

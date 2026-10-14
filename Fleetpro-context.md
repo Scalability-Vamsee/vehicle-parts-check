@@ -1,5 +1,43 @@
 # Fleetpro — Context File
-*Last updated: 2026-08-18 — PR #6 merged (CSS sidebar fixes); incentive analytics dummy-name filter; Manasa's follow-up PR pending (rsa-tech.html + admin-permissions.html sign-out bug).*
+*Last updated: 2026-10-14 — RSA Warroom "FW Map" tab LIVE (PR #30) + FW toggle one-at-a-time / Refresh fix LIVE (PR #31); prior: 2026-09-18 jc-failure-alert v14 (DB-driven FIXED_CC); sync-incentive-technicians edge fn + cron; PR #12 open (staging→main).*
+
+## 🆕 2026-10-14 — RSA Warroom "FW Map" tab (Cowork-built; LIVE on prod)
+
+Vamsee asked for the FW Pending live map inside the RSA Warroom, next to Admin, while the standalone `fw-map.html` stays.
+
+- **`rsa.html`**: 4th top tab `📍 FW Map` (`#view-fw-btn`, after Admin, `data-feature="fw-map"` — same key as the standalone page + sidebar link). Panel `#fw-view` holds a **lazy iframe** `#fw-frame` → `./fw-map.html?embed=1` (src set on first open; nothing loads for users who never open it). `showView('fw')` hides `#global-bar` + `#summary-bar` (RSA City/date filters + ticket tiles don't apply to the FW map, which has its own city/hub/search) and restores them on every other tab; on re-open it `postMessage`s `{type:'fw-embed-show'}` to the frame.
+- **`fw-map.html`** (additive, only when `?embed=1`; standalone untouched): `FW_EMBED` flag + `html.embed` class hide `#topbar`/`#sb`/`#ov`/`#settings-modal` and neutralise the pinned-sidebar `margin-left`; `_resetIdle()` skips the 8h idle-**signout** timer in embed (a hidden frame sees no activity — it would sign the whole session out; the parent owns session lifetime; poll-idle tracking is kept); `fwDeny()` shows a message instead of redirecting to `index.html` inside the frame; a `message` listener re-measures the map (`setMapHeight`) and, if the data is >2 min old, re-runs sync + `loadMapData` + `loadTopIndofastStations` + `loadRsaLocations`.
+- **Gotchas**: (1) fw-map's own `_idleMs` is computed before `FP_FEATURES` loads, so even for `fw-map` group members the standalone idle limit is effectively 8h (pre-existing, unchanged). (2) rsa.html's own 15-min poll-idle watches only its own document, so after >15 min spent only inside the FW tab its ticket polling pauses until the next click in the parent (fine — resumes within one 30s tick). (3) Same-origin only (`location.origin` check on the message) — if the app is ever served cross-origin the frame would need a different handshake.
+- **Rebase (same day)**: the first push prompt was reviewed by Claude Code before running and its Guard 1 correctly refused: staging's `rsa.html` (`ccd69274…`) was newer than Cowork's base (`5c1e3037…`) — `loadAndApplyPermissions(session)` now has a **superadmin shortcut** (`session.user.app_metadata.is_superadmin` → grants `rsa-warroom` + `rsa-admin` only, no group lookup). Lesson: the mounted folder is not auto-synced with staging; always pin the staging hash (guard) before a whole-file copy. Staging's file was rebuilt byte-exactly from the old base + that change (sha256 matched), the FW Map hunks re-applied on top, and the superadmin branch now also grants `fw-map` (otherwise a superadmin with no group rows would not see the tab). `fw-map.html` has no superadmin short-circuit, so in **embed mode only** `fwSuper()` mirrors the parent's decision; the standalone page is unchanged (superadmin without group rows is still redirected there — a pre-existing gap vs the "superadmin short-circuit on every page" rule, left alone on purpose).
+- **Verified** (headless Chromium + stubbed Supabase, 47 checks incl. pixel-identical standalone vs previous version, sign-out → re-sign-in recovery of the frame, superadmin-without-groups path, 1440/1280/1024 widths) and staging's response headers (Vercel: no `X-Frame-Options`/CSP; a live same-origin iframe of staging's `fw-map.html` loads). Not yet verified on real staging data/browsers — smoke-test `bounceops.info/v8/rsa.html` after the push (superadmin + regular `fw-map` user, user without `fw-map`, Map tab restores the RSA bars, standalone `fw-map.html`).
+- **Deploy state (LIVE 2026-10-14)**: pushed to staging by Claude Code as `981cd88` (all guards passed; exactly 2 files, rsa.html +31/−4, fw-map.html +49/−2), then promoted via **PR #30** (`staging`→`main`, clean merge, merge commit `29b5ac2`); GitHub Pages serves rsa.html `c6e1d82c…`, fw-map.html `3b7515f4…`. Not smoke-tested interactively by the pusher; Vamsee to check prod. Visibility: all 19 users with `rsa-warroom` already have `fw-map` (groups Admin 15, RSA Warroom 5), so all of them see the tab; the RSA Field Team group (17) has `fw-map` without `rsa-warroom`. The condition is the permission design (admin-permissions), not a code gate. Rollback: revert `29b5ac2`. Lesson: staging = `bounceops.info`, prod = `bounceops.online`. See CLAUDE.md → Pending Deploys.
+- **Toggle fix (same day, after launch)**: the FW Map's DIU FW / MCU 60A / Speedometer buttons are now one-at-a-time (`toggleFwMode` sets `_fwModes = new Set([mode])`; before: Speedometer exclusive but DIU + MCU combinable, silent switch-off). Refresh / auto-refresh now re-fetch the speedometer list in Speedometer mode (it was fetched only when empty, so Refresh left the default view stale); switching to Speedometer re-fetches when the list is older than 2 min. Tested by running the real functions against stubs (18 checks; 6 fail on the old file), not in a real browser. Staging `b689e20`, **PR #31**, main `2d9278f`; prod serves fw-map.html `973f06c3…`.
+
+## 🆕 2026-09-18 — jc-failure-alert v14 + recipient management
+
+### jc-failure-alert v14 — DB-driven FIXED_CC
+
+`jc_alert_recipients` table created in Supabase. FIXED_CC is now loaded at runtime from this table — no code/deploy/git change needed to add or remove global alert recipients.
+
+```sql
+-- Add a recipient
+insert into jc_alert_recipients (email) values ('name@bounceshare.com');
+
+-- Remove (soft-delete)
+update jc_alert_recipients set active = false where email = 'name@bounceshare.com';
+```
+
+Current active recipients: shivani.vavilapalli, nithish, mohithml, uppu.mubarak, vishnu.rc, machannagari.prakash (all @bounceshare.com).
+
+Hub-specific CC (HM/SM) remains dynamic from `hub_contacts` table. `niranjan.tn` and `hemanth.k` are in `hub_contacts` (not in `jc_alert_recipients`) — they only get alerts when their hub has a failure.
+
+**Pending:** Push v14 source to staging → merge PR #12 (staging→main).
+
+### sync-incentive-technicians edge fn (v1, 2026-09-18)
+
+Daily cron (6 AM IST, job #95) fetches Technician Nomenclature Map Google Sheet (gid=572681529) → delete+reinsert `incentive_technicians` table (97 rows, 3 cities, 16 hubs).
+
+---
 
 ## 🆕 2026-08-18 — PR #6 merged + incentive analytics fix
 
@@ -1179,6 +1217,7 @@ Both have 7-day session (no 12h reauth) in fw-map.html. RSA_EMAILS kept in fw-ma
 - Task ID: `fleetpro-health-check` in Cowork Scheduled sidebar
 - **Egress alert (task 5.6):** `health-check` fn updated — calls Supabase Management API (`MGMT_TOKEN` secret) daily via pg_cron job 16 (03:00 UTC / 08:30 IST). Emails `vamsee@bounceshare.com` if egress ≥ 70% (175 GB of 250 GB). Also emails on DB health failure.
 - **Phase 5.3 (session 14):** `health-check` fn now reads `sync_heartbeats` — reports latest status, minutes_since, duration_ms, rows_affected per function. Flags stale (per-function thresholds: rsa-ticket-sync/bike-location-sync=5m, fw-map-rider-sync/fw-sheet-sync/refresh-deployment-cache=35m, jc-history-sync/metabase-sync=65m) and erroring syncs. Sends alert email if any problems found.
+- **Data-loss incident (2026-09-24, 13:00 UTC):** `metabase-sync` got an empty/truncated CSV back from Metabase (transient), parsed 0 rows, then called `cleanup_stale_vpcf_rows({seen_ids: []})` — that RPC's `WHERE bike_id <> ALL(seen_ids)` is vacuously true for every row when the array is empty, wiping all 14,293 `vehicle_parts_check_flag` rows. `writeHeartbeat` still logged `status:'success', rows_affected:0` — **`health-check`'s staleness/error-only alerting did not catch this**, since the run wasn't stale and didn't error. Fixed in v39: the function now hard-fails (throws, skips the cleanup RPC entirely) whenever it parses 0 rows — a genuinely empty fleet is never a real scenario. ~8min downtime; restored via manual re-trigger, no data corruption (fresh Metabase pull, not a partial/stale restore). **Follow-up not yet done:** `health-check` could also flag any sync whose `rows_affected` drops by >X% from its own trailing average, to catch this class of bug (success-but-hollow) directly, not just staleness/errors.
 
 ---
 
