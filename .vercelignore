@@ -1,0 +1,12 @@
+# Vercel (staging, bounceops.info) deploy filter. Added 2026-10-22 (weekly QC): only the app is published.
+*.md
+*.sql
+*.gs
+*.xlsx
+*.docx
+*.pdf
+*.csv
+docs/
+supabase/
+Trace and Hunter/
+.github/

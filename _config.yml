@@ -1,0 +1,19 @@
+# GitHub Pages (Jekyll) build settings for bounceops.online.
+# Added 2026-10-22 (weekly QC): only the app is published. Internal docs, backend source,
+# SQL and data files stay in the repo but are not served on the website.
+# The app lives in v8/; the root *.html files and deployment/, maintenance/, queue/ are redirect stubs.
+exclude:
+  - "*.md"
+  - "*.sql"
+  - "*.gs"
+  - "*.xlsx"
+  - "*.docx"
+  - "*.pdf"
+  - "*.csv"
+  - docs
+  - supabase
+  - "Trace and Hunter"
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
