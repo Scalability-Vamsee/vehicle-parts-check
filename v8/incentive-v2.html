@@ -192,7 +192,7 @@ const T={
   s2:'Days present',s2p:'Zimyo decides. Only when Zimyo has no record, a day with a billed job card counts as present.',
   s3:'Target',s3p:'Target per day present × days present.',s4:'Rate per point',s4p:"Set by this week's defect rate: job cards that came back within 7 days ÷ all your job cards this week.",
   s5:'Your pay',s5p:'Points above target × rate per point. Below target = ₹0; nothing carries over to next week.',
-  total:'Total',dayPresent:'Present',dayHalf:'Half day',dayAbs:'Not present',why:{P:'Zimyo: P (present)',OD:'Zimyo: OD (on duty)',FP:'Zimyo: FP (missed punch)',PH:'Zimyo: PH (holiday)',WFH:'Zimyo: WFH',HDP:'Zimyo: half day',HDA:'Zimyo: half day',HDWFH:'Zimyo: half day',A:'Zimyo: A (absent)',WO:'Zimyo: WO (week off)',CL:'Zimyo: leave',SL:'Zimyo: leave',ML:'Zimyo: leave',none_jc:'No Zimyo record, job cards billed this day',none:'No Zimyo record, no job card'},
+  total:'Total',dayPresent:'Present',dayHalf:'Half day',dayAbs:'Not present',why:{P:'Zimyo: P (present)',OD:'Zimyo: OD (on duty)',FP:'Zimyo: FP (missed punch)',PH:'Zimyo: PH (holiday)',WFH:'Zimyo: WFH',HDP:'Zimyo: half day',HDA:'Zimyo: half day',HDWFH:'Zimyo: half day',A:'Zimyo: A (absent)',WO:'Zimyo: WO (week off)',CL:'Zimyo: leave',SL:'Zimyo: leave',ML:'Zimyo: leave',none_jc:'No Zimyo record, job cards billed this day',none:'No Zimyo record, no job card',zero_week:'Counted: no present day in Zimyo this week, and 2 or more job cards billed this day'},
   upTo:'up to {c}%',over:'over {c}%',yours:'yours',daysPresent:'days present',perDay:'per day',
   formula:'0.25 + {m} min ÷ 60 = {raw} → {pts}',updated:'Points are updated every day and frozen the next morning.',asOf:'As of {d}',
   notFinal:'The rate is provisional until 7 days after the week ends, when every job card has had its full 7 days.',
@@ -210,7 +210,7 @@ const T={
   s2:'हाज़िर दिन',s2p:'Zimyo तय करता है। सिर्फ़ जब Zimyo में कोई रिकॉर्ड नहीं, तब बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना जाता है।',
   s3:'टारगेट',s3p:'हाज़िर दिन का टारगेट × हाज़िर दिन।',s4:'प्रति पॉइंट रेट',s4p:'इस हफ़्ते के डिफ़ेक्ट रेट से तय: 7 दिन में वापस आए जॉब कार्ड ÷ इस हफ़्ते के आपके सभी जॉब कार्ड।',
   s5:'आपकी पेमेंट',s5p:'टारगेट से ऊपर पॉइंट × प्रति पॉइंट रेट। टारगेट से नीचे = ₹0; अगले हफ़्ते में कुछ नहीं जुड़ता।',
-  total:'कुल',dayPresent:'हाज़िर',dayHalf:'आधा दिन',dayAbs:'हाज़िर नहीं',why:{P:'Zimyo: P (हाज़िर)',OD:'Zimyo: OD (ऑन ड्यूटी)',FP:'Zimyo: FP (पंच छूटा)',PH:'Zimyo: PH (छुट्टी)',WFH:'Zimyo: WFH',HDP:'Zimyo: आधा दिन',HDA:'Zimyo: आधा दिन',HDWFH:'Zimyo: आधा दिन',A:'Zimyo: A (गैरहाज़िर)',WO:'Zimyo: WO (वीक ऑफ़)',CL:'Zimyo: छुट्टी',SL:'Zimyo: छुट्टी',ML:'Zimyo: छुट्टी',none_jc:'Zimyo में रिकॉर्ड नहीं, इस दिन जॉब कार्ड बिल हुए',none:'Zimyo में रिकॉर्ड नहीं, कोई जॉब कार्ड नहीं'},
+  total:'कुल',dayPresent:'हाज़िर',dayHalf:'आधा दिन',dayAbs:'हाज़िर नहीं',why:{P:'Zimyo: P (हाज़िर)',OD:'Zimyo: OD (ऑन ड्यूटी)',FP:'Zimyo: FP (पंच छूटा)',PH:'Zimyo: PH (छुट्टी)',WFH:'Zimyo: WFH',HDP:'Zimyo: आधा दिन',HDA:'Zimyo: आधा दिन',HDWFH:'Zimyo: आधा दिन',A:'Zimyo: A (गैरहाज़िर)',WO:'Zimyo: WO (वीक ऑफ़)',CL:'Zimyo: छुट्टी',SL:'Zimyo: छुट्टी',ML:'Zimyo: छुट्टी',none_jc:'Zimyo में रिकॉर्ड नहीं, इस दिन जॉब कार्ड बिल हुए',none:'Zimyo में रिकॉर्ड नहीं, कोई जॉब कार्ड नहीं',zero_week:'गिना गया: इस हफ़्ते Zimyo में कोई हाज़िर दिन नहीं, और इस दिन 2 या ज़्यादा जॉब कार्ड बिल हुए'},
   upTo:'{c}% तक',over:'{c}% से ज़्यादा',yours:'आपका',daysPresent:'हाज़िर दिन',perDay:'प्रति दिन',
   formula:'0.25 + {m} मिनट ÷ 60 = {raw} → {pts}',updated:'पॉइंट हर दिन अपडेट होते हैं और अगली सुबह पक्के हो जाते हैं।',asOf:'{d} तक',
   notFinal:'हफ़्ता खत्म होने के 7 दिन बाद रेट पक्का होता है, जब हर जॉब कार्ड के पूरे 7 दिन हो जाते हैं।',
@@ -238,6 +238,8 @@ function rangeLbl(ws){const a=D(ws),b=D(addDays(ws,6));const o={day:'numeric',mo
 const jcPoints=labourMin=>Math.ceil((0.25+labourMin/60)/0.25-1e-9)*0.25;      // no cap (removed 5 Nov)
 const ZIMYO={P:1,OD:1,FP:1,PH:1,WFH:1,HDP:.5,HDA:.5,HDWFH:.5,A:0,WO:0,CL:0,SL:0,ML:0};
 function presentOf(code,jcs){if(code&&code in ZIMYO)return ZIMYO[code];return jcs>0?1:0;}  // no Zimyo record: a billed day counts
+/* Zero-day week rule (rules page 1c, Vamsee 5 Nov): in a week with billed job cards where Zimyo gives NO present day, a day with 2+ billed job cards
+   counts as present (reason 'zero_week'); a week still at 0 days present pays nothing. The server applies it (lib/attendance.cte.sql); the page only shows the reason. */
 function rateOf(defPct,c){if(defPct<=c.c40)return 40;if(defPct<=c.c30)return 30;if(defPct<=c.c20)return 20;if(defPct<=c.c10)return 10;return 0;}
 function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days_present>0?Math.max(0,w.points-target):0;
   const def=w.jcs?100*w.defects/w.jcs:0;const rate=w.jcs?rateOf(def,cfg):0;return {...w,target,points_above:above,defect_pct:def,rate,pay:above*rate};}
@@ -245,7 +247,7 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
 /* ── DATA ──
    Shape = the proposed tables in bounce-workspace sql/incentive_v9/08_proposed_objects.sql:
    settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
-   Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code or 'none_jc'), jcs[].parts [{name, labour_min}]. */
+   Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code, 'none_jc' or 'zero_week'), jcs[].parts [{name, labour_min}]. */
 async function loadWeekBundle(){
   if(DATA_MODE==='sample')return sampleBundle();
   const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
