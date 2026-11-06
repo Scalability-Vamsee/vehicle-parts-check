@@ -126,8 +126,8 @@ table.sl td:last-child{text-align:right}
 .note{font-size:.75rem;color:var(--muted);margin-top:8px}
 .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:18px}
 /* role switch (sample mode / admin), multi-tab bar */
-.viewas{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;font-weight:700;color:var(--muted)}
-.viewas select{flex:1;padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;background:#fff;min-height:40px}
+.viewas{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;font-weight:700;color:var(--muted);flex-wrap:wrap}
+.viewas select{flex:1 1 140px;min-width:0;padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;background:#fff;min-height:40px}
 .tabs{overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tabs button{flex:1 0 auto;padding:10px 12px}
@@ -180,7 +180,7 @@ table.sl td:last-child{text-align:right}
 
 <div class="wrap">
   <div class="sample" id="sample-banner" style="display:none" data-i="sample">Sample data — not real. The incentive tables are not live yet.</div>
-  <div class="viewas" id="viewas" style="display:none"><span data-i="viewAs">View as</span><select id="role-sel" onchange="setRole(this.value)"></select></div>
+  <div class="viewas" id="viewas" style="display:none"><span data-i="viewAs">View as</span><select id="role-sel" onchange="setRole(this.value)"></select><select id="pick-sel" style="display:none"></select></div>
   <div class="who"><div class="nm" id="who-name">—</div><div class="sub" id="who-sub"></div></div>
   <div class="tabs" id="tabs"></div>
   <div class="weeks" id="weeks"></div>
@@ -199,6 +199,10 @@ const DATA_MODE='sample';
 /* Preview without login: only on a local machine, never on staging or production. */
 const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new URLSearchParams(location.search).get('demo')==='1';
 
+/* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
+   so that folder is git-ignored and never committed). Never active on staging or production. */
+const REAL_LOCAL=LOCAL_PREVIEW&&new URLSearchParams(location.search).get('real')==='1';
+let REAL=null, PICK_TECH=null, PICK_CITY=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 
 /* ── TEXT (English + Hindi; Hindi to be checked by a native speaker before launch) ── */
@@ -253,7 +257,10 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   skNote:'Every week met = ₹1,000, all but one = ₹500. A week with no entry is not met.',
   totmT:'Technician of the Month',totmP:'Above target per day present, then the lowest 7-day defect rate wins.',totmOk:'{e} eligible: the hub has its own winner.',totmPool:'Only {e} eligible (a hub needs {n}): the award goes to the city pool.',
   supT:'Supervisor of the Month',supP:"Last month's Technician of the Month gets ₹2,000 more if every technician of the hub beats the target. Starts in December (November is the first month).",
-  smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)'});
+  smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)',
+  realBanner:'Real data · laptop only · November so far. No Zimyo file yet: a day with a billed job card counts as present. Not shown anywhere else.',
+  stillSample:'This screen is still sample data: its real data is not loaded yet.'});
+T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
   tab_home:'मेरा हफ़्ता',tab_calc:'हिसाब कैसे बनता है',tab_top3:'टॉप 3',tab_city:'सिटी स्कोरकार्ड',tab_workshop:'वर्कशॉप',tab_board:'लीडरबोर्ड',tab_awards:'अवॉर्ड',tab_checklist:'चेकलिस्ट',
   top3T:'हफ़्ते के टॉप 3',top3P:'हाज़िर दिन पर टारगेट से ऊपर पॉइंट, पिछला पक्का हफ़्ता। सिर्फ़ टारगेट से ऊपर वाले टेक्नीशियन।',ppdAbove:'टारगेट से ऊपर / दिन',noneAbove:'इस हफ़्ते कोई टेक्नीशियन टारगेट से ऊपर नहीं।',
@@ -267,7 +274,10 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   skNote:'हर हफ़्ता पूरा = ₹1,000, एक छोड़कर सब = ₹500। जिस हफ़्ते की एंट्री नहीं, वह पूरा नहीं गिना जाता।',
   totmT:'टेक्नीशियन ऑफ़ द मंथ',totmP:'हाज़िर दिन पर टारगेट से ऊपर, फिर सबसे कम 7-दिन डिफ़ेक्ट रेट जीतता है।',totmOk:'{e} योग्य: हब का अपना विजेता होगा।',totmPool:'सिर्फ़ {e} योग्य (हब को {n} चाहिए): अवॉर्ड सिटी पूल में जाएगा।',
   supT:'सुपरवाइज़र ऑफ़ द मंथ',supP:'पिछले महीने के टेक्नीशियन ऑफ़ द मंथ को ₹2,000 और, अगर हब का हर टेक्नीशियन टारगेट पार करे। दिसंबर से शुरू (नवंबर पहला महीना है)।',
-  smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)'});
+  smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)',
+  realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर अब तक। Zimyo फ़ाइल अभी नहीं: बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
+  stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।'});
+T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -301,6 +311,7 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
    settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
    Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code, 'none_jc' or 'zero_week'), jcs[].parts [{name, labour_min}]. */
 async function loadWeekBundle(){
+  if(REAL_LOCAL){if(!REAL){const r=await fetch('_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
   if(DATA_MODE==='sample')return sampleBundle();
   const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
   if(error)throw error;return data;
@@ -365,6 +376,34 @@ function sampleOthers(){
   };
 }
 
+/* Real data (laptop only): the same bundle shape as the sample, built from REAL for the picked technician / city.
+   Service manager scorecard, store keeper checklist and awards are not in the real file yet: they stay sample and say so. */
+const grpOf=c=>c==='Hyderabad'||c==='Mumbai'?'Hyderabad+Mumbai':c;
+function weekOf(t,R){const days=t.days.map(d=>({d:d.d,reason:'nozimyo',jcs:d.jcs,points:d.points,present:d.jcs>0?1:0,is_frozen:d.d<R.as_of}));
+  const pts=t.jcs.reduce((a,j)=>a+j.points,0),dp=days.reduce((a,d)=>a+d.present,0);
+  return {days,cur:{week_start:R.week_start,jcs:t.jcs.length,defects:t.jcs.filter(j=>j.def_7d).length,points:pts,days_present:dp,is_final:false}};}
+function realBundle(){const R=REAL;const techs=R.techs;
+  if(!PICK_TECH||!techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
+  const t=techs.find(x=>x.name===PICK_TECH);if(!PICK_CITY)PICK_CITY=t.city;
+  const cfg=R.config[grpOf(t.city)];const w=weekOf(t,R);
+  const stat=x=>{const v=weekOf(x,R).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
+  const all=techs.map(stat);const mates=all.filter(x=>x.hub===t.hub).sort((a,c)=>c.ppd-a.ppd);
+  const cityAll=all.filter(x=>x.city===PICK_CITY);
+  const hubsAgg={};cityAll.forEach(x=>{const h=hubsAgg[x.hub]||(hubsAgg[x.hub]={hub:x.hub,techs:0,above:0,pts:0,dp:0,j:0,d:0});h.techs++;h.above+=x.above?1:0;h.pts+=x.points;h.dp+=x.days_present;h.j+=x.jcs;h.d+=x.defects;});
+  const ws=R.workshop[PICK_CITY]||{hubs:[],bikes:[]};
+  const cities=['Bangalore','NCR','Hyderabad','Mumbai'];
+  return {...sampleOthers(),mode:'real-local',as_of:R.as_of,month:R.month,notes:R.notes,
+    tech:{display_name:t.name,hub:t.hub,city:t.city},config:cfg,current:w.cur,past:[],days:w.days,jcs:t.jcs,
+    hub:{rank:mates.findIndex(x=>x.name===t.name)+1,of:mates.length,avg_ppd:mates.reduce((a,x)=>a+x.ppd,0)/(mates.length||1),above:mates.filter(x=>x.above).length},
+    top3:{week_start:R.week_start,final:false,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
+    workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
+    board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
+      techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
+    sm:{...sampleOthers().sm,city:PICK_CITY},cityCfg:R.config[grpOf(PICK_CITY)]};
+}
+function pickTech(v){PICK_TECH=v;const t=REAL.techs.find(x=>x.name===v);if(t)PICK_CITY=t.city;BUNDLE=realBundle();render();}
+function pickCity(v){PICK_CITY=v;BUNDLE=realBundle();render();}
+
 /* ── RULES for the other roles (same as sql/incentive_v9/04_sm_scorecard.sql and lib/store_keeper_score.cte.sql) ── */
 function smPay(m){const ok=(v,bar)=>m.dir==='low'?v<=bar:v>=bar;if(m.value==null)return 0;
   if(ok(m.value,m.s1000)&&(m.key!=='B2'||m.p98<=m.p98bar))return 1000;return ok(m.value,m.s500)?500:0;}       // B2 ₹1,000 also needs P98 at or under its bar
@@ -381,8 +420,15 @@ let ROLE='tech', CAN_SWITCH=false;
 function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:0});}
 const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'long',year:'numeric'});
 function render(){
-  const b=BUNDLE;document.getElementById('sample-banner').style.display=b.mode==='sample'?'block':'none';
+  const b=BUNDLE;const sb=document.getElementById('sample-banner');sb.style.display=b.mode==='sample'||b.mode==='real-local'?'block':'none';
+  sb.textContent=b.mode==='real-local'?t('realBanner'):t('sample');
   const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
+  const ps=document.getElementById('pick-sel');
+  if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
+    if(ROLE==='tech'){ps.onchange=e=>pickTech(e.target.value);
+      ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${REAL.techs.filter(x=>x.city===c).sort((a,z)=>a.name.localeCompare(z.name)).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
+    else{ps.onchange=e=>pickCity(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<option ${c===PICK_CITY?'selected':''}>${esc(c)}</option>`).join('');}
+  }else ps.style.display='none';
   if(CAN_SWITCH)document.getElementById('role-sel').innerHTML=['tech','sm','sk'].map(r=>`<option value="${r}" ${r===ROLE?'selected':''}>${esc(t('role_'+r))}</option>`).join('');
   const nm=document.getElementById('who-name'),sub=document.getElementById('who-sub');
   if(ROLE==='tech'){nm.textContent=b.tech.display_name;sub.textContent=b.tech.hub+' · '+b.tech.city+' · '+t('target')+' '+num(b.config.target)+' '+t('pts')+' '+t('perDay');}
@@ -395,13 +441,14 @@ function render(){
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
   const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
-  document.getElementById('view').innerHTML=V[TAB]();
+  const stillSample=b.mode==='real-local'&&['city','checklist','awards'].includes(TAB)?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
+  document.getElementById('view').innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
 
 /* Weekly top 3 per city: final weeks only, points above target per day present. Names shown here (spec default; Vamsee to confirm). */
 function top3Html(b){const x=b.top3;
-  return `<div class="card"><h3>${esc(t('top3T'))} · ${esc(rangeLbl(x.week_start))} <span class="tag final">${esc(t('final'))}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('top3P'))}</p></div>`+
+  return `<div class="card"><h3>${esc(t('top3T'))} · ${esc(rangeLbl(x.week_start))} ${x.final===false?`<span class="tag prov">${esc(t('prov'))}</span>`:`<span class="tag final">${esc(t('final'))}</span>`}</h3><p class="note" style="margin:0 0 6px">${esc(t('top3P'))}</p></div>`+
    x.cities.map(c=>`<div class="card"><h3>${esc(c.city)}</h3>${c.rows.length?`<ul class="list">${c.rows.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)}</small></div></div><div class="r">+${num(r.ppd_above,1)}<small>${esc(t('ppdAbove'))}</small></div></li>`).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`).join('');}
 
 /* Service manager: city scorecard, five metrics, this month's bars; every SM of the city gets the same. */
@@ -426,7 +473,7 @@ function workshopHtml(b){const x=b.workshop;const hubs=[...x.hubs].sort((a,c)=>c
 function boardHtml(b){const x=b.board;
   return `<div class="card"><h3>${esc(t('bdHubs'))}</h3><ul class="list">${[...x.hubs].sort((a,c)=>c.ppd-a.ppd).map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('bdHub',{a:h.above,n:h.techs,d:pct(h.defect)}))}</small></div><div class="r">${num(h.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul></div>
    <div class="card"><h3>${esc(t('bdTechs'))}</h3><ul class="list">${[...x.techs].sort((a,c)=>c.ppd-a.ppd).map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)} · ${esc(t('defect'))} ${pct(r.defect)}</small></div></div><div class="r ${r.ppd>=b.config.target?'ok':''}">${num(r.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul>
-   <p class="note">${esc(t('bdNote',{t:num(b.config.target)}))}</p></div>`;}
+   <p class="note">${esc(t('bdNote',{t:num((b.cityCfg||b.config).target)}))}</p></div>`;}
 
 /* Store keeper: own hub's weekly checklist (06): MSL, scrap, warranty cycles; this month's money so far. */
 function checklistHtml(b){const s=b.sk;const ws=s.weeks.map(skWeek);const n=ws.length;
