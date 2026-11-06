@@ -8,7 +8,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 |---|---|---|---|
 | jc-approval.html | (free) | — | — |
 | incentive.html | (free) | — | — |
-| incentive-v2.html (new page) | Shivani (Claude Code) | 2026-11-06 07:14 | Incentive v9 dashboard v2: technician home + how-calculated screen, fake sample data only; branch incentive-v2-tech-home. incentive.html itself is not touched. |
+| incentive-v2.html (new page) | Shivani (Claude Code) | 2026-11-06 07:14 | Incentive v9 dashboard v2: technician home + how-calculated screen, fake sample data only; branch incentive-v2-tech-home. incentive.html itself is not touched. 6 Nov: all role screens merged into staging (bounceops.info/v8/incentive-v2.html), sample data only, not linked from any menu. |
 | index.html | (free) | — | — |
 | queue.html | (free) | — | — |
 | maintenance.html | (free) | — | — |
