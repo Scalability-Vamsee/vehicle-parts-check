@@ -125,6 +125,30 @@ table.sl tr.me td{background:var(--good-bg);font-weight:800}
 table.sl td:last-child{text-align:right}
 .note{font-size:.75rem;color:var(--muted);margin-top:8px}
 .foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:18px}
+/* role switch (sample mode / admin), multi-tab bar */
+.viewas{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;font-weight:700;color:var(--muted)}
+.viewas select{flex:1;padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:.85rem;background:#fff;min-height:40px}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:1 0 auto;padding:10px 12px}
+/* scorecard */
+.met{border-top:1px solid var(--border);padding:12px 0}
+.met:first-of-type{border-top:none;padding-top:0}
+.met .mh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.met .mh b{font-size:.92rem}
+.met .mv{font-size:1.25rem;font-weight:800;margin-top:2px}
+.bars{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.bars span{font-size:.72rem;font-weight:700;padding:3px 8px;border-radius:999px;background:#F1F5F9;color:var(--muted)}
+.bars span.hit{background:var(--good-bg);color:var(--good)}
+.earn{font-weight:800;white-space:nowrap}
+.earn.z{color:var(--muted)} .earn.p{color:var(--good)}
+.big2{font-size:2rem;font-weight:800;line-height:1.1}
+.wkrow{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:6px;align-items:center;padding:9px 0;border-top:1px solid var(--border);font-size:.82rem}
+.wkrow.h{border-top:none;font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;padding-top:0}
+.ok{color:var(--good);font-weight:800} .no{color:var(--bad);font-weight:800} .pend{color:var(--muted);font-weight:700}
+.rank{flex:0 0 26px;height:26px;border-radius:50%;background:#F1F5F9;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-right:10px}
+.rank.r1{background:#FEF3C7;color:#92400E}
+.rowl{display:flex;align-items:center;min-width:0}
 </style>
 </head>
 <body>
@@ -156,11 +180,11 @@ table.sl td:last-child{text-align:right}
 
 <div class="wrap">
   <div class="sample" id="sample-banner" style="display:none" data-i="sample">Sample data — not real. The incentive tables are not live yet.</div>
+  <div class="viewas" id="viewas" style="display:none"><span data-i="viewAs">View as</span><select id="role-sel" onchange="setRole(this.value)"></select></div>
   <div class="who"><div class="nm" id="who-name">—</div><div class="sub" id="who-sub"></div></div>
-  <div class="tabs"><button id="t-home" class="on" onclick="showTab('home')" data-i="tabHome">My week</button><button id="t-calc" onclick="showTab('calc')" data-i="tabCalc">How is it calculated</button></div>
+  <div class="tabs" id="tabs"></div>
   <div class="weeks" id="weeks"></div>
-  <div id="view-home"></div>
-  <div id="view-calc" style="display:none"></div>
+  <div id="view"></div>
   <div class="foot" id="foot"></div>
 </div>
 
@@ -216,6 +240,34 @@ const T={
   notFinal:'हफ़्ता खत्म होने के 7 दिन बाद रेट पक्का होता है, जब हर जॉब कार्ड के पूरे 7 दिन हो जाते हैं।',
   weekNotStarted:'इस हफ़्ते अभी कोई जॉब कार्ड नहीं।'}
 };
+Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service manager',role_sk:'Store keeper',
+  tab_home:'My week',tab_calc:'How it is calculated',tab_top3:'Top 3',tab_city:'City scorecard',tab_workshop:'Workshop',tab_board:'Leaderboard',tab_awards:'Awards',tab_checklist:'Checklist',
+  top3T:'Weekly top 3',top3P:'Points above target per day present, last final week. Only technicians above target are listed.',ppdAbove:'above target / day',noneAbove:'No technician above target this week.',
+  cityT:'City scorecard',monthToDate:'Month to date',perSm:'per service manager',cityP:'Every service manager of the city ({n}) gets the same amount. Weeks counted: {w}.',days:'days',
+  m_B1:'Defect rate (7 days)',m_B2:'Bikes in workshop: age P90',m_B3:'CSAT (4–5 stars)',m_B4:'Refurbished parts share',m_B5:'Productivity (points per day present)',
+  mh_B1:'Lower is better. Bars reset every month from the last 4 weeks.',mh_B2:'Lower is better. Nightly 23:59 snapshot, month = average of the nights.',mh_B3:'Higher is better. Fixed bars: 80% and 85%.',mh_B4:'Higher is better. Fixed bars: 25% and 50%.',mh_B5:'Higher is better. Bars: city target − 0.5 and city target.',
+  wsT:'Bikes over 5 days, by hub',wsHub:'{b} bikes in the workshop · P90 {p} days',over5:'over 5 days',wsList:'Oldest bikes first',wsNote:'From the nightly 23:59 snapshot and the hourly OOS queue.',
+  bdHubs:'Hubs in your city',bdHub:'{a} of {n} technicians above target · defect {d}',ppd:'points / day',bdTechs:'Technicians in your city',bdNote:'Green = at or above the target of {t} points per day present.',
+  skT:'Store keeper checklist',soFar:'so far',skP:'{n} weeks this month (weeks that end in the month).',skWeeks:'Weekly checks',scrapTue:'Scrap by Tue',noScrap:'no scrap',
+  weeksMet:'{m} of {n} weeks met',scrap:'Scrap',warranty:'Warranty parts',cycle1:'Parts of 1st–15th',cycle2:'Parts of 16th–month end',dueBy:'due {d}',sentOn:'sent {d}',pending:'pending',cyclesMet:'{m} of 2 cycles met so far',
+  skNote:'Every week met = ₹1,000, all but one = ₹500. A week with no entry is not met.',
+  totmT:'Technician of the Month',totmP:'Above target per day present, then the lowest 7-day defect rate wins.',totmOk:'{e} eligible: the hub has its own winner.',totmPool:'Only {e} eligible (a hub needs {n}): the award goes to the city pool.',
+  supT:'Supervisor of the Month',supP:"Last month's Technician of the Month gets ₹2,000 more if every technician of the hub beats the target. Starts in December (November is the first month).",
+  smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)'});
+Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
+  tab_home:'मेरा हफ़्ता',tab_calc:'हिसाब कैसे बनता है',tab_top3:'टॉप 3',tab_city:'सिटी स्कोरकार्ड',tab_workshop:'वर्कशॉप',tab_board:'लीडरबोर्ड',tab_awards:'अवॉर्ड',tab_checklist:'चेकलिस्ट',
+  top3T:'हफ़्ते के टॉप 3',top3P:'हाज़िर दिन पर टारगेट से ऊपर पॉइंट, पिछला पक्का हफ़्ता। सिर्फ़ टारगेट से ऊपर वाले टेक्नीशियन।',ppdAbove:'टारगेट से ऊपर / दिन',noneAbove:'इस हफ़्ते कोई टेक्नीशियन टारगेट से ऊपर नहीं।',
+  cityT:'सिटी स्कोरकार्ड',monthToDate:'महीने में अब तक',perSm:'प्रति सर्विस मैनेजर',cityP:'शहर के हर सर्विस मैनेजर ({n}) को यही रकम मिलती है। गिने गए हफ़्ते: {w}।',days:'दिन',
+  m_B1:'डिफ़ेक्ट रेट (7 दिन)',m_B2:'वर्कशॉप में बाइक: उम्र P90',m_B3:'CSAT (4–5 स्टार)',m_B4:'रिफ़र्बिश्ड पार्ट का हिस्सा',m_B5:'प्रोडक्टिविटी (हाज़िर दिन पर पॉइंट)',
+  mh_B1:'कम बेहतर। बार हर महीने पिछले 4 हफ़्तों से बदलते हैं।',mh_B2:'कम बेहतर। रोज़ रात 23:59 की गिनती, महीना = रातों का औसत।',mh_B3:'ज़्यादा बेहतर। तय बार: 80% और 85%।',mh_B4:'ज़्यादा बेहतर। तय बार: 25% और 50%।',mh_B5:'ज़्यादा बेहतर। बार: सिटी टारगेट − 0.5 और सिटी टारगेट।',
+  wsT:'5 दिन से ज़्यादा वाली बाइक, हब के हिसाब से',wsHub:'वर्कशॉप में {b} बाइक · P90 {p} दिन',over5:'5 दिन से ज़्यादा',wsList:'सबसे पुरानी बाइक पहले',wsNote:'रोज़ रात 23:59 की गिनती और हर घंटे की OOS लिस्ट से।',
+  bdHubs:'आपके शहर के हब',bdHub:'{n} में से {a} टेक्नीशियन टारगेट से ऊपर · डिफ़ेक्ट {d}',ppd:'पॉइंट / दिन',bdTechs:'आपके शहर के टेक्नीशियन',bdNote:'हरा = हाज़िर दिन पर {t} पॉइंट के टारगेट पर या ऊपर।',
+  skT:'स्टोर कीपर चेकलिस्ट',soFar:'अब तक',skP:'इस महीने {n} हफ़्ते (जो हफ़्ते इस महीने में खत्म होते हैं)।',skWeeks:'हफ़्ते की जाँच',scrapTue:'मंगलवार तक स्क्रैप',noScrap:'स्क्रैप नहीं',
+  weeksMet:'{n} में से {m} हफ़्ते पूरे',scrap:'स्क्रैप',warranty:'वारंटी पार्ट',cycle1:'1–15 तारीख के पार्ट',cycle2:'16 से महीने के अंत तक के पार्ट',dueBy:'{d} तक',sentOn:'{d} को भेजा',pending:'बाकी',cyclesMet:'अब तक 2 में से {m} पूरे',
+  skNote:'हर हफ़्ता पूरा = ₹1,000, एक छोड़कर सब = ₹500। जिस हफ़्ते की एंट्री नहीं, वह पूरा नहीं गिना जाता।',
+  totmT:'टेक्नीशियन ऑफ़ द मंथ',totmP:'हाज़िर दिन पर टारगेट से ऊपर, फिर सबसे कम 7-दिन डिफ़ेक्ट रेट जीतता है।',totmOk:'{e} योग्य: हब का अपना विजेता होगा।',totmPool:'सिर्फ़ {e} योग्य (हब को {n} चाहिए): अवॉर्ड सिटी पूल में जाएगा।',
+  supT:'सुपरवाइज़र ऑफ़ द मंथ',supP:'पिछले महीने के टेक्नीशियन ऑफ़ द मंथ को ₹2,000 और, अगर हब का हर टेक्नीशियन टारगेट पार करे। दिसंबर से शुरू (नवंबर पहला महीना है)।',
+  smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)'});
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -278,21 +330,128 @@ function sampleBundle(){
     {week_start:'2026-11-09',jcs:31,defects:1,points:36,days_present:5.5,is_final:true},   // below target: pays 0
     {week_start:'2026-11-02',jcs:41,defects:2,points:44.25,days_present:6,is_final:true}];
   return {mode:'sample',as_of:asOf,tech:{display_name:'Sample Technician',hub:'Sample Hub',city:'Bangalore'},config:cfg,
-    current:curW,past,days,jcs,hub:{rank:3,of:11,avg_ppd:5.6,above:4}};
+    current:curW,past,days,jcs,hub:{rank:3,of:11,avg_ppd:5.6,above:4},...sampleOthers()};
+}
+/* FAKE sample for the other roles: invented technicians ("Technician A"...), hubs ("Sample Hub", "Hub B"...) and bikes ("KA00XX...").
+   Bars are the decided November ones (rules page 1b, R10 to R13); every value is invented. */
+function sampleOthers(){
+  return {
+    month:'2026-11-01',
+    top3:{week_start:'2026-11-09',cities:[
+      {city:'Bangalore',rows:[{name:'Technician A',hub:'Hub B',ppd_above:2.4},{name:'Technician B',hub:'Sample Hub',ppd_above:1.9},{name:'Technician C',hub:'Hub D',ppd_above:1.6}]},
+      {city:'NCR',rows:[{name:'Technician D',hub:'Hub N1',ppd_above:2.8},{name:'Technician E',hub:'Hub N2',ppd_above:2.1},{name:'Technician F',hub:'Hub N1',ppd_above:1.2}]},
+      {city:'Hyderabad',rows:[{name:'Technician G',hub:'Hub H1',ppd_above:0.9},{name:'Technician H',hub:'Hub H2',ppd_above:0.4}]},
+      {city:'Mumbai',rows:[]}]},
+    sm:{city:'Bangalore',sms:10,window:'2 – 29 Nov',metrics:[
+      {key:'B1',dir:'low',value:5.8,unit:'%',s500:6,s1000:5},
+      {key:'B2',dir:'low',value:15.2,unit:'d',s500:16,s1000:13,p98:29.5,p98bar:31},
+      {key:'B3',dir:'high',value:79.0,unit:'%',s500:80,s1000:85},
+      {key:'B4',dir:'high',value:33.0,unit:'%',s500:25,s1000:50},
+      {key:'B5',dir:'high',value:6.7,unit:'pts',s500:6.5,s1000:7}]},
+    workshop:{hubs:[{hub:'Hub B',bikes:41,over5:17,p90:24.5},{hub:'Hub D',bikes:33,over5:12,p90:19.0},{hub:'Sample Hub',bikes:22,over5:6,p90:11.8},{hub:'Hub E',bikes:9,over5:2,p90:7.1}],
+      bikes:[{reg:'KA00XX0101',hub:'Hub B',days:38.2,jc:'JC-DEMO-0901'},{reg:'KA00XX0102',hub:'Hub B',days:27.6,jc:'JC-DEMO-0902'},{reg:'KA00XX0103',hub:'Hub D',days:21.4,jc:'JC-DEMO-0903'},
+        {reg:'KA00XX0104',hub:'Sample Hub',days:12.9,jc:'JC-DEMO-0904'},{reg:'KA00XX0105',hub:'Hub B',days:9.3,jc:'JC-DEMO-0905'},{reg:'KA00XX0106',hub:'Hub E',days:6.1,jc:'JC-DEMO-0906'},{reg:'KA00XX0107',hub:'Hub D',days:5.4,jc:'JC-DEMO-0907'}]},
+    board:{hubs:[{hub:'Hub B',techs:12,above:5,ppd:6.4,defect:5.1},{hub:'Sample Hub',techs:11,above:4,ppd:5.6,defect:4.6},{hub:'Hub D',techs:9,above:2,ppd:5.2,defect:6.9},{hub:'Hub E',techs:7,above:1,ppd:4.8,defect:7.4}],
+      techs:[{name:'Technician A',hub:'Hub B',ppd:8.9,defect:3.1},{name:'Technician B',hub:'Sample Hub',ppd:8.2,defect:2.6},{name:'Technician C',hub:'Hub D',ppd:7.6,defect:4.0},{name:'Technician I',hub:'Hub B',ppd:7.3,defect:6.2},{name:'Technician J',hub:'Hub E',ppd:6.8,defect:5.5},{name:'Technician K',hub:'Sample Hub',ppd:6.1,defect:3.9}]},
+    sk:{hub:'Sample Hub',weeks:[
+      {ws:'2026-11-02',msl_total:156,msl_ok:146,note:'SN-0001',cleared:'2026-11-03',no_scrap:false},
+      {ws:'2026-11-09',msl_total:156,msl_ok:134,note:'SN-0002',cleared:'2026-11-10',no_scrap:false},
+      {ws:'2026-11-16',msl_total:157,msl_ok:145,note:null,cleared:null,no_scrap:true},
+      {ws:'2026-11-23',msl_total:157,msl_ok:143,note:'SN-0004',cleared:'2026-11-24',no_scrap:false}],
+      cycles:[{cycle:1,due:'2026-11-20',note:'DN-0001',date:'2026-11-18',no_parts:false},{cycle:2,due:'2026-12-05',note:null,date:null,no_parts:false}]},
+    awards:{totm:{hub:'Sample Hub',needed:4,rows:[{name:'Technician B',ppd:8.2,target:7,defect:2.6},{name:'Technician K',ppd:7.4,target:7,defect:3.9},{name:'Technician L',ppd:7.1,target:7,defect:5.0},{name:'Technician M',ppd:6.6,target:7,defect:1.8}]},
+      smotm:[{hub:'Hub N1',score:4000},{hub:'Hub H1',score:3500},{hub:'Hub B',score:3000}],
+      skotm:[{hub:'Hub H2',total:3000,msl:0.95},{hub:'Hub B',total:2500,msl:0.92},{hub:'Sample Hub',total:2000,msl:0.91}]}
+  };
 }
 
+/* ── RULES for the other roles (same as sql/incentive_v9/04_sm_scorecard.sql and lib/store_keeper_score.cte.sql) ── */
+function smPay(m){const ok=(v,bar)=>m.dir==='low'?v<=bar:v>=bar;if(m.value==null)return 0;
+  if(ok(m.value,m.s1000)&&(m.key!=='B2'||m.p98<=m.p98bar))return 1000;return ok(m.value,m.s500)?500:0;}       // B2 ₹1,000 also needs P98 at or under its bar
+function skWeek(w){const msl=w.msl_total>0&&w.msl_ok/w.msl_total>=0.9;const scrap=!!w.no_scrap||(!!w.note&&!!w.cleared&&w.cleared<=addDays(w.ws,1));
+  return {...w,msl_share:w.msl_total>0?w.msl_ok/w.msl_total:null,msl_met:msl,scrap_met:scrap};}
+const skSlab=(met,n)=>n>0&&met>=n?1000:n>0&&met===n-1?500:0;                                                   // every week ₹1,000, all but one ₹500
+function skCycle(c,asOf){const met=!!c.no_parts||(!!c.note&&!!c.date&&c.date<=c.due);return {...c,met,pending:!met&&asOf<=c.due};}
+
 /* ── RENDER ── */
+/* Tabs per role. Who is which role comes from FleetPro permissions: incentive-tech (exists), incentive-admin (exists, can switch role),
+   incentive-sm and incentive-sk (NEW keys, need Vamsee's approval). A technician never gets the city or other technicians' detail. */
+const TABS_BY_ROLE={tech:['home','calc','top3'],sm:['city','workshop','board','top3','awards'],sk:['checklist','awards']};
+let ROLE='tech', CAN_SWITCH=false;
+function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:0});}
+const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'long',year:'numeric'});
 function render(){
   const b=BUNDLE;document.getElementById('sample-banner').style.display=b.mode==='sample'?'block':'none';
-  document.getElementById('who-name').textContent=b.tech.display_name;
-  document.getElementById('who-sub').textContent=b.tech.hub+' · '+b.tech.city+' · '+t('target')+' '+num(b.config.target)+' '+t('pts')+' '+t('perDay');
-  const all=[b.current,...b.past];if(!WEEK)WEEK=b.current.week_start;
-  document.getElementById('weeks').innerHTML=all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join('');
+  const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
+  if(CAN_SWITCH)document.getElementById('role-sel').innerHTML=['tech','sm','sk'].map(r=>`<option value="${r}" ${r===ROLE?'selected':''}>${esc(t('role_'+r))}</option>`).join('');
+  const nm=document.getElementById('who-name'),sub=document.getElementById('who-sub');
+  if(ROLE==='tech'){nm.textContent=b.tech.display_name;sub.textContent=b.tech.hub+' · '+b.tech.city+' · '+t('target')+' '+num(b.config.target)+' '+t('pts')+' '+t('perDay');}
+  else if(ROLE==='sm'){nm.textContent=t('role_sm');sub.textContent=b.sm.city+' · '+monthLbl(b.month);}
+  else{nm.textContent=t('role_sk');sub.textContent=b.sk.hub+' · '+monthLbl(b.month);}
+  const tabs=TABS_BY_ROLE[ROLE];if(!tabs.includes(TAB))TAB=tabs[0];
+  document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
+  const weekTab=TAB==='home'||TAB==='calc';const all=[b.current,...b.past];if(!WEEK)WEEK=b.current.week_start;
+  const wk=document.getElementById('weeks');wk.style.display=weekTab?'flex':'none';
+  wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
-  document.getElementById('view-home').innerHTML=homeHtml(b,w,isCur);
-  document.getElementById('view-calc').innerHTML=calcHtml(b,w,isCur);
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
+  document.getElementById('view').innerHTML=V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
+
+/* Weekly top 3 per city: final weeks only, points above target per day present. Names shown here (spec default; Vamsee to confirm). */
+function top3Html(b){const x=b.top3;
+  return `<div class="card"><h3>${esc(t('top3T'))} · ${esc(rangeLbl(x.week_start))} <span class="tag final">${esc(t('final'))}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('top3P'))}</p></div>`+
+   x.cities.map(c=>`<div class="card"><h3>${esc(c.city)}</h3>${c.rows.length?`<ul class="list">${c.rows.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)}</small></div></div><div class="r">+${num(r.ppd_above,1)}<small>${esc(t('ppdAbove'))}</small></div></li>`).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`).join('');}
+
+/* Service manager: city scorecard, five metrics, this month's bars; every SM of the city gets the same. */
+function cityHtml(b){const s=b.sm;const ms=s.metrics.map(m=>({...m,pay:smPay(m)}));const per=ms.reduce((a,m)=>a+m.pay,0);
+  const fmt=(m,v)=>m.unit==='%'?pct(v):m.unit==='d'?num(v,1)+' '+t('days'):num(v,1);
+  const barTxt=(m,v)=>(m.dir==='low'?'≤ ':'≥ ')+fmt(m,v);
+  return `<div class="card hero"><h3>${esc(t('cityT'))} · ${esc(s.city)} <span class="tag prov">${esc(t('monthToDate'))}</span></h3>
+    <div class="big"><b>${rupees(per)}</b><span>${esc(t('perSm'))} / ₹5,000</span></div>
+    <div class="note">${esc(t('cityP',{n:s.sms,w:s.window}))}</div></div>
+   <div class="card">${ms.map(m=>`<div class="met"><div class="mh"><b>${esc(t('m_'+m.key))}</b><span class="earn ${m.pay?'p':'z'}">${rupees(m.pay)}</span></div>
+     <div class="mv">${esc(fmt(m,m.value))}${m.key==='B2'?` <small style="font-size:.75rem;color:var(--muted);font-weight:600">P98 ${num(m.p98,1)} (≤ ${num(m.p98bar)})</small>`:''}</div>
+     <div class="bars"><span class="${m.pay>=500?'hit':''}">₹500: ${esc(barTxt(m,m.s500))}</span><span class="${m.pay>=1000?'hit':''}">₹1,000: ${esc(barTxt(m,m.s1000))}${m.key==='B2'?esc(' + P98 ≤ '+num(m.p98bar)):''}</span></div>
+     <div class="note" style="margin-top:4px">${esc(t('mh_'+m.key))}</div></div>`).join('')}</div>`;}
+
+/* Bikes in the workshop over 5 days, per hub, oldest first (from the nightly snapshot 05 + the live queue). */
+function workshopHtml(b){const x=b.workshop;const hubs=[...x.hubs].sort((a,c)=>c.over5-a.over5);
+  return `<div class="card"><h3>${esc(t('wsT'))}</h3><ul class="list">${hubs.map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('wsHub',{b:h.bikes,p:num(h.p90,1)}))}</small></div><div class="r ${h.over5>=10?'no':''}">${h.over5}<small>${esc(t('over5'))}</small></div></li>`).join('')}</ul></div>
+   <div class="card"><h3>${esc(t('wsList'))}</h3><ul class="list">${[...x.bikes].sort((a,c)=>c.days-a.days).map(k=>`<li><div class="l"><b>${esc(k.reg)}</b><small>${esc(k.hub)} · ${esc(k.jc)}</small></div><div class="r">${num(k.days,1)}<small>${esc(t('days'))}</small></div></li>`).join('')}</ul>
+   <p class="note">${esc(t('wsNote'))}</p></div>`;}
+
+/* Service manager: own city's hubs and technicians (SM sees own city, approved 5 Nov). */
+function boardHtml(b){const x=b.board;
+  return `<div class="card"><h3>${esc(t('bdHubs'))}</h3><ul class="list">${[...x.hubs].sort((a,c)=>c.ppd-a.ppd).map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('bdHub',{a:h.above,n:h.techs,d:pct(h.defect)}))}</small></div><div class="r">${num(h.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul></div>
+   <div class="card"><h3>${esc(t('bdTechs'))}</h3><ul class="list">${[...x.techs].sort((a,c)=>c.ppd-a.ppd).map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)} · ${esc(t('defect'))} ${pct(r.defect)}</small></div></div><div class="r ${r.ppd>=b.config.target?'ok':''}">${num(r.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul>
+   <p class="note">${esc(t('bdNote',{t:num(b.config.target)}))}</p></div>`;}
+
+/* Store keeper: own hub's weekly checklist (06): MSL, scrap, warranty cycles; this month's money so far. */
+function checklistHtml(b){const s=b.sk;const ws=s.weeks.map(skWeek);const n=ws.length;
+  const msl=ws.filter(w=>w.msl_met).length,scrap=ws.filter(w=>w.scrap_met).length;const cy=s.cycles.map(c=>skCycle(c,b.as_of));const cmet=cy.filter(c=>c.met).length;
+  const pm=skSlab(msl,n),ps=skSlab(scrap,n),pw=cmet===2?1000:cmet===1?500:0;const tot=pm+ps+pw;const yes=x=>x?`<span class="ok">✓</span>`:`<span class="no">✗</span>`;
+  return `<div class="card hero"><h3>${esc(t('skT'))} · ${esc(s.hub)} <span class="tag prov">${esc(t('monthToDate'))}</span></h3>
+    <div class="big"><b>${rupees(tot)}</b><span>${esc(t('soFar'))} / ₹3,000</span></div><div class="note">${esc(t('skP',{n}))}</div></div>
+   <div class="card"><h3>${esc(t('skWeeks'))}</h3>
+    <div class="wkrow h"><span>${esc(t('week'))}</span><span>MSL ≥ 90%</span><span>${esc(t('scrapTue'))}</span></div>
+    ${ws.map(w=>`<div class="wkrow"><span>${esc(rangeLbl(w.ws))}</span><span>${yes(w.msl_met)} ${w.msl_share==null?'—':pct(100*w.msl_share)}</span><span>${yes(w.scrap_met)} ${esc(w.no_scrap?t('noScrap'):w.cleared?dayName(w.cleared):'—')}</span></div>`).join('')}
+    <ul class="list" style="margin-top:8px"><li><div class="l"><b>MSL</b><small>${esc(t('weeksMet',{m:msl,n}))}</small></div><div class="r earn ${pm?'p':'z'}">${rupees(pm)}</div></li>
+     <li><div class="l"><b>${esc(t('scrap'))}</b><small>${esc(t('weeksMet',{m:scrap,n}))}</small></div><div class="r earn ${ps?'p':'z'}">${rupees(ps)}</div></li></ul></div>
+   <div class="card"><h3>${esc(t('warranty'))}</h3><ul class="list">${cy.map(c=>`<li><div class="l"><b>${esc(t('cycle'+c.cycle))}</b><small>${esc(t('dueBy',{d:dayName(c.due)}))}${c.date?' · '+esc(t('sentOn',{d:dayName(c.date)})):''}</small></div><div class="r">${c.met?`<span class="ok">✓</span>`:c.pending?`<span class="pend">${esc(t('pending'))}</span>`:`<span class="no">✗</span>`}</div></li>`).join('')}
+     <li><div class="l"><b>${esc(t('warranty'))}</b><small>${esc(t('cyclesMet',{m:cmet}))}</small></div><div class="r earn ${pw?'p':'z'}">${rupees(pw)}</div></li></ul>
+    <p class="note">${esc(t('skNote'))}</p></div>`;}
+
+/* Awards race (R14). */
+function awardsHtml(b){const a=b.awards;const tm=a.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
+  return `<div class="card"><h3>${esc(t('totmT'))} · ${esc(tm.hub)} <span class="tag prov">₹1,500</span></h3>
+    <p class="note" style="margin:0 0 6px">${esc(t('totmP'))}</p>
+    <ul class="list">${el.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${num(r.ppd,1)} ${esc(t('ppd'))} (${esc(t('target'))} ${num(r.target)})</small></div></div><div class="r">${pct(r.defect)}<small>${esc(t('defect'))}</small></div></li>`).join('')}</ul>
+    <div class="msg ${el.length>=tm.needed?'ok':'go'}">${esc(el.length>=tm.needed?t('totmOk',{e:el.length}):t('totmPool',{e:el.length,n:tm.needed}))}</div></div>
+   <div class="card"><h3>${esc(t('supT'))} <span class="tag prov">+₹2,000</span></h3><p class="note" style="margin:0">${esc(t('supP'))}</p></div>
+   <div class="card"><h3>${esc(t('smotmT'))} <span class="tag prov">₹5,000</span></h3><ul class="list">${a.smotm.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.hub)}</b></div></div><div class="r">${rupees(r.score)}<small>${esc(t('hubScore'))}</small></div></li>`).join('')}</ul></div>
+   <div class="card"><h3>${esc(t('skotmT'))} <span class="tag prov">₹2,500</span></h3><ul class="list">${a.skotm.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.hub)}</b><small>MSL ${pct(100*r.msl)}</small></div></div><div class="r">${rupees(r.total)}<small>/ ₹3,000</small></div></li>`).join('')}</ul></div>`;}
 function homeHtml(b,w,isCur){
   const prog=w.target>0?Math.min(100,100*w.points/w.target):0;const reached=w.points>=w.target&&w.target>0;
   const tag=w.is_final?`<span class="tag final">${esc(t('final'))}</span>`:`<span class="tag prov">${esc(t('prov'))}</span>`;
@@ -333,8 +492,7 @@ function rateStep(b,w){const c=b.config;const rows=[[40,t('upTo',{c:c.c40})],[30
   return stepHtml(4,t('s4'),t('s4p'),`<div style="font-weight:700;margin-bottom:6px">${pct(w.defect_pct)} = ${w.defects} ÷ ${w.jcs}</div><table class="sl">${rows.map(([r,l])=>`<tr class="${r===w.rate?'me':''}"><td>${esc(t('defect'))} ${esc(l)}${r===w.rate?' ← '+esc(t('yours')):''}</td><td>${rupees(r)}</td></tr>`).join('')}</table>`);}
 function payStep(w){return stepHtml(5,t('s5'),t('s5p'),`<div class="sum"><span>${num(w.points)} − ${num(w.target)} = ${num(w.points_above)} × ${rupees(w.rate)}</span><span>${rupees(w.pay)}</span></div>`);}
 function pickWeek(ws){WEEK=ws;render();window.scrollTo({top:0,behavior:'smooth'});}
-function showTab(x){TAB=x;document.getElementById('view-home').style.display=x==='home'?'block':'none';document.getElementById('view-calc').style.display=x==='calc'?'block':'none';
-  document.getElementById('t-home').classList.toggle('on',x==='home');document.getElementById('t-calc').classList.toggle('on',x==='calc');window.scrollTo({top:0});}
+function showTab(x){TAB=x;render();window.scrollTo({top:0});}
 
 /* ── AUTH (FleetPro pattern: auth screen covers the page; permissions FIRST, then hide it) ── */
 function showAuthScreen(){document.getElementById('auth-screen').classList.remove('hidden');showForm();}
@@ -360,10 +518,11 @@ let _booted=false;
 async function activateSession(session){
   if(_booted)return;
   const f=await loadUserPermissions(session);window.FP_FEATURES=f;
-  if(!f['incentive-tech']&&!f['incentive-admin']){location.href='index.html';return;}
+  if(!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk']){location.href='index.html';return;}
+  ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=!!f['incentive-admin']||DATA_MODE==='sample';
   _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
 }
-async function start(){try{BUNDLE=await loadWeekBundle();render();}catch(e){document.getElementById('view-home').innerHTML='<div class="card empty">Could not load your data. Please try again later.</div>';console.error(e);}}
+async function start(){try{BUNDLE=await loadWeekBundle();if(LOCAL_PREVIEW)CAN_SWITCH=true;TAB=TABS_BY_ROLE[ROLE][0];render();}catch(e){document.getElementById('view').innerHTML='<div class="card empty">Could not load your data. Please try again later.</div>';console.error(e);}}
 
 (async function boot(){
   let saved='en';try{saved=localStorage.getItem('fp_lang')||'en';}catch(e){}setLang(saved==='hi'?'hi':'en');
