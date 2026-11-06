@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#E8191C"/>
+<title>My Incentive · FleetPro</title>
+<link rel="icon" href="/v8/logo.jpg"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!--
+  Incentive v9 dashboard, v2 (technician view). DRAFT on branch incentive-v2-tech-home, not linked from any menu yet.
+  Spec: bounce-workspace Incentive_Scheme/v9_dashboard_spec.md. Rules: v9_rules_and_sources.md section 2 (points, days present, target, rate, pay).
+  DATA: the incentive v9 tables (08_proposed_objects.sql) are NOT created yet, so this page shows FAKE SAMPLE DATA only (DATA_MODE = 'sample').
+  Nothing real (no names, phone numbers, amounts) is in this file; this repo is public. When the tables and the read function are approved,
+  only loadWeekBundle() changes (DATA_MODE = 'live', one security-definer RPC that returns the logged-in technician's own rows).
+-->
+<style>
+#auth-screen{position:fixed;inset:0;z-index:1100;background:linear-gradient(135deg,#1A1A2E 0%,#0f2460 100%);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;padding:16px}
+#auth-screen.hidden{display:none!important}
+.auth-card{background:#fff;border-radius:24px;padding:36px 28px;width:100%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,.3);text-align:center}
+.auth-title{font-size:1.25rem;font-weight:800;color:#0F172A;margin:14px 0 6px}
+.auth-sub{font-size:.82rem;color:#6B7280;margin-bottom:22px;line-height:1.6}
+.auth-input{width:100%;padding:13px 16px;border:1.5px solid #E5E7EB;border-radius:12px;font-size:.95rem;font-family:inherit;outline:none;margin-bottom:12px}
+.auth-input:focus{border-color:#E8191C}
+.auth-btn{width:100%;padding:13px;background:#E8191C;color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit}
+.auth-btn:disabled{background:#CBD5E1}
+.auth-msg{font-size:.8rem;margin-top:12px;min-height:18px;color:#DC2626}
+#auth-sent{display:none}
+
+:root{
+  --brand:#E8191C;--brand-dark:#B01010;--brand-bg:#FEF2F2;
+  --bg:#F5F6FA;--card:#fff;--border:#E5E7EB;--text:#111827;--muted:#6B7280;
+  --good:#15803D;--good-bg:#F0FDF4;--warn:#B45309;--warn-bg:#FFFBEB;--bad:#B91C1C;--bad-bg:#FEF2F2;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter','Noto Sans Devanagari',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.45}
+body.lang-hi{font-family:'Noto Sans Devanagari','Inter',sans-serif}
+button{font-family:inherit}
+.wrap{max-width:520px;margin:0 auto;padding:0 16px 40px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:50;background:#1A1A2E;color:#fff;padding:10px 16px calc(10px);display:flex;align-items:center;gap:10px}
+.top img{width:28px;height:28px;border-radius:7px}
+.top .ttl{font-weight:800;font-size:1rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lang{display:flex;background:rgba(255,255,255,.12);border-radius:8px;padding:2px}
+.lang button{border:none;background:none;color:rgba(255,255,255,.75);font-size:.75rem;font-weight:700;padding:5px 9px;border-radius:6px;cursor:pointer;min-height:30px}
+.lang button.on{background:#fff;color:#1A1A2E}
+.out{border:none;background:none;color:rgba(255,255,255,.7);font-size:.75rem;cursor:pointer;padding:6px}
+
+.sample{margin:12px 0 0;background:var(--warn-bg);border:1px dashed #F59E0B;color:var(--warn);border-radius:12px;padding:10px 12px;font-size:.8rem;font-weight:600}
+.who{margin:14px 2px 4px}
+.who .nm{font-size:1.15rem;font-weight:800}
+.who .sub{font-size:.82rem;color:var(--muted)}
+
+/* tabs + weeks */
+.tabs{display:flex;gap:6px;margin:12px 0 10px;background:#E9EBF2;padding:4px;border-radius:12px}
+.tabs button{flex:1;border:none;background:none;padding:10px 6px;border-radius:9px;font-weight:700;font-size:.85rem;color:var(--muted);cursor:pointer;min-height:42px}
+.tabs button.on{background:#fff;color:var(--text);box-shadow:var(--shadow)}
+.weeks{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.weeks::-webkit-scrollbar{display:none}
+.wk{flex:0 0 auto;border:1.5px solid var(--border);background:#fff;border-radius:999px;padding:7px 12px;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--text);min-height:36px}
+.wk.on{border-color:var(--brand);color:var(--brand);background:var(--brand-bg)}
+
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-top:12px}
+.card h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tag{font-size:.68rem;font-weight:700;text-transform:none;letter-spacing:0;padding:3px 8px;border-radius:999px}
+.tag.prov{background:var(--warn-bg);color:var(--warn)}
+.tag.final{background:var(--good-bg);color:var(--good)}
+
+/* hero */
+.hero .big{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.hero .big b{font-size:2.6rem;font-weight:800;line-height:1}
+.hero .big span{color:var(--muted);font-size:.95rem;font-weight:600}
+.bar{height:12px;background:#EEF0F5;border-radius:999px;margin:14px 0 6px;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--brand)}
+.bar i.ok{background:var(--good)}
+.barlbl{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted)}
+.msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.88rem;font-weight:600}
+.msg.go{background:var(--brand-bg);color:var(--brand-dark)}
+.msg.ok{background:var(--good-bg);color:var(--good)}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#F8F9FC;border-radius:12px;padding:12px}
+.stat .k{font-size:.72rem;color:var(--muted);font-weight:600}
+.stat .v{font-size:1.35rem;font-weight:800;margin-top:2px}
+.stat .n{font-size:.72rem;color:var(--muted);margin-top:2px}
+.stat.hl{background:var(--good-bg)} .stat.hl .v{color:var(--good)}
+
+.list{list-style:none}
+.list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+.list li:first-child{border-top:none}
+.list .l{min-width:0}
+.list .l b{display:block;font-size:.88rem}
+.list .l small{display:block;color:var(--muted);font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list .r{text-align:right;font-weight:800;white-space:nowrap}
+.list .r small{display:block;font-weight:600;color:var(--muted);font-size:.72rem}
+.empty{color:var(--muted);font-size:.85rem}
+.link{border:none;background:none;color:var(--brand);font-weight:700;font-size:.85rem;cursor:pointer;padding:8px 0 0;min-height:36px}
+
+/* how calculated */
+.step{display:flex;gap:10px}
+.step .no{flex:0 0 26px;height:26px;border-radius:50%;background:#1A1A2E;color:#fff;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step .tx{flex:1;min-width:0}
+.step .tx p{font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.sum{display:flex;justify-content:space-between;font-weight:800;padding-top:10px;margin-top:6px;border-top:2px solid var(--text)}
+.day{border-top:1px solid var(--border);padding:10px 0}
+.day:first-of-type{border-top:none}
+.day .dh{display:flex;justify-content:space-between;font-weight:700;font-size:.88rem;cursor:pointer;list-style:none;min-height:32px;align-items:center}
+.day .dh::-webkit-details-marker{display:none}
+.day .dh span:first-child::before{content:'▸ ';color:var(--muted)}
+.day[open] .dh span:first-child::before{content:'▾ '}
+.jc{background:#F8F9FC;border-radius:10px;padding:8px 10px;margin-top:6px;font-size:.8rem}
+.jc .jh{display:flex;justify-content:space-between;font-weight:700}
+.jc .pt{color:var(--muted);margin-top:2px}
+.jc .fx{margin-top:4px;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px}
+.pill.y{background:var(--good-bg);color:var(--good)} .pill.n{background:#F1F5F9;color:var(--muted)} .pill.h{background:var(--warn-bg);color:var(--warn)} .pill.d{background:var(--bad-bg);color:var(--bad)}
+table.sl{width:100%;border-collapse:collapse;font-size:.85rem}
+table.sl td{padding:8px 6px;border-top:1px solid var(--border)}
+table.sl tr.me td{background:var(--good-bg);font-weight:800}
+table.sl td:last-child{text-align:right}
+.note{font-size:.75rem;color:var(--muted);margin-top:8px}
+.foot{font-size:.72rem;color:var(--muted);text-align:center;margin-top:18px}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-card">
+    <img src="/v8/logo.jpg" alt="" style="width:44px;height:44px;border-radius:10px"/>
+    <div id="auth-form">
+      <div class="auth-title" data-i="authTitle">My Incentive</div>
+      <div class="auth-sub" data-i="authSub">Enter your email and we'll send you a sign-in link.</div>
+      <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email"/>
+      <button class="auth-btn" id="auth-btn" onclick="sendMagicLink()" data-i="authBtn">Send sign-in link</button>
+      <div class="auth-msg" id="auth-msg"></div>
+    </div>
+    <div id="auth-sent">
+      <div class="auth-title" data-i="authSentT">Check your email</div>
+      <div class="auth-sub" data-i="authSentB">Open the link we sent to sign in.</div>
+      <button class="link" onclick="showForm()" data-i="authBack">← Use a different email</button>
+    </div>
+  </div>
+</div>
+
+<div class="top">
+  <img src="/v8/logo.jpg" alt=""/>
+  <div class="ttl" data-i="title">My Incentive</div>
+  <div class="lang"><button id="l-en" onclick="setLang('en')">EN</button><button id="l-hi" onclick="setLang('hi')">हिं</button></div>
+  <button class="out" id="logout-btn" onclick="signOut()" style="display:none" data-i="out">Sign out</button>
+</div>
+
+<div class="wrap">
+  <div class="sample" id="sample-banner" style="display:none" data-i="sample">Sample data — not real. The incentive tables are not live yet.</div>
+  <div class="who"><div class="nm" id="who-name">—</div><div class="sub" id="who-sub"></div></div>
+  <div class="tabs"><button id="t-home" class="on" onclick="showTab('home')" data-i="tabHome">My week</button><button id="t-calc" onclick="showTab('calc')" data-i="tabCalc">How is it calculated</button></div>
+  <div class="weeks" id="weeks"></div>
+  <div id="view-home"></div>
+  <div id="view-calc" style="display:none"></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+/* ── SUPABASE CONFIG (anon key is public by design, see CLAUDE.md "Security Constraints") ── */
+const SB_URL='https://clkfvmmlgwcvntxnolsv.supabase.co';
+const ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsa2Z2bW1sZ3djdm50eG5vbHN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1NDQ2NTgsImV4cCI6MjA5MDEyMDY1OH0.FA33GFQisWX_hDeGCWqL5yAZmPcuQRdxZX32I23lyoY';
+const sbClient=supabase.createClient(SB_URL,ANON_KEY,{auth:{persistSession:true,storageKey:'fleetpro_session',autoRefreshToken:true}});
+
+/* 'sample' until the incentive v9 tables and the read RPC are approved and created (needs Vamsee). */
+const DATA_MODE='sample';
+/* Preview without login: only on a local machine, never on staging or production. */
+const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new URLSearchParams(location.search).get('demo')==='1';
+
+let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
+
+/* ── TEXT (English + Hindi; Hindi to be checked by a native speaker before launch) ── */
+const T={
+ en:{title:'My Incentive',authTitle:'My Incentive',authSub:"Enter your email and we'll send you a sign-in link.",authBtn:'Send sign-in link',authSentT:'Check your email',authSentB:'Open the link we sent to sign in.',authBack:'← Use a different email',out:'Sign out',
+  sample:'Sample data — not real. The incentive tables are not live yet.',tabHome:'My week',tabCalc:'How is it calculated',
+  thisWeek:'This week',week:'Week',prov:'Provisional',final:'Final',pointsSoFar:'points so far',target:'target',
+  toGo:'{n} points to go to reach the target.',reached:'Target reached! Every point now earns money.',
+  above:'Points above target',defect:'Defect rate',rate:'Rate per point',earned:'Earned so far',earnedW:'Earned this week',
+  defectN:'{d} of {j} job cards came back in 7 days',slab:'slab',untilFinal:'final 7 days after the week ends',
+  jcsDay:'Job cards on {d}',noJcs:'No job cards on this day.',lastJcs:'Latest job cards',pts:'pts',parts:'{n} parts',
+  pastWeeks:'Your weeks',pay:'pay',hub:'Your hub this week',rankOf:'You are #{r} of {n} technicians',hubAvg:'Hub average: {a} points per day present',
+  hubAbove:'{a} of {n} technicians are above target',seeHow:'See how this is calculated →',
+  s1:'Points for each job card',s1p:'0.25 for every job card + the labour time of each part you fitted (minutes ÷ 60). Then rounded UP to the next 0.25.',
+  s2:'Days present',s2p:'Zimyo decides. Only when Zimyo has no record, a day with a billed job card counts as present.',
+  s3:'Target',s3p:'Target per day present × days present.',s4:'Rate per point',s4p:"Set by this week's defect rate: job cards that came back within 7 days ÷ all your job cards this week.",
+  s5:'Your pay',s5p:'Points above target × rate per point. Below target = ₹0; nothing carries over to next week.',
+  total:'Total',dayPresent:'Present',dayHalf:'Half day',dayAbs:'Not present',why:{P:'Zimyo: P (present)',OD:'Zimyo: OD (on duty)',FP:'Zimyo: FP (missed punch)',PH:'Zimyo: PH (holiday)',WFH:'Zimyo: WFH',HDP:'Zimyo: half day',HDA:'Zimyo: half day',HDWFH:'Zimyo: half day',A:'Zimyo: A (absent)',WO:'Zimyo: WO (week off)',CL:'Zimyo: leave',SL:'Zimyo: leave',ML:'Zimyo: leave',none_jc:'No Zimyo record, job cards billed this day',none:'No Zimyo record, no job card'},
+  upTo:'up to {c}%',over:'over {c}%',yours:'yours',daysPresent:'days present',perDay:'per day',
+  formula:'0.25 + {m} min ÷ 60 = {raw} → {pts}',updated:'Points are updated every day and frozen the next morning.',asOf:'As of {d}',
+  notFinal:'The rate is provisional until 7 days after the week ends, when every job card has had its full 7 days.',
+  weekNotStarted:'This week has no job cards yet.'},
+ hi:{title:'मेरा इंसेंटिव',authTitle:'मेरा इंसेंटिव',authSub:'अपना ईमेल डालें, हम साइन-इन लिंक भेजेंगे।',authBtn:'साइन-इन लिंक भेजें',authSentT:'अपना ईमेल देखें',authSentB:'साइन इन करने के लिए भेजा गया लिंक खोलें।',authBack:'← दूसरा ईमेल डालें',out:'साइन आउट',
+  sample:'सैंपल डेटा — असली नहीं। इंसेंटिव टेबल अभी लाइव नहीं हैं।',tabHome:'मेरा हफ़्ता',tabCalc:'हिसाब कैसे बनता है',
+  thisWeek:'इस हफ़्ते',week:'हफ़्ता',prov:'अभी पक्का नहीं',final:'पक्का',pointsSoFar:'पॉइंट अब तक',target:'टारगेट',
+  toGo:'टारगेट तक पहुँचने के लिए {n} पॉइंट और।',reached:'टारगेट पूरा! अब हर पॉइंट पर पैसे मिलेंगे।',
+  above:'टारगेट से ऊपर पॉइंट',defect:'डिफ़ेक्ट रेट',rate:'प्रति पॉइंट रेट',earned:'अब तक की कमाई',earnedW:'इस हफ़्ते की कमाई',
+  defectN:'{j} में से {d} जॉब कार्ड 7 दिन में वापस आए',slab:'स्लैब',untilFinal:'हफ़्ता खत्म होने के 7 दिन बाद पक्का',
+  jcsDay:'{d} के जॉब कार्ड',noJcs:'इस दिन कोई जॉब कार्ड नहीं।',lastJcs:'हाल के जॉब कार्ड',pts:'पॉइंट',parts:'{n} पार्ट',
+  pastWeeks:'आपके हफ़्ते',pay:'पेमेंट',hub:'इस हफ़्ते आपका हब',rankOf:'{n} टेक्नीशियन में आप #{r} पर हैं',hubAvg:'हब औसत: हाज़िर दिन पर {a} पॉइंट',
+  hubAbove:'{n} में से {a} टेक्नीशियन टारगेट से ऊपर हैं',seeHow:'हिसाब कैसे बना, देखें →',
+  s1:'हर जॉब कार्ड के पॉइंट',s1p:'हर जॉब कार्ड के 0.25 + लगाए गए हर पार्ट का लेबर टाइम (मिनट ÷ 60)। फिर अगले 0.25 तक ऊपर राउंड।',
+  s2:'हाज़िर दिन',s2p:'Zimyo तय करता है। सिर्फ़ जब Zimyo में कोई रिकॉर्ड नहीं, तब बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना जाता है।',
+  s3:'टारगेट',s3p:'हाज़िर दिन का टारगेट × हाज़िर दिन।',s4:'प्रति पॉइंट रेट',s4p:'इस हफ़्ते के डिफ़ेक्ट रेट से तय: 7 दिन में वापस आए जॉब कार्ड ÷ इस हफ़्ते के आपके सभी जॉब कार्ड।',
+  s5:'आपकी पेमेंट',s5p:'टारगेट से ऊपर पॉइंट × प्रति पॉइंट रेट। टारगेट से नीचे = ₹0; अगले हफ़्ते में कुछ नहीं जुड़ता।',
+  total:'कुल',dayPresent:'हाज़िर',dayHalf:'आधा दिन',dayAbs:'हाज़िर नहीं',why:{P:'Zimyo: P (हाज़िर)',OD:'Zimyo: OD (ऑन ड्यूटी)',FP:'Zimyo: FP (पंच छूटा)',PH:'Zimyo: PH (छुट्टी)',WFH:'Zimyo: WFH',HDP:'Zimyo: आधा दिन',HDA:'Zimyo: आधा दिन',HDWFH:'Zimyo: आधा दिन',A:'Zimyo: A (गैरहाज़िर)',WO:'Zimyo: WO (वीक ऑफ़)',CL:'Zimyo: छुट्टी',SL:'Zimyo: छुट्टी',ML:'Zimyo: छुट्टी',none_jc:'Zimyo में रिकॉर्ड नहीं, इस दिन जॉब कार्ड बिल हुए',none:'Zimyo में रिकॉर्ड नहीं, कोई जॉब कार्ड नहीं'},
+  upTo:'{c}% तक',over:'{c}% से ज़्यादा',yours:'आपका',daysPresent:'हाज़िर दिन',perDay:'प्रति दिन',
+  formula:'0.25 + {m} मिनट ÷ 60 = {raw} → {pts}',updated:'पॉइंट हर दिन अपडेट होते हैं और अगली सुबह पक्के हो जाते हैं।',asOf:'{d} तक',
+  notFinal:'हफ़्ता खत्म होने के 7 दिन बाद रेट पक्का होता है, जब हर जॉब कार्ड के पूरे 7 दिन हो जाते हैं।',
+  weekNotStarted:'इस हफ़्ते अभी कोई जॉब कार्ड नहीं।'}
+};
+function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
+function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function setLang(l){LANG=l;try{localStorage.setItem('fp_lang',l);}catch(e){}document.body.classList.toggle('lang-hi',l==='hi');document.documentElement.lang=l;
+  document.getElementById('l-en').classList.toggle('on',l==='en');document.getElementById('l-hi').classList.toggle('on',l==='hi');
+  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});if(BUNDLE)render();}
+
+/* ── FORMAT ── */
+const num=(x,d=2)=>Number(x).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:d});
+const rupees=x=>{const v=Number(x),f=Number.isInteger(v)?0:2;return '₹'+v.toLocaleString('en-IN',{minimumFractionDigits:f,maximumFractionDigits:f});};   // exact; how pay is rounded is Vamsee's decision
+const pct=x=>Number(x).toLocaleString('en-IN',{maximumFractionDigits:1})+'%';
+const D=s=>new Date(s+'T00:00:00');
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const addDays=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return iso(d);};
+function dayName(s){return D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{weekday:'short',day:'numeric',month:'short'});}
+function rangeLbl(ws){const a=D(ws),b=D(addDays(ws,6));const o={day:'numeric',month:'short'};const loc=LANG==='hi'?'hi-IN':'en-IN';return a.toLocaleDateString(loc,o)+' – '+b.toLocaleDateString(loc,o);}
+
+/* ── RULES (same as sql/incentive_v9: lib/jc_points, lib/attendance, 03_weekly_settlement) ──
+   In 'live' mode the numbers come from the server tables; these functions only explain them. */
+const jcPoints=labourMin=>Math.ceil((0.25+labourMin/60)/0.25-1e-9)*0.25;      // no cap (removed 5 Nov)
+const ZIMYO={P:1,OD:1,FP:1,PH:1,WFH:1,HDP:.5,HDA:.5,HDWFH:.5,A:0,WO:0,CL:0,SL:0,ML:0};
+function presentOf(code,jcs){if(code&&code in ZIMYO)return ZIMYO[code];return jcs>0?1:0;}  // no Zimyo record: a billed day counts
+function rateOf(defPct,c){if(defPct<=c.c40)return 40;if(defPct<=c.c30)return 30;if(defPct<=c.c20)return 20;if(defPct<=c.c10)return 10;return 0;}
+function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days_present>0?Math.max(0,w.points-target):0;
+  const def=w.jcs?100*w.defects/w.jcs:0;const rate=w.jcs?rateOf(def,cfg):0;return {...w,target,points_above:above,defect_pct:def,rate,pay:above*rate};}
+
+/* ── DATA ──
+   Shape = the proposed tables in bounce-workspace sql/incentive_v9/08_proposed_objects.sql:
+   settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
+   Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code or 'none_jc'), jcs[].parts [{name, labour_min}]. */
+async function loadWeekBundle(){
+  if(DATA_MODE==='sample')return sampleBundle();
+  const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
+  if(error)throw error;return data;
+}
+
+/* FAKE sample: invented technician, hub, job card numbers and parts. Not real data. */
+function sampleBundle(){
+  const cfg={target:7,c40:3.0,c30:5.0,c20:7.0,c10:9.5};           // Bangalore, November (sample of the decided rules)
+  const asOf='2026-11-26', cur='2026-11-23';                      // a Thursday evening in the 4th paid week
+  const P=[['Brake shoe set',35],['Front brake pad',25],['Rear tyre 12 inch',40],['Throttle assembly',30],['Headlight assembly',45],['Side stand spring',10],['Hub motor',95],['Mirror (pair)',10],['Seat lock',20],['Controller',60],['Key fob',0],['Chain / belt adjust',15]];
+  let seed=7;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+  const days=[],jcs=[];let n=1;
+  const plan=[['2026-11-23','P',6],['2026-11-24','P',7],['2026-11-25','OD',5],['2026-11-26',null,5]];   // ~5-6 points a day, like real September output
+  for(const[d,code,k]of plan){
+    let dp=0;
+    for(let i=0;i<k;i++){
+      const parts=[];const np=1+Math.floor(rnd()*3);
+      for(let j=0;j<np;j++){const p=P[Math.floor(rnd()*P.length)];if(!parts.find(x=>x.name===p[0]))parts.push({name:p[0],labour_min:p[1]});}
+      const lm=parts.reduce((a,p)=>a+p.labour_min,0);const pts=jcPoints(lm);dp+=pts;
+      jcs.push({jc_no:'JC-DEMO-'+String(n++).padStart(4,'0'),billed_date:d,labour_min:lm,part_lines:parts.length,points:pts,def_7d:(n===12),parts});
+    }
+    days.push({d,code,reason:code||'none_jc',jcs:k,points:dp,present:presentOf(code,k),is_frozen:d<asOf});
+  }
+  const curW={week_start:cur,jcs:jcs.length,defects:jcs.filter(j=>j.def_7d).length,points:days.reduce((a,x)=>a+x.points,0),days_present:days.reduce((a,x)=>a+x.present,0),is_final:false};
+  const past=[
+    {week_start:'2026-11-16',jcs:44,defects:3,points:47.75,days_present:6,is_final:false},
+    {week_start:'2026-11-09',jcs:31,defects:1,points:36,days_present:5.5,is_final:true},   // below target: pays 0
+    {week_start:'2026-11-02',jcs:41,defects:2,points:44.25,days_present:6,is_final:true}];
+  return {mode:'sample',as_of:asOf,tech:{display_name:'Sample Technician',hub:'Sample Hub',city:'Bangalore'},config:cfg,
+    current:curW,past,days,jcs,hub:{rank:3,of:11,avg_ppd:5.6,above:4}};
+}
+
+/* ── RENDER ── */
+function render(){
+  const b=BUNDLE;document.getElementById('sample-banner').style.display=b.mode==='sample'?'block':'none';
+  document.getElementById('who-name').textContent=b.tech.display_name;
+  document.getElementById('who-sub').textContent=b.tech.hub+' · '+b.tech.city+' · '+t('target')+' '+num(b.config.target)+' '+t('pts')+' '+t('perDay');
+  const all=[b.current,...b.past];if(!WEEK)WEEK=b.current.week_start;
+  document.getElementById('weeks').innerHTML=all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join('');
+  const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
+  document.getElementById('view-home').innerHTML=homeHtml(b,w,isCur);
+  document.getElementById('view-calc').innerHTML=calcHtml(b,w,isCur);
+  document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
+}
+function homeHtml(b,w,isCur){
+  const prog=w.target>0?Math.min(100,100*w.points/w.target):0;const reached=w.points>=w.target&&w.target>0;
+  const tag=w.is_final?`<span class="tag final">${esc(t('final'))}</span>`:`<span class="tag prov">${esc(t('prov'))}</span>`;
+  let h=`<div class="card hero"><h3>${esc(isCur?t('thisWeek'):t('week'))} · ${esc(rangeLbl(w.week_start))} ${tag}</h3>
+   <div class="big"><b>${num(w.points)}</b><span>${esc(t('pointsSoFar'))} / ${num(w.target)} ${esc(t('target'))}</span></div>
+   <div class="bar"><i class="${reached?'ok':''}" style="width:${prog}%"></i></div>
+   <div class="barlbl"><span>0</span><span>${esc(t('target'))} ${num(w.target)} = ${num(b.config.target)} × ${num(w.days_present,1)} ${esc(t('daysPresent'))}</span></div>
+   <div class="msg ${reached?'ok':'go'}">${esc(reached?t('reached'):t('toGo',{n:num(w.target-w.points)}))}</div></div>`;
+  h+=`<div class="card"><div class="grid">
+   <div class="stat"><div class="k">${esc(t('above'))}</div><div class="v">${num(w.points_above)}</div></div>
+   <div class="stat"><div class="k">${esc(t('defect'))}</div><div class="v">${pct(w.defect_pct)}</div><div class="n">${esc(t('defectN',{d:w.defects,j:w.jcs}))}</div></div>
+   <div class="stat"><div class="k">${esc(t('rate'))}</div><div class="v">${rupees(w.rate)}</div><div class="n">${esc(w.is_final?t('final'):t('untilFinal'))}</div></div>
+   <div class="stat hl"><div class="k">${esc(isCur?t('earned'):t('earnedW'))}</div><div class="v">${rupees(w.pay)}</div><div class="n">${num(w.points_above)} × ${rupees(w.rate)}</div></div>
+   </div><button class="link" onclick="showTab('calc')">${esc(t('seeHow'))}</button></div>`;
+  if(isCur){const last=b.jcs.slice(-5).reverse();
+    h+=`<div class="card"><h3>${esc(t('lastJcs'))}</h3><ul class="list">${last.map(j=>`<li><div class="l"><b>${esc(j.jc_no)}</b><small>${esc(dayName(j.billed_date))} · ${esc(j.parts.map(p=>p.name).join(', ')||'—')}</small></div><div class="r">${num(j.points)}<small>${esc(t('pts'))}</small></div></li>`).join('')}</ul></div>`;
+    h+=`<div class="card"><h3>${esc(t('hub'))}</h3><ul class="list"><li><div class="l"><b>${esc(t('rankOf',{r:b.hub.rank,n:b.hub.of}))}</b><small>${esc(t('hubAvg',{a:num(b.hub.avg_ppd,1)}))}</small></div></li><li><div class="l"><b>${esc(t('hubAbove',{a:b.hub.above,n:b.hub.of}))}</b></div></li></ul></div>`;}
+  const rows=[b.current,...b.past].map(x=>settle(x,b.config));
+  h+=`<div class="card"><h3>${esc(t('pastWeeks'))}</h3><ul class="list">${rows.map(x=>`<li onclick="pickWeek('${x.week_start}')" style="cursor:pointer"><div class="l"><b>${esc(rangeLbl(x.week_start))}</b><small>${num(x.points)} / ${num(x.target)} ${esc(t('pts'))} · ${rupees(x.rate)}/${esc(t('pts'))} · ${esc(x.is_final?t('final'):t('prov'))}</small></div><div class="r">${rupees(x.pay)}<small>${esc(t('pay'))}</small></div></li>`).join('')}</ul></div>`;
+  return h;
+}
+function calcHtml(b,w,isCur){
+  if(!isCur)return `<div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`;
+  const lastD=b.days.length?b.days[b.days.length-1].d:null;
+  const byDay=b.days.map(d=>{const list=b.jcs.filter(j=>j.billed_date===d.d);
+    return `<details class="day" ${d.d===lastD?'open':''}><summary class="dh"><span>${esc(dayName(d.d))} · ${list.length} JC</span><span>${num(d.points)} ${esc(t('pts'))}</span></summary>${list.length?list.map(j=>{const raw=0.25+j.labour_min/60;
+      return `<div class="jc"><div class="jh"><span>${esc(j.jc_no)}${j.def_7d?`<span class="pill d">7d</span>`:''}</span><span>${num(j.points)}</span></div><div class="pt">${esc(j.parts.map(p=>p.name+' '+p.labour_min+' min').join(' · ')||'—')}</div><div class="fx">${esc(t('formula',{m:j.labour_min,raw:num(raw),pts:num(j.points)}))}</div></div>`;}).join(''):`<div class="empty">${esc(t('noJcs'))}</div>`}</details>`;}).join('');
+  const daysHtml=b.days.map(d=>{const cls=d.present>=1?'y':d.present>0?'h':'n';const lbl=d.present>=1?t('dayPresent'):d.present>0?t('dayHalf'):t('dayAbs');
+    return `<li><div class="l"><b>${esc(dayName(d.d))}<span class="pill ${cls}">${esc(lbl)}</span></b><small>${esc(why(d.reason))}</small></div><div class="r">${num(d.present,1)}</div></li>`;}).join('');
+  return `<div class="card">
+   ${stepHtml(1,t('s1'),t('s1p'),byDay+`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}</div>
+   <div class="card">${stepHtml(2,t('s2'),t('s2p'),`<ul class="list">${daysHtml}</ul><div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}</div>
+   <div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)} ${esc(t('pts'))}</span></div>`)}</div>
+   <div class="card">${rateStep(b,w)}</div><div class="card">${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`;
+}
+function stepHtml(no,title,p,body){return `<div class="step"><div class="no">${no}</div><div class="tx"><h3 style="margin-bottom:4px">${esc(title)}</h3><p>${esc(p)}</p>${body}</div></div>`;}
+function rateStep(b,w){const c=b.config;const rows=[[40,t('upTo',{c:c.c40})],[30,t('upTo',{c:c.c30})],[20,t('upTo',{c:c.c20})],[10,t('upTo',{c:c.c10})],[0,t('over',{c:c.c10})]];
+  return stepHtml(4,t('s4'),t('s4p'),`<div style="font-weight:700;margin-bottom:6px">${pct(w.defect_pct)} = ${w.defects} ÷ ${w.jcs}</div><table class="sl">${rows.map(([r,l])=>`<tr class="${r===w.rate?'me':''}"><td>${esc(t('defect'))} ${esc(l)}${r===w.rate?' ← '+esc(t('yours')):''}</td><td>${rupees(r)}</td></tr>`).join('')}</table>`);}
+function payStep(w){return stepHtml(5,t('s5'),t('s5p'),`<div class="sum"><span>${num(w.points)} − ${num(w.target)} = ${num(w.points_above)} × ${rupees(w.rate)}</span><span>${rupees(w.pay)}</span></div>`);}
+function pickWeek(ws){WEEK=ws;render();window.scrollTo({top:0,behavior:'smooth'});}
+function showTab(x){TAB=x;document.getElementById('view-home').style.display=x==='home'?'block':'none';document.getElementById('view-calc').style.display=x==='calc'?'block':'none';
+  document.getElementById('t-home').classList.toggle('on',x==='home');document.getElementById('t-calc').classList.toggle('on',x==='calc');window.scrollTo({top:0});}
+
+/* ── AUTH (FleetPro pattern: auth screen covers the page; permissions FIRST, then hide it) ── */
+function showAuthScreen(){document.getElementById('auth-screen').classList.remove('hidden');showForm();}
+function hideAuthScreen(){document.getElementById('auth-screen').classList.add('hidden');}
+function showForm(){document.getElementById('auth-form').style.display='block';document.getElementById('auth-sent').style.display='none';document.getElementById('auth-msg').textContent='';}
+async function sendMagicLink(){
+  const email=document.getElementById('auth-email').value.trim().toLowerCase();const msg=document.getElementById('auth-msg');const btn=document.getElementById('auth-btn');
+  if(!email){msg.textContent='Please enter your email.';return;}
+  btn.disabled=true;
+  if(!email.endsWith('@bounceshare.com')){const{data:ok}=await sbClient.rpc('is_approved_user',{p_email:email});if(!ok){msg.textContent='Your email is not registered. Contact your hub manager.';btn.disabled=false;return;}}
+  const res=await sbClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});btn.disabled=false;
+  if(res.error){msg.textContent=res.error.message;}else{document.getElementById('auth-form').style.display='none';document.getElementById('auth-sent').style.display='block';}
+}
+document.getElementById('auth-email').addEventListener('keydown',e=>{if(e.key==='Enter')sendMagicLink();});
+async function signOut(){await sbClient.auth.signOut();document.getElementById('logout-btn').style.display='none';showAuthScreen();}
+async function loadUserPermissions(session){
+  if(session?.user?.app_metadata?.is_superadmin)return {'incentive-admin':true,'incentive-tech':true};
+  try{const r1=await sbClient.from('user_groups').select('group_id').eq('user_id',session.user.id);if(!r1.data||!r1.data.length)return {};
+    const r2=await sbClient.from('group_features').select('feature_key').in('group_id',r1.data.map(r=>r.group_id));
+    const f={};(r2.data||[]).forEach(r=>{f[r.feature_key]=true;});return f;}catch(e){console.warn('[FP] permission check failed',e);return {};}
+}
+let _booted=false;
+async function activateSession(session){
+  if(_booted)return;
+  const f=await loadUserPermissions(session);window.FP_FEATURES=f;
+  if(!f['incentive-tech']&&!f['incentive-admin']){location.href='index.html';return;}
+  _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
+}
+async function start(){try{BUNDLE=await loadWeekBundle();render();}catch(e){document.getElementById('view-home').innerHTML='<div class="card empty">Could not load your data. Please try again later.</div>';console.error(e);}}
+
+(async function boot(){
+  let saved='en';try{saved=localStorage.getItem('fp_lang')||'en';}catch(e){}setLang(saved==='hi'?'hi':'en');
+  if(LOCAL_PREVIEW){hideAuthScreen();await start();return;}
+  const{data:{session}}=await sbClient.auth.getSession();
+  if(session)await activateSession(session);else showAuthScreen();
+  sbClient.auth.onAuthStateChange(async(ev,s)=>{if(ev==='SIGNED_IN'&&s)await activateSession(s);else if(ev==='SIGNED_OUT'){_booted=false;showAuthScreen();}});
+})();
+</script>
+</body>
+</html>
