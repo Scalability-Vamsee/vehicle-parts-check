@@ -8,6 +8,7 @@ first. If a row is already locked by another window → **STOP and wait**. Relea
 |---|---|---|---|
 | jc-approval.html | (free) | — | — |
 | incentive.html | (free) | — | — |
+| incentive-v2.html (new page) | Shivani (Claude Code) | 2026-11-06 07:14 | Incentive v9 dashboard v2: technician home + how-calculated screen, fake sample data only; branch incentive-v2-tech-home. incentive.html itself is not touched. |
 | index.html | (free) | — | — |
 | queue.html | (free) | — | — |
 | maintenance.html | (free) | — | — |
