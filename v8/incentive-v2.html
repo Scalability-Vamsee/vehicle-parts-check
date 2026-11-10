@@ -201,7 +201,7 @@ const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new U
 
 /* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
    so that folder is git-ignored and never committed). Never active on staging or production. */
-const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct'].includes(new URLSearchParams(location.search).get('real'));
+const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct','nov'].includes(new URLSearchParams(location.search).get('real'));
 let REAL=null, PICK_TECH=null, PICK_CITY=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 
@@ -260,7 +260,8 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)',
   realBanner:'Real data · laptop only · November so far. No Zimyo file yet: a day with a billed job card counts as present. Not shown anywhere else.',
   stillSample:'This screen is still sample data: its real data is not loaded yet.',
-  realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.'});
+  realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
+  realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.'});
 T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
   tab_home:'मेरा हफ़्ता',tab_calc:'हिसाब कैसे बनता है',tab_top3:'टॉप 3',tab_city:'सिटी स्कोरकार्ड',tab_workshop:'वर्कशॉप',tab_board:'लीडरबोर्ड',tab_awards:'अवॉर्ड',tab_checklist:'चेकलिस्ट',
@@ -278,7 +279,8 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)',
   realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर अब तक। Zimyo फ़ाइल अभी नहीं: बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
   stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
-  realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।'});
+  realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
+  realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।'});
 T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -313,7 +315,7 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
    settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
    Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code, 'none_jc' or 'zero_week'), jcs[].parts [{name, labour_min}]. */
 async function loadWeekBundle(){
-  if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':'_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
+  if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':which==='nov'?'_local/real_nov.json':'_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
   if(DATA_MODE==='sample')return sampleBundle();
   const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
   if(error)throw error;return data;
@@ -427,7 +429,7 @@ function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:
 const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'long',year:'numeric'});
 function render(){
   const b=BUNDLE;const sb=document.getElementById('sample-banner');sb.style.display=b.mode==='sample'||b.mode==='real-local'?'block':'none';
-  sb.textContent=b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):t('realBanner')):t('sample');
+  sb.textContent=b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):REAL&&REAL.label==='November'?t('realBannerNov'):t('realBanner')):t('sample');
   const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
   const ps=document.getElementById('pick-sel');
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
