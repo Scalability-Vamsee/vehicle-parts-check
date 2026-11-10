@@ -202,7 +202,7 @@ const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new U
 /* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
    so that folder is git-ignored and never committed). Never active on staging or production. */
 const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct','nov'].includes(new URLSearchParams(location.search).get('real'));
-let REAL=null, PICK_TECH=null, PICK_CITY=null;
+let REAL=null, PICK_TECH=null, PICK_CITY=null, PICK_SM=null, PICK_SK=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 
 /* ── TEXT (English + Hindi; Hindi to be checked by a native speaker before launch) ── */
@@ -263,6 +263,8 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
   realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.',
   noRole:'Your login has no incentive access yet. Ask your admin to add you.',noRoleSample:'Your login has no incentive role yet: you are seeing the sample only.',
+  skRealP:'Real store keeper and hub from Zimyo. Warranty from the warranty tracker; MSL and scrap are not loaded yet.',waitApi:'Waiting for data: MSL and scrap come from the Service Info API (Nithish).',
+  sent:'sent',notSent:'not sent',noRow:'not in tracker',docket:'docket',hubUnknown:'Zimyo lists this store keeper at Head Office: hub not known yet.',noDate:'Sent = docket number or Porter note in the warranty tracker. The tracker keeps no dispatch date, so on-time is not checked.',
   rosterT:'People in this city',rosterP:'{n} service managers get the city amount. Store keepers are scored on their hub checklist. Attendance is for information; it does not change the amount.'});
 T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
@@ -284,6 +286,8 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
   realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।',
   noRole:'आपके लॉगिन को अभी इंसेंटिव की अनुमति नहीं है। अपने एडमिन से जुड़वाएँ।',noRoleSample:'आपके लॉगिन को अभी इंसेंटिव रोल नहीं है: आप सिर्फ़ सैंपल देख रहे हैं।',
+  skRealP:'असली स्टोर कीपर और हब Zimyo से। वारंटी, वारंटी ट्रैकर से; MSL और स्क्रैप अभी लोड नहीं हुए।',waitApi:'डेटा का इंतज़ार: MSL और स्क्रैप Service Info API (नितीश) से आएँगे।',
+  sent:'भेजा',notSent:'नहीं भेजा',noRow:'ट्रैकर में नहीं',docket:'डॉकेट',hubUnknown:'Zimyo में यह स्टोर कीपर हेड ऑफ़िस में है: हब अभी पता नहीं।',noDate:'भेजा = वारंटी ट्रैकर में डॉकेट नंबर या पोर्टर नोट। ट्रैकर में भेजने की तारीख नहीं होती, इसलिए समय पर है या नहीं, यह नहीं जाँचा जाता।',
   rosterT:'इस शहर के लोग',rosterP:'{n} सर्विस मैनेजर को सिटी की रकम मिलती है। स्टोर कीपर का स्कोर हब चेकलिस्ट से। हाज़िरी सिर्फ़ जानकारी के लिए है; रकम नहीं बदलती।'});
 T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
@@ -396,7 +400,8 @@ function weekOf(t,R,ws){const end=addDays(ws,7);const inW=s=>s>=ws&&s<end;
 function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.includes(REAL_WEEK))REAL_WEEK=wks[wks.length-1];
   const techs=R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=REAL_WEEK&&j.billed_date<addDays(REAL_WEEK,7)));
   if(!PICK_TECH||!R.techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
-  const t=R.techs.find(x=>x.name===PICK_TECH);   // keep the chosen technician even in a week without job cardsif(!PICK_CITY)PICK_CITY=t.city;
+  const t=R.techs.find(x=>x.name===PICK_TECH);   // keep the chosen technician even in a week without job cards
+  if(!PICK_CITY)PICK_CITY=t.city;
   const cfg=R.config[grpOf(t.city)];const w=weekOf(t,R,REAL_WEEK);
   const stat=x=>{const v=weekOf(x,R,REAL_WEEK).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
   const all=techs.map(stat);const mates=all.filter(x=>x.hub===t.hub).sort((a,c)=>c.ppd-a.ppd);
@@ -412,8 +417,20 @@ function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.in
     board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
     sm:(R.sm&&R.sm[PICK_CITY])?R.sm[PICK_CITY]:{...sampleOthers().sm,city:PICK_CITY},smReal:!!(R.sm&&R.sm[PICK_CITY]),cityCfg:R.config[grpOf(PICK_CITY)],
-    roster:R.roster?R.roster.filter(x=>x.city===PICK_CITY).sort((a,z)=>a.role.localeCompare(z.role)||a.hub.localeCompare(z.hub)):null,rosterDays:R.roster_days||''};
+    roster:R.roster?R.roster.filter(x=>x.city===PICK_CITY).sort((a,z)=>a.role.localeCompare(z.role)||a.hub.localeCompare(z.hub)):null,rosterDays:R.roster_days||'',
+    smPerson:(()=>{if(!R.roster)return null;const sms=R.roster.filter(x=>x.role==='Service manager');
+      if(!PICK_SM||!sms.find(x=>x.name===PICK_SM&&x.city===PICK_CITY)){const f=sms.find(x=>x.city===PICK_CITY);PICK_SM=f?f.name:PICK_SM;}
+      return sms.find(x=>x.name===PICK_SM)||null;})(),
+    ...realSk(R)};
 }
+/* Store keeper in real mode: picked person, hub from Zimyo; warranty sent / not from the warranty tracker; MSL and scrap not loaded yet. */
+function realSk(R){const sks=(R.roster||[]).filter(x=>x.role==='Store keeper');if(!sks.length)return {};
+  if(!PICK_SK||!sks.find(x=>x.name===PICK_SK))PICK_SK=sks[0].name;const p=sks.find(x=>x.name===PICK_SK);const mon=R.month;
+  const due=c=>c===1?addDays(mon,19):addDays(iso(new Date(D(mon).getFullYear(),D(mon).getMonth()+1,1)),4);
+  const cycles=[1,2].map(c=>{const w=(R.warranty||{})[p.hub+'|'+c];return {cycle:c,due:due(c),known:!!w,sent:!!(w&&w.sent),proof:w?w.proof:'',qty:w?w.qty:0};});
+  return {skReal:true,skPerson:p,skCycles:cycles};}
+function pickSm(v){PICK_SM=v;const p=REAL.roster.find(x=>x.name===v);if(p&&p.city)PICK_CITY=p.city;BUNDLE=realBundle();render();}
+function pickSk(v){PICK_SK=v;BUNDLE=realBundle();render();}
 function pickTech(v){PICK_TECH=v;const t=REAL.techs.find(x=>x.name===v);if(t)PICK_CITY=t.city;BUNDLE=realBundle();render();}
 function pickCity(v){PICK_CITY=v;BUNDLE=realBundle();render();}
 
@@ -440,13 +457,17 @@ function render(){
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
     if(ROLE==='tech'){ps.onchange=e=>pickTech(e.target.value);
       ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${REAL.techs.filter(x=>x.city===c).sort((a,z)=>a.name.localeCompare(z.name)).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
+    else if(REAL.roster){const sms=REAL.roster.filter(x=>x.role==='Service manager');if(!PICK_SM){const f=sms.find(x=>x.city===PICK_CITY);if(f)PICK_SM=f.name;}
+      ps.onchange=e=>pickSm(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${sms.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SM?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
     else{ps.onchange=e=>pickCity(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<option ${c===PICK_CITY?'selected':''}>${esc(c)}</option>`).join('');}
+  }else if(b.mode==='real-local'&&ROLE==='sk'&&b.skReal){ps.style.display='block';ps.onchange=e=>pickSk(e.target.value);
+    ps.innerHTML=REAL.roster.filter(x=>x.role==='Store keeper').map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SK?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('');
   }else ps.style.display='none';
   if(CAN_SWITCH)document.getElementById('role-sel').innerHTML=['tech','sm','sk'].map(r=>`<option value="${r}" ${r===ROLE?'selected':''}>${esc(t('role_'+r))}</option>`).join('');
   const nm=document.getElementById('who-name'),sub=document.getElementById('who-sub');
   if(ROLE==='tech'){nm.textContent=b.tech.display_name;sub.textContent=b.tech.hub+' · '+b.tech.city+' · '+t('target')+' '+num(b.config.target)+' '+t('pts')+' '+t('perDay');}
-  else if(ROLE==='sm'){nm.textContent=t('role_sm');sub.textContent=b.sm.city+' · '+monthLbl(b.month);}
-  else{nm.textContent=t('role_sk');sub.textContent=b.sk.hub+' · '+monthLbl(b.month);}
+  else if(ROLE==='sm'){nm.textContent=b.smPerson?b.smPerson.name:t('role_sm');sub.textContent=(b.smPerson?t('role_sm')+' · '+b.smPerson.hub+' · ':'')+b.sm.city+' · '+monthLbl(b.month);}
+  else{nm.textContent=b.skReal?b.skPerson.name:t('role_sk');sub.textContent=(b.skReal?t('role_sk')+' · '+b.skPerson.hub:b.sk.hub)+' · '+monthLbl(b.month);}
   const tabs=TABS_BY_ROLE[ROLE];if(!tabs.includes(TAB))TAB=tabs[0];
   document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
   const weekTab=TAB==='home'||TAB==='calc';const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local')WEEK=b.current.week_start;
@@ -454,7 +475,7 @@ function render(){
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
   const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
-  const stillSample=b.mode==='real-local'&&(['checklist','awards'].includes(TAB)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
+  const stillSample=b.mode==='real-local'&&(TAB==='awards'||(TAB==='checklist'&&!b.skReal)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   document.getElementById('view').innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
@@ -493,7 +514,7 @@ function boardHtml(b){const x=b.board;
    <p class="note">${esc(t('bdNote',{t:num((b.cityCfg||b.config).target)}))}</p></div>`;}
 
 /* Store keeper: own hub's weekly checklist (06): MSL, scrap, warranty cycles; this month's money so far. */
-function checklistHtml(b){const s=b.sk;const ws=s.weeks.map(skWeek);const n=ws.length;
+function checklistHtml(b){if(b.skReal)return checklistRealHtml(b);const s=b.sk;const ws=s.weeks.map(skWeek);const n=ws.length;
   const msl=ws.filter(w=>w.msl_met).length,scrap=ws.filter(w=>w.scrap_met).length;const cy=s.cycles.map(c=>skCycle(c,b.as_of));const cmet=cy.filter(c=>c.met).length;
   const pm=skSlab(msl,n),ps=skSlab(scrap,n),pw=cmet===2?1000:cmet===1?500:0;const tot=pm+ps+pw;const yes=x=>x?`<span class="ok">✓</span>`:`<span class="no">✗</span>`;
   return `<div class="card hero"><h3>${esc(t('skT'))} · ${esc(s.hub)} <span class="tag prov">${esc(t('monthToDate'))}</span></h3>
@@ -506,6 +527,15 @@ function checklistHtml(b){const s=b.sk;const ws=s.weeks.map(skWeek);const n=ws.l
    <div class="card"><h3>${esc(t('warranty'))}</h3><ul class="list">${cy.map(c=>`<li><div class="l"><b>${esc(t('cycle'+c.cycle))}</b><small>${esc(t('dueBy',{d:dayName(c.due)}))}${c.date?' · '+esc(t('sentOn',{d:dayName(c.date)})):''}</small></div><div class="r">${c.met?`<span class="ok">✓</span>`:c.pending?`<span class="pend">${esc(t('pending'))}</span>`:`<span class="no">✗</span>`}</div></li>`).join('')}
      <li><div class="l"><b>${esc(t('warranty'))}</b><small>${esc(t('cyclesMet',{m:cmet}))}</small></div><div class="r earn ${pw?'p':'z'}">${rupees(pw)}</div></li></ul>
     <p class="note">${esc(t('skNote'))}</p></div>`;}
+
+function checklistRealHtml(b){const p=b.skPerson,cy=b.skCycles;const sent=cy.filter(c=>c.sent).length;const pw=sent===2?1000:sent===1?500:0;
+  const hubKnown=p.hub&&p.hub!=='Head Office';
+  return `<div class="card hero"><h3>${esc(t('skT'))} · ${esc(p.hub)} <span class="tag prov">${esc(t('monthToDate'))}</span></h3>
+    <div class="big"><b>${rupees(pw)}</b><span>${esc(t('soFar'))} / ₹3,000</span></div><div class="note">${esc(t('skRealP'))}</div></div>
+   <div class="card"><h3>MSL · ${esc(t('scrap'))}</h3><div class="empty">${esc(t('waitApi'))}</div></div>
+   <div class="card"><h3>${esc(t('warranty'))}</h3>${hubKnown?'':`<div class="empty">${esc(t('hubUnknown'))}</div>`}<ul class="list">${cy.map(c=>`<li><div class="l"><b>${esc(t('cycle'+c.cycle))}</b><small>${esc(t('dueBy',{d:dayName(c.due)}))}${c.qty?' · '+c.qty+' parts':''}${c.proof?' · '+esc(t('docket'))+' '+esc(c.proof):''}</small></div><div class="r">${c.sent?`<span class="ok">✓ ${esc(t('sent'))}</span>`:c.known?`<span class="no">✗ ${esc(t('notSent'))}</span>`:`<span class="pend">${esc(t('noRow'))}</span>`}</div></li>`).join('')}
+     <li><div class="l"><b>${esc(t('warranty'))}</b><small>${esc(t('cyclesMet',{m:sent}))}</small></div><div class="r earn ${pw?'p':'z'}">${rupees(pw)}</div></li></ul>
+    <p class="note">${esc(t('noDate'))}</p></div>`;}
 
 /* Awards race (R14). */
 function awardsHtml(b){const a=b.awards;const tm=a.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
