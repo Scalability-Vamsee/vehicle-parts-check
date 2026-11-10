@@ -261,7 +261,8 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   realBanner:'Real data · laptop only · November so far. No Zimyo file yet: a day with a billed job card counts as present. Not shown anywhere else.',
   stillSample:'This screen is still sample data: its real data is not loaded yet.',
   realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
-  realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.'});
+  realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.',
+  rosterT:'People in this city',rosterP:'{n} service managers get the city amount. Store keepers are scored on their hub checklist. Attendance is for information; it does not change the amount.'});
 T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
   tab_home:'मेरा हफ़्ता',tab_calc:'हिसाब कैसे बनता है',tab_top3:'टॉप 3',tab_city:'सिटी स्कोरकार्ड',tab_workshop:'वर्कशॉप',tab_board:'लीडरबोर्ड',tab_awards:'अवॉर्ड',tab_checklist:'चेकलिस्ट',
@@ -280,7 +281,8 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर अब तक। Zimyo फ़ाइल अभी नहीं: बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
   stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
   realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
-  realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।'});
+  realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।',
+  rosterT:'इस शहर के लोग',rosterP:'{n} सर्विस मैनेजर को सिटी की रकम मिलती है। स्टोर कीपर का स्कोर हब चेकलिस्ट से। हाज़िरी सिर्फ़ जानकारी के लिए है; रकम नहीं बदलती।'});
 T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -407,7 +409,8 @@ function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.in
     workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
     board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
-    sm:(R.sm&&R.sm[PICK_CITY])?R.sm[PICK_CITY]:{...sampleOthers().sm,city:PICK_CITY},smReal:!!(R.sm&&R.sm[PICK_CITY]),cityCfg:R.config[grpOf(PICK_CITY)]};
+    sm:(R.sm&&R.sm[PICK_CITY])?R.sm[PICK_CITY]:{...sampleOthers().sm,city:PICK_CITY},smReal:!!(R.sm&&R.sm[PICK_CITY]),cityCfg:R.config[grpOf(PICK_CITY)],
+    roster:R.roster?R.roster.filter(x=>x.city===PICK_CITY).sort((a,z)=>a.role.localeCompare(z.role)||a.hub.localeCompare(z.hub)):null,rosterDays:R.roster_days||''};
 }
 function pickTech(v){PICK_TECH=v;const t=REAL.techs.find(x=>x.name===v);if(t)PICK_CITY=t.city;BUNDLE=realBundle();render();}
 function pickCity(v){PICK_CITY=v;BUNDLE=realBundle();render();}
@@ -469,7 +472,11 @@ function cityHtml(b){const s=b.sm;const ms=s.metrics.map(m=>({...m,pay:smPay(m)}
    <div class="card">${ms.map(m=>`<div class="met"><div class="mh"><b>${esc(t('m_'+m.key))}</b><span class="earn ${m.pay?'p':'z'}">${rupees(m.pay)}</span></div>
      <div class="mv">${esc(fmt(m,m.value))}${m.key==='B2'?` <small style="font-size:.75rem;color:var(--muted);font-weight:600">P98 ${num(m.p98,1)} (≤ ${num(m.p98bar)})</small>`:''}</div>
      <div class="bars"><span class="${m.pay>=500?'hit':''}">₹500: ${esc(barTxt(m,m.s500))}</span><span class="${m.pay>=1000?'hit':''}">₹1,000: ${esc(barTxt(m,m.s1000))}${m.key==='B2'?esc(' + P98 ≤ '+num(m.p98bar)):''}</span></div>
-     <div class="note" style="margin-top:4px">${esc(t('mh_'+m.key))}</div></div>`).join('')}</div>`;}
+     <div class="note" style="margin-top:4px">${esc(t('mh_'+m.key))}</div></div>`).join('')}</div>`+rosterHtml(b);}
+/* People of the city from Zimyo (laptop real-data mode only): who gets the city amount, and store keepers, with days present. */
+function rosterHtml(b){if(!b.roster||!b.roster.length)return '';const sm=b.roster.filter(x=>x.role==='Service manager').length;
+  return `<div class="card"><h3>${esc(t('rosterT'))} <span class="tag final">Zimyo · ${esc(b.rosterDays)}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('rosterP',{n:sm}))}</p>`+
+   `<ul class="list">${b.roster.map(x=>`<li><div class="l"><b>${esc(x.name)}</b><small>${esc(x.role)} · ${esc(x.hub||'—')}</small></div><div class="r">${num(x.days_present,1)}<small>${esc(t('daysPresent'))} / ${x.days}</small></div></li>`).join('')}</ul></div>`;}
 
 /* Bikes in the workshop over 5 days, per hub, oldest first (from the nightly snapshot 05 + the live queue). */
 function workshopHtml(b){const x=b.workshop;const hubs=[...x.hubs].sort((a,c)=>c.over5-a.over5);
