@@ -201,7 +201,7 @@ const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new U
 
 /* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
    so that folder is git-ignored and never committed). Never active on staging or production. */
-const REAL_LOCAL=LOCAL_PREVIEW&&new URLSearchParams(location.search).get('real')==='1';
+const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct'].includes(new URLSearchParams(location.search).get('real'));
 let REAL=null, PICK_TECH=null, PICK_CITY=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 
@@ -259,7 +259,8 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   supT:'Supervisor of the Month',supP:"Last month's Technician of the Month gets ₹2,000 more if every technician of the hub beats the target. Starts in December (November is the first month).",
   smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)',
   realBanner:'Real data · laptop only · November so far. No Zimyo file yet: a day with a billed job card counts as present. Not shown anywhere else.',
-  stillSample:'This screen is still sample data: its real data is not loaded yet.'});
+  stillSample:'This screen is still sample data: its real data is not loaded yet.',
+  realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.'});
 T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
   tab_home:'मेरा हफ़्ता',tab_calc:'हिसाब कैसे बनता है',tab_top3:'टॉप 3',tab_city:'सिटी स्कोरकार्ड',tab_workshop:'वर्कशॉप',tab_board:'लीडरबोर्ड',tab_awards:'अवॉर्ड',tab_checklist:'चेकलिस्ट',
@@ -276,7 +277,8 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   supT:'सुपरवाइज़र ऑफ़ द मंथ',supP:'पिछले महीने के टेक्नीशियन ऑफ़ द मंथ को ₹2,000 और, अगर हब का हर टेक्नीशियन टारगेट पार करे। दिसंबर से शुरू (नवंबर पहला महीना है)।',
   smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)',
   realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर अब तक। Zimyo फ़ाइल अभी नहीं: बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
-  stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।'});
+  stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
+  realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।'});
 T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -311,7 +313,7 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
    settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
    Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code, 'none_jc' or 'zero_week'), jcs[].parts [{name, labour_min}]. */
 async function loadWeekBundle(){
-  if(REAL_LOCAL){if(!REAL){const r=await fetch('_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
+  if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':'_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
   if(DATA_MODE==='sample')return sampleBundle();
   const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
   if(error)throw error;return data;
@@ -379,23 +381,27 @@ function sampleOthers(){
 /* Real data (laptop only): the same bundle shape as the sample, built from REAL for the picked technician / city.
    Service manager scorecard, store keeper checklist and awards are not in the real file yet: they stay sample and say so. */
 const grpOf=c=>c==='Hyderabad'||c==='Mumbai'?'Hyderabad+Mumbai':c;
-function weekOf(t,R){const days=t.days.map(d=>({d:d.d,reason:'nozimyo',jcs:d.jcs,points:d.points,present:d.jcs>0?1:0,is_frozen:d.d<R.as_of}));
-  const pts=t.jcs.reduce((a,j)=>a+j.points,0),dp=days.reduce((a,d)=>a+d.present,0);
-  return {days,cur:{week_start:R.week_start,jcs:t.jcs.length,defects:t.jcs.filter(j=>j.def_7d).length,points:pts,days_present:dp,is_final:false}};}
-function realBundle(){const R=REAL;const techs=R.techs;
-  if(!PICK_TECH||!techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
-  const t=techs.find(x=>x.name===PICK_TECH);if(!PICK_CITY)PICK_CITY=t.city;
-  const cfg=R.config[grpOf(t.city)];const w=weekOf(t,R);
-  const stat=x=>{const v=weekOf(x,R).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
+let REAL_WEEK=null;
+const realWeeks=R=>R.weeks||[R.week_start];
+function weekOf(t,R,ws){const end=addDays(ws,7);const inW=s=>s>=ws&&s<end;
+  const days=t.days.filter(d=>inW(d.d)).map(d=>({d:d.d,reason:d.reason||'nozimyo',jcs:d.jcs,points:d.points,present:d.present??(d.jcs>0?1:0),is_frozen:d.d<R.as_of}));
+  const js=t.jcs.filter(j=>inW(j.billed_date));const pts=js.reduce((a,j)=>a+j.points,0),dp=days.reduce((a,d)=>a+d.present,0);
+  return {days,jcs:js,cur:{week_start:ws,jcs:js.length,defects:js.filter(j=>j.def_7d).length,points:pts,days_present:dp,is_final:!!R.final}};}
+function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.includes(REAL_WEEK))REAL_WEEK=wks[wks.length-1];
+  const techs=R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=REAL_WEEK&&j.billed_date<addDays(REAL_WEEK,7)));
+  if(!PICK_TECH||!R.techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
+  const t=R.techs.find(x=>x.name===PICK_TECH);   // keep the chosen technician even in a week without job cardsif(!PICK_CITY)PICK_CITY=t.city;
+  const cfg=R.config[grpOf(t.city)];const w=weekOf(t,R,REAL_WEEK);
+  const stat=x=>{const v=weekOf(x,R,REAL_WEEK).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
   const all=techs.map(stat);const mates=all.filter(x=>x.hub===t.hub).sort((a,c)=>c.ppd-a.ppd);
   const cityAll=all.filter(x=>x.city===PICK_CITY);
   const hubsAgg={};cityAll.forEach(x=>{const h=hubsAgg[x.hub]||(hubsAgg[x.hub]={hub:x.hub,techs:0,above:0,pts:0,dp:0,j:0,d:0});h.techs++;h.above+=x.above?1:0;h.pts+=x.points;h.dp+=x.days_present;h.j+=x.jcs;h.d+=x.defects;});
   const ws=R.workshop[PICK_CITY]||{hubs:[],bikes:[]};
   const cities=['Bangalore','NCR','Hyderabad','Mumbai'];
   return {...sampleOthers(),mode:'real-local',as_of:R.as_of,month:R.month,notes:R.notes,
-    tech:{display_name:t.name,hub:t.hub,city:t.city},config:cfg,current:w.cur,past:[],days:w.days,jcs:t.jcs,
+    tech:{display_name:t.name,hub:t.hub,city:t.city},config:cfg,current:w.cur,past:wks.filter(x=>x!==REAL_WEEK).map(x=>weekOf(t,R,x).cur).filter(x=>x.jcs>0).reverse(),days:w.days,jcs:w.jcs,
     hub:{rank:mates.findIndex(x=>x.name===t.name)+1,of:mates.length,avg_ppd:mates.reduce((a,x)=>a+x.ppd,0)/(mates.length||1),above:mates.filter(x=>x.above).length},
-    top3:{week_start:R.week_start,final:false,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
+    top3:{week_start:REAL_WEEK,final:!!R.final,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
     workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
     board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
@@ -421,7 +427,7 @@ function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:
 const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'long',year:'numeric'});
 function render(){
   const b=BUNDLE;const sb=document.getElementById('sample-banner');sb.style.display=b.mode==='sample'||b.mode==='real-local'?'block':'none';
-  sb.textContent=b.mode==='real-local'?t('realBanner'):t('sample');
+  sb.textContent=b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):t('realBanner')):t('sample');
   const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
   const ps=document.getElementById('pick-sel');
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
@@ -436,9 +442,9 @@ function render(){
   else{nm.textContent=t('role_sk');sub.textContent=b.sk.hub+' · '+monthLbl(b.month);}
   const tabs=TABS_BY_ROLE[ROLE];if(!tabs.includes(TAB))TAB=tabs[0];
   document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
-  const weekTab=TAB==='home'||TAB==='calc';const all=[b.current,...b.past];if(!WEEK)WEEK=b.current.week_start;
+  const weekTab=TAB==='home'||TAB==='calc';const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local')WEEK=b.current.week_start;
   const wk=document.getElementById('weeks');wk.style.display=weekTab?'flex':'none';
-  wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
+  wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
   const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
   const stillSample=b.mode==='real-local'&&['city','checklist','awards'].includes(TAB)?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
@@ -502,7 +508,7 @@ function awardsHtml(b){const a=b.awards;const tm=a.totm;const el=tm.rows.filter(
 function homeHtml(b,w,isCur){
   const prog=w.target>0?Math.min(100,100*w.points/w.target):0;const reached=w.points>=w.target&&w.target>0;
   const tag=w.is_final?`<span class="tag final">${esc(t('final'))}</span>`:`<span class="tag prov">${esc(t('prov'))}</span>`;
-  let h=`<div class="card hero"><h3>${esc(isCur?t('thisWeek'):t('week'))} · ${esc(rangeLbl(w.week_start))} ${tag}</h3>
+  let h=`<div class="card hero"><h3>${esc(isCur&&b.mode!=='real-local'?t('thisWeek'):t('week'))} · ${esc(rangeLbl(w.week_start))} ${tag}</h3>
    <div class="big"><b>${num(w.points)}</b><span>${esc(t('pointsSoFar'))} / ${num(w.target)} ${esc(t('target'))}</span></div>
    <div class="bar"><i class="${reached?'ok':''}" style="width:${prog}%"></i></div>
    <div class="barlbl"><span>0</span><span>${esc(t('target'))} ${num(w.target)} = ${num(b.config.target)} × ${num(w.days_present,1)} ${esc(t('daysPresent'))}</span></div>
@@ -538,7 +544,7 @@ function stepHtml(no,title,p,body){return `<div class="step"><div class="no">${n
 function rateStep(b,w){const c=b.config;const rows=[[40,t('upTo',{c:c.c40})],[30,t('upTo',{c:c.c30})],[20,t('upTo',{c:c.c20})],[10,t('upTo',{c:c.c10})],[0,t('over',{c:c.c10})]];
   return stepHtml(4,t('s4'),t('s4p'),`<div style="font-weight:700;margin-bottom:6px">${pct(w.defect_pct)} = ${w.defects} ÷ ${w.jcs}</div><table class="sl">${rows.map(([r,l])=>`<tr class="${r===w.rate?'me':''}"><td>${esc(t('defect'))} ${esc(l)}${r===w.rate?' ← '+esc(t('yours')):''}</td><td>${rupees(r)}</td></tr>`).join('')}</table>`);}
 function payStep(w){return stepHtml(5,t('s5'),t('s5p'),`<div class="sum"><span>${num(w.points)} − ${num(w.target)} = ${num(w.points_above)} × ${rupees(w.rate)}</span><span>${rupees(w.pay)}</span></div>`);}
-function pickWeek(ws){WEEK=ws;render();window.scrollTo({top:0,behavior:'smooth'});}
+function pickWeek(ws){WEEK=ws;if(REAL_LOCAL&&REAL){REAL_WEEK=ws;BUNDLE=realBundle();}render();window.scrollTo({top:0,behavior:'smooth'});}
 function showTab(x){TAB=x;render();window.scrollTo({top:0});}
 
 /* ── AUTH (FleetPro pattern: auth screen covers the page; permissions FIRST, then hide it) ── */
