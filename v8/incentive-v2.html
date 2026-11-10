@@ -405,7 +405,7 @@ function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.in
     workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
     board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
-    sm:{...sampleOthers().sm,city:PICK_CITY},cityCfg:R.config[grpOf(PICK_CITY)]};
+    sm:(R.sm&&R.sm[PICK_CITY])?R.sm[PICK_CITY]:{...sampleOthers().sm,city:PICK_CITY},smReal:!!(R.sm&&R.sm[PICK_CITY]),cityCfg:R.config[grpOf(PICK_CITY)]};
 }
 function pickTech(v){PICK_TECH=v;const t=REAL.techs.find(x=>x.name===v);if(t)PICK_CITY=t.city;BUNDLE=realBundle();render();}
 function pickCity(v){PICK_CITY=v;BUNDLE=realBundle();render();}
@@ -447,7 +447,7 @@ function render(){
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
   const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
-  const stillSample=b.mode==='real-local'&&['city','checklist','awards'].includes(TAB)?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
+  const stillSample=b.mode==='real-local'&&(['checklist','awards'].includes(TAB)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   document.getElementById('view').innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
