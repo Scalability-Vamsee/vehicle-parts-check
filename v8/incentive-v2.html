@@ -262,6 +262,7 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   stillSample:'This screen is still sample data: its real data is not loaded yet.',
   realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
   realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.',
+  noRole:'Your login has no incentive access yet. Ask your admin to add you.',noRoleSample:'Your login has no incentive role yet: you are seeing the sample only.',
   rosterT:'People in this city',rosterP:'{n} service managers get the city amount. Store keepers are scored on their hub checklist. Attendance is for information; it does not change the amount.'});
 T.en.why.nozimyo='No Zimyo file yet: counted because job cards were billed this day';
 Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tech:'टेक्नीशियन',role_sm:'सर्विस मैनेजर',role_sk:'स्टोर कीपर',
@@ -282,6 +283,7 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
   realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
   realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।',
+  noRole:'आपके लॉगिन को अभी इंसेंटिव की अनुमति नहीं है। अपने एडमिन से जुड़वाएँ।',noRoleSample:'आपके लॉगिन को अभी इंसेंटिव रोल नहीं है: आप सिर्फ़ सैंपल देख रहे हैं।',
   rosterT:'इस शहर के लोग',rosterP:'{n} सर्विस मैनेजर को सिटी की रकम मिलती है। स्टोर कीपर का स्कोर हब चेकलिस्ट से। हाज़िरी सिर्फ़ जानकारी के लिए है; रकम नहीं बदलती।'});
 T.hi.why.nozimyo='Zimyo फ़ाइल अभी नहीं: इस दिन जॉब कार्ड बिल हुए, इसलिए गिना गया';
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
@@ -432,7 +434,7 @@ function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:
 const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'long',year:'numeric'});
 function render(){
   const b=BUNDLE;const sb=document.getElementById('sample-banner');sb.style.display=b.mode==='sample'||b.mode==='real-local'?'block':'none';
-  sb.textContent=b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):REAL&&REAL.label==='November'?t('realBannerNov'):t('realBanner')):t('sample');
+  sb.textContent=(window.NO_ROLE&&b.mode==='sample'?t('noRoleSample')+' ':'')+(b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):REAL&&REAL.label==='November'?t('realBannerNov'):t('realBanner')):t('sample'));
   const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
   const ps=document.getElementById('pick-sel');
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
@@ -580,7 +582,10 @@ let _booted=false;
 async function activateSession(session){
   if(_booted)return;
   const f=await loadUserPermissions(session);window.FP_FEATURES=f;
-  if(!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk']){location.href='index.html';return;}
+  const noRole=!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk'];
+  // No incentive role: never jump to the FleetPro home silently. Sample mode shows the sample with a note; live mode shows a clear message and no data.
+  if(noRole&&DATA_MODE!=='sample'){_booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';document.getElementById('view').innerHTML='<div class="card empty">'+esc(t('noRole'))+'</div>';return;}
+  window.NO_ROLE=noRole;
   ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=!!f['incentive-admin']||DATA_MODE==='sample';
   _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
 }
