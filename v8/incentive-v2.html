@@ -202,6 +202,7 @@ const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new U
 /* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
    so that folder is git-ignored and never committed). Never active on staging or production. */
 const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct','nov'].includes(new URLSearchParams(location.search).get('real'));
+let ADMIN_PEOPLE=null;
 let REAL=null, PICK_TECH=null, PICK_CITY=null, PICK_SM=null, PICK_SK=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 
@@ -327,7 +328,10 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
 async function loadWeekBundle(){
   if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':which==='nov'?'_local/real_nov.json':'_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
   if(DATA_MODE==='sample')return sampleBundle();
-  const{data,error}=await sbClient.rpc('incentive_v2_my_bundle'); // NOT created yet: security-definer, returns only the caller's own rows
+  // Live (once the tables and 09 functions exist): an admin picks any technician, a technician always gets their own rows.
+  const isAdmin=!!(window.FP_FEATURES&&window.FP_FEATURES['incentive-admin']);
+  if(isAdmin&&!ADMIN_PEOPLE){const r=await sbClient.rpc('incentive_v2_admin_people');if(r.error)throw r.error;ADMIN_PEOPLE=r.data||[];if(!PICK_TECH&&ADMIN_PEOPLE.length)PICK_TECH=ADMIN_PEOPLE[0].name;}
+  const{data,error}=await sbClient.rpc('incentive_v2_my_bundle',isAdmin&&PICK_TECH?{p_technician:PICK_TECH}:{});
   if(error)throw error;return data;
 }
 
@@ -456,7 +460,8 @@ const monthLbl=s=>D(s).toLocaleDateString(LANG==='hi'?'hi-IN':'en-IN',{month:'lo
 function render(){
   const b=BUNDLE;const sb=document.getElementById('sample-banner');sb.style.display=b.mode==='sample'||b.mode==='real-local'?'block':'none';
   sb.textContent=(window.NO_ROLE&&b.mode==='sample'?t('noRoleSample')+' ':'')+(b.mode==='real-local'?(REAL&&REAL.label==='October test'?t('realBannerOct'):REAL&&REAL.label==='November'?t('realBannerNov'):t('realBanner')):t('sample'));
-  const va=document.getElementById('viewas');va.style.display=CAN_SWITCH?'flex':'none';
+  const va=document.getElementById('viewas');va.style.display=(CAN_SWITCH||(b.mode==='live'&&ADMIN_PEOPLE&&ADMIN_PEOPLE.length))?'flex':'none';
+  document.getElementById('role-sel').style.display=CAN_SWITCH?'block':'none';
   const ps=document.getElementById('pick-sel');
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
     if(ROLE==='tech'){ps.onchange=e=>pickTech(e.target.value);
@@ -464,6 +469,9 @@ function render(){
     else if(REAL.roster){const sms=REAL.roster.filter(x=>x.role==='Service manager');if(!PICK_SM){const f=sms.find(x=>x.city===PICK_CITY);if(f)PICK_SM=f.name;}
       ps.onchange=e=>pickSm(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${sms.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SM?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
     else{ps.onchange=e=>pickCity(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<option ${c===PICK_CITY?'selected':''}>${esc(c)}</option>`).join('');}
+  }else if(b.mode==='live'&&ADMIN_PEOPLE&&ADMIN_PEOPLE.length){ps.style.display='block';
+    ps.onchange=async e=>{PICK_TECH=e.target.value;BUNDLE=await loadWeekBundle();WEEK=null;render();};
+    ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${ADMIN_PEOPLE.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub||'')}</option>`).join('')}</optgroup>`).join('');
   }else if(b.mode==='real-local'&&ROLE==='sk'&&b.skReal){ps.style.display='block';ps.onchange=e=>pickSk(e.target.value);
     ps.innerHTML=REAL.roster.filter(x=>x.role==='Store keeper').map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SK?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('');
   }else ps.style.display='none';
@@ -474,7 +482,7 @@ function render(){
   else{nm.textContent=b.skReal?b.skPerson.name:t('role_sk');sub.textContent=(b.skReal?t('role_sk')+' · '+b.skPerson.hub:b.sk.hub)+' · '+monthLbl(b.month);}
   const tabs=TABS_BY_ROLE[ROLE];if(!tabs.includes(TAB))TAB=tabs[0];
   document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
-  const weekTab=TAB==='home'||TAB==='calc';const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local')WEEK=b.current.week_start;
+  const weekTab=TAB==='home'||TAB==='calc';const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local'||!all.some(x=>x.week_start===WEEK))WEEK=b.current.week_start;   // the picked week must exist in this data
   const wk=document.getElementById('weeks');wk.style.display=weekTab?'flex':'none';
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
@@ -562,7 +570,7 @@ function awardsRealHtml(b){const A=b.awardsData;const line=(r,i)=>`<li><div clas
    +`<div class="card"><h3>${esc(t('cityPool'))} · ${esc(city)}</h3><p class="note" style="margin:0 0 6px">${esc(t('poolNote'))}</p>${pool.length?`<ul class="list">${pool.slice(0,5).map(line).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`+notes;}
 
 /* Awards race (R14). */
-function awardsHtml(b){if(b.awardsReal)return awardsRealHtml(b);if(ROLE==='tech')return awardsTechSampleHtml(b);const a=b.awards;const tm=a.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
+function awardsHtml(b){if(b.awardsReal)return awardsRealHtml(b);if(!b.awards)return `<div class="card empty">${esc(t('notYet'))}</div>`;if(ROLE==='tech')return awardsTechSampleHtml(b);const a=b.awards;const tm=a.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
   return `<div class="card"><h3>${esc(t('totmT'))} · ${esc(tm.hub)} <span class="tag prov">₹1,500</span></h3>
     <p class="note" style="margin:0 0 6px">${esc(t('totmP'))}</p>
     <ul class="list">${el.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${num(r.ppd,1)} ${esc(t('ppd'))} (${esc(t('target'))} ${num(r.target)})</small></div></div><div class="r">${pct(r.defect)}<small>${esc(t('defect'))}</small></div></li>`).join('')}</ul>
@@ -643,7 +651,7 @@ async function activateSession(session){
   // No incentive role: never jump to the FleetPro home silently. Sample mode shows the sample with a note; live mode shows a clear message and no data.
   if(noRole&&DATA_MODE!=='sample'){_booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';document.getElementById('view').innerHTML='<div class="card empty">'+esc(t('noRole'))+'</div>';return;}
   window.NO_ROLE=noRole;
-  ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=!!f['incentive-admin']||DATA_MODE==='sample';
+  ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=DATA_MODE==='sample';   // live: technician view only for now (SM / store keeper paused); admins get the technician picker
   _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
 }
 async function start(){try{BUNDLE=await loadWeekBundle();if(LOCAL_PREVIEW)CAN_SWITCH=true;TAB=TABS_BY_ROLE[ROLE][0];render();}catch(e){document.getElementById('view').innerHTML='<div class="card empty">Could not load your data. Please try again later.</div>';console.error(e);}}
