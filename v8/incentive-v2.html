@@ -201,7 +201,7 @@ const LOCAL_PREVIEW=['localhost','127.0.0.1'].includes(location.hostname)&&new U
 
 /* Real data, laptop only: ?demo=1&real=1 on localhost reads v8/_local/real_bundle.json (built from the read-only database login; holds staff names,
    so that folder is git-ignored and never committed). Never active on staging or production. */
-const REAL_LOCAL=LOCAL_PREVIEW&&['1','oct','nov'].includes(new URLSearchParams(location.search).get('real'));
+const REAL_LOCAL=LOCAL_PREVIEW&&['1','all','oct','nov'].includes(new URLSearchParams(location.search).get('real'));
 let ADMIN_PEOPLE=null;
 let REAL=null, PICK_TECH=null, PICK_CITY=null, PICK_SM=null, PICK_SK=null;
 let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
@@ -259,7 +259,7 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   totmT:'Technician of the Month',totmP:'Above target per day present, then the lowest 7-day defect rate wins.',totmOk:'{e} eligible: the hub has its own winner.',totmPool:'Only {e} eligible (a hub needs {n}): the award goes to the city pool.',
   supT:'Supervisor of the Month',supP:"Last month's Technician of the Month gets ₹2,000 more if every technician of the hub beats the target. Starts in December (November is the first month).",
   smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)',
-  realBanner:'Real data · laptop only · November so far. No Zimyo file yet: a day with a billed job card counts as present. Not shown anywhere else.',
+  realBanner:'Real data · laptop only · 5 Oct to 11 Nov: every completed week, plus this week so far. Zimyo attendance up to 10 Nov; after that a day with a billed job card counts as present. Not shown anywhere else.',
   stillSample:'This screen is still sample data: its real data is not loaded yet.',
   realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
   realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.',
@@ -283,7 +283,7 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   totmT:'टेक्नीशियन ऑफ़ द मंथ',totmP:'हाज़िर दिन पर टारगेट से ऊपर, फिर सबसे कम 7-दिन डिफ़ेक्ट रेट जीतता है।',totmOk:'{e} योग्य: हब का अपना विजेता होगा।',totmPool:'सिर्फ़ {e} योग्य (हब को {n} चाहिए): अवॉर्ड सिटी पूल में जाएगा।',
   supT:'सुपरवाइज़र ऑफ़ द मंथ',supP:'पिछले महीने के टेक्नीशियन ऑफ़ द मंथ को ₹2,000 और, अगर हब का हर टेक्नीशियन टारगेट पार करे। दिसंबर से शुरू (नवंबर पहला महीना है)।',
   smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)',
-  realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर अब तक। Zimyo फ़ाइल अभी नहीं: बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
+  realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · 5 अक्टू से 11 नवं: हर पूरा हफ़्ता और यह हफ़्ता अब तक। Zimyo हाज़िरी 10 नवं तक; उसके बाद बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
   stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
   realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
   realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।',
@@ -326,7 +326,7 @@ function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days
    settlement rows = incentive_weekly_settlement, days = incentive_day_points, jcs = incentive_jc_points, config = incentive_config.
    Two additions the screens need (for Vamsee's approval): days[].reason (Zimyo code, 'none_jc' or 'zero_week'), jcs[].parts [{name, labour_min}]. */
 async function loadWeekBundle(){
-  if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':which==='nov'?'_local/real_nov.json':'_local/real_bundle.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
+  if(REAL_LOCAL){if(!REAL){const which=new URLSearchParams(location.search).get('real');const r=await fetch(which==='oct'?'_local/real_oct.json':which==='nov'?'_local/real_nov.json':'_local/real_all.json',{cache:'no-store'});if(!r.ok)throw new Error('no local real data file');REAL=await r.json();}return realBundle();}
   if(DATA_MODE==='sample')return sampleBundle();
   // Live (once the tables and 09 functions exist): an admin picks any technician, a technician always gets their own rows.
   const isAdmin=!!(window.FP_FEATURES&&window.FP_FEATURES['incentive-admin']);
@@ -402,7 +402,7 @@ const realWeeks=R=>R.weeks||[R.week_start];
 function weekOf(t,R,ws){const end=addDays(ws,7);const inW=s=>s>=ws&&s<end;
   const days=t.days.filter(d=>inW(d.d)).map(d=>({d:d.d,reason:d.reason||'nozimyo',jcs:d.jcs,points:d.points,present:d.present??(d.jcs>0?1:0),is_frozen:d.d<R.as_of}));
   const js=t.jcs.filter(j=>inW(j.billed_date));const pts=js.reduce((a,j)=>a+j.points,0),dp=days.reduce((a,d)=>a+d.present,0);
-  return {days,jcs:js,cur:{week_start:ws,jcs:js.length,defects:js.filter(j=>j.def_7d).length,points:pts,days_present:dp,is_final:!!R.final}};}
+  return {days,jcs:js,cur:{week_start:ws,jcs:js.length,defects:js.filter(j=>j.def_7d).length,points:pts,days_present:dp,is_final:R.final_until?ws<=R.final_until:!!R.final}};}
 function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.includes(REAL_WEEK))REAL_WEEK=wks[wks.length-1];
   const techs=R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=REAL_WEEK&&j.billed_date<addDays(REAL_WEEK,7)));
   if(!PICK_TECH||!R.techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
@@ -418,7 +418,7 @@ function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.in
   return {...sampleOthers(),mode:'real-local',as_of:R.as_of,month:R.month,notes:R.notes,
     tech:{display_name:t.name,hub:t.hub,city:t.city},config:cfg,current:w.cur,past:wks.filter(x=>x!==REAL_WEEK).map(x=>weekOf(t,R,x).cur).filter(x=>x.jcs>0).reverse(),days:w.days,jcs:w.jcs,
     hub:{rank:mates.findIndex(x=>x.name===t.name)+1,of:mates.length,avg_ppd:mates.reduce((a,x)=>a+x.ppd,0)/(mates.length||1),above:mates.filter(x=>x.above).length},
-    top3:{week_start:REAL_WEEK,final:!!R.final,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
+    top3:{week_start:REAL_WEEK,final:R.final_until?REAL_WEEK<=R.final_until:!!R.final,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
     workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
     board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
