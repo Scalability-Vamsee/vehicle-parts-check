@@ -153,9 +153,13 @@ table.sl td:last-child{text-align:right}
 .rowl{display:flex;align-items:center;min-width:0}
 /* Responsive (16 Nov): phone first; tablet and laptop get a wider page and two columns on My week */
 .vid{display:block;height:calc(100vh - 150px);height:calc(100dvh - 150px);min-height:300px;width:auto;max-width:100%;aspect-ratio:9/16;margin:0 auto;border-radius:12px;background:#000;object-fit:contain}
+.lbbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.lbk{grid-template-columns:repeat(2,1fr)}@media (min-width:768px){.lbk{grid-template-columns:repeat(4,1fr)}}
+.lbwrap{overflow-x:auto;padding:8px}.lbt{width:100%;min-width:560px;border-collapse:collapse;font-size:.82rem}.lbt th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
+.lbt td{padding:9px 6px;border-bottom:1px solid var(--border);white-space:nowrap}.lbt tr.me td{background:var(--good-bg);font-weight:700}.lbt tr.me td:first-child{box-shadow:inset 3px 0 0 #0891B2}
 .lg-in{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font:inherit;margin:4px 0 6px;background:#fff}
 .lg-out{margin-top:10px;font-weight:700;font-size:.9rem;min-height:1em}.lg-out.ok{color:var(--good);background:var(--good-bg);padding:10px;border-radius:10px}.lg-out.bad{color:var(--bad)}
-.v-calc .card{text-align:center;scroll-margin-top:56px;padding:12px}.v-calc .card h3{margin-bottom:2px}.v-calc .card h3{justify-content:center}
+.v-calc .card:last-child{text-align:center;scroll-margin-top:56px;padding:12px}.v-calc .card:last-child h3{margin-bottom:2px;justify-content:center}.v-calc .card h3{justify-content:center}
 @media (max-width:380px){.top{padding:8px 10px;gap:6px}.top .ttl{font-size:.9rem}.lang button{padding:5px 5px;font-size:.7rem}.wrap{padding:0 12px 32px}.hero .big b{font-size:2.2rem}.stat .v{font-size:1.15rem}}
 @media (min-width:768px){.wrap{max-width:760px;padding:0 24px 48px}.top{padding:12px 24px}.top img{width:32px;height:32px}.top .ttl{font-size:1.1rem}.lang button{font-size:.8rem;padding:6px 10px}
   .tabs button{font-size:.92rem}.grid{grid-template-columns:repeat(4,1fr)}}
@@ -320,6 +324,11 @@ Object.assign(T.en,{tab_zimyo:'Upload Zimyo',zT:'Upload Zimyo attendance',
   zBad:'This does not look like the Zimyo Daily Attendance Report.',zOff:'Could not save. Sign in to FleetPro as admin and try again; if it still fails, send a screenshot of this message.',zLocal:'This is the laptop preview: it only reads the file. To save, open FleetPro staging (bounceops.info), My Incentive (NEW), Upload Zimyo.',lgBusy:'Working…'});
 T.en.notRecord="You are signed in to FleetPro, but your email / mobile number is not in the technician records, so there is no incentive to show. Ask your hub manager to add it to the technician sheet.";T.en.home="← FleetPro";T.hi.notRecord="आप FleetPro में साइन इन हैं, पर आपका ईमेल / मोबाइल नंबर टेक्नीशियन रिकॉर्ड में नहीं है, इसलिए इंसेंटिव नहीं दिख सकता। अपने हब मैनेजर से टेक्नीशियन शीट में जुड़वाएँ।";T.hi.home="← FleetPro";T.te.notRecord="మీరు FleetPro లో సైన్ ఇన్ అయ్యారు, కానీ మీ ఈమెయిల్ / మొబైల్ నంబర్ టెక్నీషియన్ రికార్డుల్లో లేదు, కాబట్టి ఇన్సెంటివ్ చూపించలేం. టెక్నీషియన్ షీట్‌లో జోడించమని మీ హబ్ మేనేజర్‌ను అడగండి.";T.te.home="← FleetPro";T.ta.notRecord="நீங்கள் FleetPro-வில் உள்நுழைந்துள்ளீர்கள், ஆனால் உங்கள் மின்னஞ்சல் / மொபைல் எண் டெக்னீஷியன் பதிவுகளில் இல்லை, அதனால் இன்சென்டிவ் காட்ட முடியாது. டெக்னீஷியன் ஷீட்டில் சேர்க்க உங்கள் ஹப் மேனேஜரிடம் சொல்லுங்கள்.";T.ta.home="← FleetPro";T.kn.notRecord="ನೀವು FleetPro ಗೆ ಸೈನ್ ಇನ್ ಆಗಿದ್ದೀರಿ, ಆದರೆ ನಿಮ್ಮ ಇಮೇಲ್ / ಮೊಬೈಲ್ ನಂಬರ್ ಟೆಕ್ನಿಷಿಯನ್ ದಾಖಲೆಯಲ್ಲಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಇನ್ಸೆಂಟಿವ್ ತೋರಿಸಲಾಗುವುದಿಲ್ಲ. ಟೆಕ್ನಿಷಿಯನ್ ಶೀಟ್‌ಗೆ ಸೇರಿಸಲು ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಹೇಳಿ.";T.kn.home="← FleetPro";
 T.en.liveSoon="Your incentive numbers from 2 Nov will appear here soon. Please check again later today.";T.hi.liveSoon="2 नवंबर से आपके इंसेंटिव के नंबर जल्द यहाँ दिखेंगे। कृपया आज बाद में फिर देखें।";T.te.liveSoon="2 నవంబర్ నుండి మీ ఇన్సెంటివ్ నంబర్లు త్వరలో ఇక్కడ కనిపిస్తాయి. దయచేసి ఈ రోజు తర్వాత మళ్ళీ చూడండి.";T.ta.liveSoon="2 நவம்பர் முதல் உங்கள் இன்சென்டிவ் எண்கள் விரைவில் இங்கே தெரியும். இன்று பின்னர் மீண்டும் பாருங்கள்.";T.kn.liveSoon="2 ನವೆಂಬರ್‌ನಿಂದ ನಿಮ್ಮ ಇನ್ಸೆಂಟಿವ್ ಸಂಖ್ಯೆಗಳು ಶೀಘ್ರದಲ್ಲೇ ಇಲ್ಲಿ ಕಾಣುತ್ತವೆ. ದಯವಿಟ್ಟು ಇಂದು ನಂತರ ಮತ್ತೆ ನೋಡಿ.";
+Object.assign(T.en,{"tab_lb": "Leaderboard", "lbT": "Leaderboard", "lbAll": "All cities", "lbTechs": "Technicians", "lbAbove": "Above target", "lbPool": "Total pay", "lbTop": "Top points", "lbTechTab": "Technicians", "lbHubTab": "Hubs", "lbTech": "Technician", "lbHub": "Hub", "lbCity": "City", "lbJcs": "Job cards", "lbPts": "Points", "lbAboveCol": "Above target", "lbPay": "Pay", "lbPtsTech": "Points per technician", "lbNone": "No job cards this week in this city.", "lbNote": "Ranked by points this week. Pay is provisional until the week is final.", "lbOff": "The leaderboard opens after Vamsee applies 17_leaderboard.sql."});
+Object.assign(T.hi,{"tab_lb": "लीडरबोर्ड", "lbT": "लीडरबोर्ड", "lbAll": "सभी शहर", "lbTechs": "टेक्नीशियन", "lbAbove": "टारगेट से ऊपर", "lbPool": "कुल पेमेंट", "lbTop": "सबसे ज़्यादा पॉइंट", "lbTechTab": "टेक्नीशियन", "lbHubTab": "हब", "lbTech": "टेक्नीशियन", "lbHub": "हब", "lbCity": "शहर", "lbJcs": "जॉब कार्ड", "lbPts": "पॉइंट", "lbAboveCol": "टारगेट से ऊपर", "lbPay": "पेमेंट", "lbPtsTech": "प्रति टेक्नीशियन पॉइंट", "lbNone": "इस हफ़्ते इस शहर में कोई जॉब कार्ड नहीं।", "lbNote": "इस हफ़्ते के पॉइंट से रैंक। हफ़्ता पक्का होने तक पेमेंट अभी पक्की नहीं।"});
+Object.assign(T.te,{"tab_lb": "లీడర్‌బోర్డ్", "lbT": "లీడర్‌బోర్డ్", "lbAll": "అన్ని నగరాలు", "lbTechs": "టెక్నీషియన్లు", "lbAbove": "టార్గెట్ పైన", "lbPool": "మొత్తం చెల్లింపు", "lbTop": "అత్యధిక పాయింట్లు", "lbTechTab": "టెక్నీషియన్లు", "lbHubTab": "హబ్‌లు", "lbTech": "టెక్నీషియన్", "lbHub": "హబ్", "lbCity": "నగరం", "lbJcs": "జాబ్ కార్డులు", "lbPts": "పాయింట్లు", "lbAboveCol": "టార్గెట్ పైన", "lbPay": "చెల్లింపు", "lbPtsTech": "ఒక్కో టెక్నీషియన్ పాయింట్లు", "lbNone": "ఈ వారం ఈ నగరంలో జాబ్ కార్డులు లేవు.", "lbNote": "ఈ వారం పాయింట్లతో ర్యాంక్. వారం ఫైనల్ అయ్యే వరకు చెల్లింపు తాత్కాలికం."});
+Object.assign(T.ta,{"tab_lb": "லீடர்போர்டு", "lbT": "லீடர்போர்டு", "lbAll": "அனைத்து நகரங்கள்", "lbTechs": "டெக்னீஷியன்கள்", "lbAbove": "டார்கெட்டுக்கு மேல்", "lbPool": "மொத்த பணம்", "lbTop": "அதிக பாயிண்ட்", "lbTechTab": "டெக்னீஷியன்கள்", "lbHubTab": "ஹப்கள்", "lbTech": "டெக்னீஷியன்", "lbHub": "ஹப்", "lbCity": "நகரம்", "lbJcs": "ஜாப் கார்டுகள்", "lbPts": "பாயிண்ட்கள்", "lbAboveCol": "டார்கெட்டுக்கு மேல்", "lbPay": "பணம்", "lbPtsTech": "ஒரு டெக்னீஷியனுக்கு பாயிண்ட்", "lbNone": "இந்த வாரம் இந்த நகரத்தில் ஜாப் கார்டு இல்லை.", "lbNote": "இந்த வார பாயிண்ட்கள் மூலம் ரேங்க். வாரம் இறுதியாகும் வரை பணம் தற்காலிகம்."});
+Object.assign(T.kn,{"tab_lb": "ಲೀಡರ್‌ಬೋರ್ಡ್", "lbT": "ಲೀಡರ್‌ಬೋರ್ಡ್", "lbAll": "ಎಲ್ಲಾ ನಗರಗಳು", "lbTechs": "ಟೆಕ್ನಿಷಿಯನ್‌ಗಳು", "lbAbove": "ಟಾರ್ಗೆಟ್ ಮೇಲೆ", "lbPool": "ಒಟ್ಟು ಹಣ", "lbTop": "ಹೆಚ್ಚು ಪಾಯಿಂಟ್", "lbTechTab": "ಟೆಕ್ನಿಷಿಯನ್‌ಗಳು", "lbHubTab": "ಹಬ್‌ಗಳು", "lbTech": "ಟೆಕ್ನಿಷಿಯನ್", "lbHub": "ಹಬ್", "lbCity": "ನಗರ", "lbJcs": "ಜಾಬ್ ಕಾರ್ಡ್", "lbPts": "ಪಾಯಿಂಟ್", "lbAboveCol": "ಟಾರ್ಗೆಟ್ ಮೇಲೆ", "lbPay": "ಹಣ", "lbPtsTech": "ಪ್ರತಿ ಟೆಕ್ನಿಷಿಯನ್ ಪಾಯಿಂಟ್", "lbNone": "ಈ ವಾರ ಈ ನಗರದಲ್ಲಿ ಜಾಬ್ ಕಾರ್ಡ್ ಇಲ್ಲ.", "lbNote": "ಈ ವಾರದ ಪಾಯಿಂಟ್‌ನಿಂದ ರ್ಯಾಂಕ್. ವಾರ ಅಂತಿಮವಾಗುವವರೆಗೆ ಹಣ ತಾತ್ಕಾಲಿಕ."});
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -480,7 +489,7 @@ function skCycle(c,asOf){const met=!!c.no_parts||(!!c.note&&!!c.date&&c.date<=c.
 /* ── RENDER ── */
 /* Tabs per role. Who is which role comes from FleetPro permissions: incentive-tech (exists), incentive-admin (exists, can switch role),
    incentive-sm and incentive-sk (NEW keys, need Vamsee's approval). A technician never gets the city or other technicians' detail. */
-const TABS_BY_ROLE={tech:['home','calc','awards'],   // technician: own data only (12 Nov), no other technicians' names
+const TABS_BY_ROLE={tech:['home','calc','lb','awards'],   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
   sm:['city','workshop','board','top3','awards'],sk:['checklist','awards']};
 let ROLE='tech', CAN_SWITCH=false;
 function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];render();window.scrollTo({top:0});}
@@ -510,11 +519,11 @@ function render(){
   else{nm.textContent=b.skReal?b.skPerson.name:t('role_sk');sub.textContent=(b.skReal?t('role_sk')+' · '+b.skPerson.hub:b.sk.hub)+' · '+monthLbl(b.month);}
   const tabs=TABS_BY_ROLE[ROLE].concat(ROLE==='tech'&&(IS_ADMIN||LOCAL_PREVIEW)?['zimyo']:[]);/* admin only: Upload Zimyo */if(!tabs.includes(TAB))TAB=tabs[0];
   document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
-  const weekTab=TAB==='home';/* week dates only on My week (16 Nov) */const all=[b.current,...b.past].filter(Boolean).sort((x,y)=>x.week_start<y.week_start?-1:1);/* oldest first, this week last (all modes) */if(!WEEK||b.mode==='real-local'||!all.some(x=>x.week_start===WEEK))WEEK=b.current.week_start;   // the picked week must exist in this data
+  const weekTab=TAB==='home'||TAB==='calc'||TAB==='lb';/* week dates only on My week (16 Nov) */const all=[b.current,...b.past].filter(Boolean).sort((x,y)=>x.week_start<y.week_start?-1:1);/* oldest first, this week last (all modes) */if(!WEEK||b.mode==='real-local'||!all.some(x=>x.week_start===WEEK))WEEK=b.current.week_start;   // the picked week must exist in this data
   const wk=document.getElementById('weeks');wk.style.display=weekTab?'flex':'none';
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek'))+' · '+esc(rangeLbl(w.week_start)):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
-  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
   const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   const vw=document.getElementById('view');vw.className='v-'+TAB;vw.innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
@@ -664,8 +673,48 @@ async function saveZimyo(){const out=document.getElementById('z-res'),btn=docume
     out.className='lg-out ok';out.innerHTML=esc(t('zDone',{s:data.saved,n:data.technicians,f:dayName(data.from),to:dayName(data.to)}))+(um.length?`<div style="margin-top:8px;color:var(--warn)">${esc(t('zUnmatched',{n:um.length}))}<br><small>${um.map(esc).join(' · ')}</small></div>`:'')+rosterHtml;}
   catch(e){out.className='lg-out bad';out.textContent=/function|does not exist|404|not signed in/i.test(e.message||'')?t('zOff'):(e.message||String(e));}
   finally{btn.disabled=false;}}
+/* Leaderboard (like the old FleetPro page): one week, city filter, Technician / Hub view; your own row highlighted. Ranked by points. */
+let LB_CACHE={},LB_CITY=null,LB_SUB='tech';const LB_CITIES=['Bangalore','NCR','Hyderabad','Mumbai'];
+function lbRows(b){if(b.mode==='real-local')return REAL.techs.map(x=>{const v=weekOf(x,REAL,WEEK).cur;if(!v.jcs)return null;const st=settle(v,REAL.config[grpOf(x.city)]);
+    return {technician:x.name,hub:x.hub,city:x.city,jcs:v.jcs,points:st.points,target:st.target,points_above:st.points_above,rate:st.rate,pay:st.pay};}).filter(Boolean);
+  if(LB_CACHE[WEEK])return LB_CACHE[WEEK];
+  sbClient.rpc('incentive_v2_leaderboard',{p_week:WEEK}).then(r=>{LB_CACHE[WEEK]=r.error?{err:r.error.message}:(r.data||[]);if(TAB==='lb')render();});return null;}
+function lbHtml(b){const all=lbRows(b);if(!all)return `<div class="card empty">${esc(t('lgBusy'))}</div>`;
+  if(all.err)return `<div class="card"><div class="msg go" style="margin:0">${esc(t('lbOff'))}</div></div>`;
+  if(LB_CITY===null)LB_CITY=LB_CITIES.includes(b.tech&&b.tech.city)?b.tech.city:'';
+  const rows=all.filter(r=>!LB_CITY||r.city===LB_CITY).sort((x,y)=>y.points-x.points);const me=b.tech&&b.tech.display_name;
+  const above=rows.filter(r=>r.points_above>0).length,pool=rows.reduce((a,r)=>a+(+r.pay||0),0),top=rows[0];
+  const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
+  const head=`<div class="card"><div class="lbbar"><h3 style="margin:0">${esc(t('lbT'))} · ${esc(rangeLbl(WEEK))}</h3>
+     <select class="lg-in" style="width:auto;margin:0" onchange="LB_CITY=this.value;render()"><option value="">${esc(t('lbAll'))}</option>${LB_CITIES.map(c=>`<option ${c===LB_CITY?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+     <div class="grid lbk"><div class="stat"><div class="k">${esc(t('lbTechs'))}</div><div class="v">${rows.length}</div></div>
+       <div class="stat"><div class="k">${esc(t('lbAbove'))}</div><div class="v">${above}</div></div>
+       <div class="stat hl"><div class="k">${esc(t('lbPool'))}</div><div class="v">${rupees(Math.round(pool))}</div></div>
+       <div class="stat"><div class="k">${esc(t('lbTop'))}</div><div class="v">${top?num(top.points):'—'}</div><div class="n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${top?esc(top.technician):''}</div></div></div>
+     <div class="tabs" style="margin:12px 0 0"><button class="${LB_SUB==='tech'?'on':''}" onclick="LB_SUB='tech';render()">${esc(t('lbTechTab'))}</button><button class="${LB_SUB==='hub'?'on':''}" onclick="LB_SUB='hub';render()">${esc(t('lbHubTab'))}</button></div></div>`;
+  if(!rows.length)return head+`<div class="card empty">${esc(t('lbNone'))}</div>`;
+  if(LB_SUB==='hub'){const H={};rows.forEach(r=>{const h=H[r.hub||'—']||(H[r.hub||'—']={hub:r.hub||'—',city:r.city,n:0,above:0,pts:0,pay:0});h.n++;h.above+=r.points_above>0?1:0;h.pts+=+r.points;h.pay+=+r.pay||0;});
+    const hs=Object.values(H).sort((x,y)=>y.pts/y.n-x.pts/x.n);
+    return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>#</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbCity'))}</th><th>${esc(t('lbTechs'))}</th><th>${esc(t('lbAbove'))}</th><th>${esc(t('lbPtsTech'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
+      ${hs.map((h,i)=>`<tr class="${b.tech&&h.hub===b.tech.hub?'me':''}"><td>${medal(i)}</td><td><b>${esc(h.hub)}</b></td><td>${esc(h.city||'')}</td><td>${h.n}</td><td>${h.above}</td><td>${num(h.pts/h.n,1)}</td><td>${rupees(Math.round(h.pay))}</td></tr>`).join('')}</tbody></table></div>`;}
+  return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>#</th><th>${esc(t('lbTech'))}</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbJcs'))}</th><th>${esc(t('lbPts'))}</th><th>${esc(t('target'))}</th><th>${esc(t('lbAboveCol'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr class="${r.technician===me?'me':''}"><td>${medal(i)}</td><td><b>${esc(r.technician)}</b></td><td>${esc(r.hub||'')}</td><td>${r.jcs}</td><td><b>${num(r.points)}</b></td><td>${num(r.target)}</td><td>${num(r.points_above)}</td><td class="${+r.pay>0?'ok':''}">${rupees(Math.round(+r.pay||0))}</td></tr>`).join('')}</tbody></table></div>
+    <p class="note">${esc(t('lbNote'))}</p>`;}
 function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video class="vid" controls playsinline preload="metadata" src="video/explainer_${LANG}.mp4#t=0.5"></video></div>`;}
-function calcHtml(){return videoCard();}   // 16 Nov (Shivani): this tab shows only the explainer video in the chosen language
+function calcHtml(b,w,isCur){   // 16 Nov evening (Shivani): the steps again, the video at the end
+  if(!isCur)return `<div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
+  const lastD=b.days.length?b.days[b.days.length-1].d:null;
+  const byDay=b.days.map(d=>{const list=b.jcs.filter(j=>j.billed_date===d.d);
+    return `<details class="day" ${d.d===lastD?'open':''}><summary class="dh"><span>${esc(dayName(d.d))} · ${list.length} JC</span><span>${num(d.points)} ${esc(t('pts'))}</span></summary>${list.length?list.map(j=>{const raw=0.25+j.labour_min/60;
+      return `<div class="jc"><div class="jh"><span>${esc(jcLabel(j))}${j.reg?` <small style="font-weight:500;color:#6B7280">${esc(j.reg)}</small>`:''}${j.def_7d?`<span class="pill d">7d</span>`:''}</span><span>${num(j.points)}</span></div><div class="pt">${esc(j.parts.map(p=>p.name+' '+p.labour_min+' min').join(' · ')||'—')}</div><div class="fx">${esc(t('formula',{m:j.labour_min,raw:num(raw),pts:num(j.points)}))}</div></div>`;}).join(''):`<div class="empty">${esc(t('noJcs'))}</div>`}</details>`;}).join('');
+  const daysHtml=b.days.map(d=>{const cls=d.present>=1?'y':d.present>0?'h':'n';const lbl=d.present>=1?t('dayPresent'):d.present>0?t('dayHalf'):t('dayAbs');
+    return `<li><div class="l"><b>${esc(dayName(d.d))}<span class="pill ${cls}">${esc(lbl)}</span></b><small>${esc(why(d.reason))}</small></div><div class="r">${num(d.present,1)}</div></li>`;}).join('');
+  return `<div class="card">
+   ${stepHtml(1,t('s1'),t('s1p'),byDay+`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}</div>
+   <div class="card">${stepHtml(2,t('s2'),t('s2p'),`<ul class="list">${daysHtml}</ul><div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}</div>
+   <div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)} ${esc(t('pts'))}</span></div>`)}</div>
+   <div class="card">${rateStep(b,w)}</div><div class="card">${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
+}
 /* Job card label: the DMS job card number technicians see in DMS (jc_jc_status_log.dmsjcid); the internal bike-jc id only when there is none. */
 function jcLabel(j){return j.dms_id?'DMS '+j.dms_id:j.jc_no;}
 function stepHtml(no,title,p,body){return `<div class="step"><div class="no">${no}</div><div class="tx"><h3 style="margin-bottom:4px">${esc(title)}</h3><p>${esc(p)}</p>${body}</div></div>`;}
@@ -673,7 +722,7 @@ function rateStep(b,w){const c=b.config;const rows=[[40,t('upTo',{c:c.c40})],[30
   return stepHtml(4,t('s4'),t('s4p'),`<div style="font-weight:700;margin-bottom:6px">${pct(w.defect_pct)} = ${w.defects} ÷ ${w.jcs}</div><table class="sl">${rows.map(([r,l])=>`<tr class="${r===w.rate?'me':''}"><td>${esc(t('defect'))} ${esc(l)}${r===w.rate?' ← '+esc(t('yours')):''}</td><td>${rupees(r)}</td></tr>`).join('')}</table>`);}
 function payStep(w){return stepHtml(5,t('s5'),t('s5p'),`<div class="sum"><span>${num(w.points)} − ${num(w.target)} = ${num(w.points_above)} × ${rupees(w.rate)}</span><span>${rupees(w.pay)}</span></div>`);}
 function pickWeek(ws){WEEK=ws;if(REAL_LOCAL&&REAL){REAL_WEEK=ws;BUNDLE=realBundle();}render();window.scrollTo({top:0,behavior:'smooth'});}
-function showTab(x){TAB=x;render();window.scrollTo({top:0});if(x==='calc'){const c=document.querySelector('.v-calc .card');if(c)c.scrollIntoView({block:'start'});}}   // the video fills the screen (phone, tablet, laptop)
+function showTab(x){TAB=x;render();window.scrollTo({top:0});}
 
 /* ── AUTH: the FleetPro login (16 Nov). No session here = not signed in to FleetPro -> FleetPro home, which has the sign-in. ── */
 function goLogin(){location.replace('./index.html');}
