@@ -341,6 +341,7 @@ Object.assign(T.hi,{"otpIdSub": "अपना मोबाइल नंबर �
 Object.assign(T.te,{"otpIdSub": "మీ మొబైల్ నంబర్ లేదా ఈమెయిల్ ఎంటర్ చేయండి. 6 అంకెల OTP పంపుతాం.", "idPh": "మొబైల్ నంబర్ లేదా ఈమెయిల్", "idBad": "మీ 10 అంకెల మొబైల్ నంబర్ లేదా ఈమెయిల్ ఎంటర్ చేయండి.", "otpSub2": "6 అంకెల OTP పంపాము:", "otpBack2": "← నంబర్ / ఈమెయిల్ మార్చండి", "emUnknown": "ఈ ఈమెయిల్ రిజిస్టర్ కాలేదు. మీ హబ్ మేనేజర్‌ను జోడించమని అడగండి.", "otpBad": "దయచేసి OTP ఎంటర్ చేయండి."});
 Object.assign(T.ta,{"otpIdSub": "உங்கள் மொபைல் எண் அல்லது மின்னஞ்சலை உள்ளிடுங்கள். 6 இலக்க OTP அனுப்புவோம்.", "idPh": "மொபைல் எண் அல்லது மின்னஞ்சல்", "idBad": "உங்கள் 10 இலக்க மொபைல் எண் அல்லது மின்னஞ்சலை உள்ளிடுங்கள்.", "otpSub2": "6 இலக்க OTP அனுப்பினோம்:", "otpBack2": "← எண் / மின்னஞ்சலை மாற்று", "emUnknown": "இந்த மின்னஞ்சல் பதிவு செய்யப்படவில்லை. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.", "otpBad": "தயவுசெய்து OTP உள்ளிடுங்கள்."});
 Object.assign(T.kn,{"otpIdSub": "ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ. 6 ಅಂಕಿಯ OTP ಕಳುಹಿಸುತ್ತೇವೆ.", "idPh": "ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್", "idBad": "ನಿಮ್ಮ 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ.", "otpSub2": "6 ಅಂಕಿಯ OTP ಕಳುಹಿಸಿದ್ದೇವೆ:", "otpBack2": "← ನಂಬರ್ / ಇಮೇಲ್ ಬದಲಿಸಿ", "emUnknown": "ಈ ಇಮೇಲ್ ನೋಂದಣಿ ಆಗಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.", "otpBad": "ದಯವಿಟ್ಟು OTP ಹಾಕಿ."});
+T.en.notRecord="Your mobile number / email is not in our records, so you cannot sign in. Ask your hub manager to add it.";T.hi.notRecord="आपका मोबाइल नंबर / ईमेल हमारे रिकॉर्ड में नहीं है, इसलिए साइन इन नहीं हो सकता। अपने हब मैनेजर से जुड़वाएँ।";T.te.notRecord="మీ మొబైల్ నంబర్ / ఈమెయిల్ మా రికార్డుల్లో లేదు, కాబట్టి సైన్ ఇన్ కాదు. మీ హబ్ మేనేజర్‌ను జోడించమని అడగండి.";T.ta.notRecord="உங்கள் மொபைல் எண் / மின்னஞ்சல் எங்கள் பதிவுகளில் இல்லை, அதனால் உள்நுழைய முடியாது. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.";T.kn.notRecord="ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ / ಇಮೇಲ್ ನಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಸೈನ್ ಇನ್ ಆಗುವುದಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.";
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -662,17 +663,19 @@ function showTab(x){TAB=x;render();window.scrollTo({top:0});if(x==='calc'){const
 /* ── AUTH (FleetPro pattern: auth screen covers the page; permissions FIRST, then hide it) ── */
 function showAuthScreen(){document.getElementById('auth-screen').classList.remove('hidden');showForm();}
 function hideAuthScreen(){document.getElementById('auth-screen').classList.add('hidden');}
+let AUTH_NOTE=null;
 function showForm(which){which=which==='email'?'email':'phone';
   const show={'auth-phone':which==='phone','auth-otp':false,'auth-form':which==='email','auth-sent':false};
   for(const id in show)document.getElementById(id).style.display=show[id]?'block':'none';
-  ['auth-msg','ph-msg','otp-msg'].forEach(id=>{document.getElementById(id).textContent='';});}
+  ['auth-msg','ph-msg','otp-msg'].forEach(id=>{document.getElementById(id).textContent='';});
+  if(AUTH_NOTE&&which==='phone')document.getElementById('ph-msg').textContent=t(AUTH_NOTE);}   // e.g. 'not in our records' after a refused sign-in
 /* OTP sign-in. Email: Supabase sends the sign-in email; its template must show {{ .Token }} (the 6-digit code). Phone: SMS, needs the Supabase phone
    provider with an SMS sender. Before sending, the number / email must be on file: incentive_v2_phone_known (sql/incentive_v9/10_phone_login.sql) or
    is_approved_user (live; @bounceshare.com always allowed). Until those exist nothing is sent. */
 let OTP_TO=null;   // {phone:'+91…'} or {email:'…'}
 function parseId(v){const d=v.replace(/[\s\-()+]/g,'');if(/^\d+$/.test(d)){const n=d.replace(/^(91|0)(?=\d{10}$)/,'');return /^[6-9]\d{9}$/.test(n)?{phone:'+91'+n,n}:null;}
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?{email:v.toLowerCase()}:null;}
-async function sendOtp(){
+async function sendOtp(){AUTH_NOTE=null;
   const msg=document.getElementById('ph-msg'),btn=document.getElementById('ph-btn');msg.textContent='';
   const id=parseId(document.getElementById('auth-id').value.trim());if(!id){msg.textContent=t('idBad');return;}
   btn.disabled=true;
@@ -721,9 +724,10 @@ async function activateSession(session){
   let noRole=!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk'];
   // Live mode: a technician needs no manual FleetPro group. The database decides (incentive_v2_whoami: sign-in email -> technician from the sheet,
   // locked at first login). Only own data comes back from the read functions.
-  if(noRole&&DATA_MODE!=='sample'){try{const{data}=await sbClient.rpc('incentive_v2_whoami');if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}}catch(e){console.warn('[FP] whoami failed',e);}}
-  // No incentive role: never jump to the FleetPro home silently. Sample mode shows the sample with a note; live mode shows a clear message and no data.
-  if(noRole&&DATA_MODE!=='sample'){_booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';document.getElementById('view').innerHTML='<div class="card empty">'+esc(t('noRole'))+'</div>';return;}
+  if(noRole){try{const{data}=await sbClient.rpc('incentive_v2_whoami');if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}else if(data&&data.role==='admin'){f['incentive-admin']=true;noRole=false;}}catch(e){console.warn('[FP] whoami failed',e);}}
+  // 16 Nov (Shivani): only someone whose email / mobile number matches the records may sign in. No technician or admin match = signed out at once,
+  // with a clear message on the sign-in screen (sample mode too). The read functions also refuse unknown logins, so no data is ever shown.
+  if(noRole){AUTH_NOTE='notRecord';await sbClient.auth.signOut();_booted=false;showAuthScreen();return;}
   window.NO_ROLE=noRole;
   ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=DATA_MODE==='sample';   // live: technician view only for now (SM / store keeper paused); admins get the technician picker
   _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
