@@ -153,8 +153,15 @@ table.sl td:last-child{text-align:right}
 .rowl{display:flex;align-items:center;min-width:0}
 /* Responsive (16 Nov): phone first; tablet and laptop get a wider page and two columns on My week */
 .vid{display:block;height:calc(100vh - 150px);height:calc(100dvh - 150px);min-height:300px;width:auto;max-width:100%;aspect-ratio:9/16;margin:0 auto;border-radius:12px;background:#000;object-fit:contain}
+.lbhead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:14px 2px 12px}.lbtitle{font-size:1.35rem;font-weight:800;color:#0F172A}
+.lbk{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}@media (min-width:768px){.lbk{grid-template-columns:repeat(5,1fr)}}
+.kc{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}.kc .k{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#374151}
+.kc .v{font-size:1.9rem;font-weight:800;line-height:1.15;margin-top:6px}.kc .v.g{color:#15803D}.kc .n{font-size:.72rem;color:var(--muted);margin-top:4px}.kc.hl{background:linear-gradient(135deg,#F0F9FF,#F0FDF4);border-color:#BAE6FD}
+.lbsub{display:flex;gap:8px;align-items:center;margin:16px 0 4px;flex-wrap:wrap}.lbsub button{border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px 14px;font-weight:700;font-size:.8rem;cursor:pointer;color:#374151}
+.lbsub button.on{background:#0F172A;color:#fff;border-color:#0F172A}.lbsub .csv{margin-left:auto;background:#0F172A;color:#fff;border-color:#0F172A}
+.lbt .rk{font-weight:800;white-space:nowrap}.lbt .up{color:#16A34A;font-size:.72rem;font-weight:800}.lbt .dn{color:#DC2626;font-size:.72rem;font-weight:800}
+.rchip{display:inline-block;padding:2px 7px;border-radius:5px;font-size:.7rem;font-weight:800;background:#F1F5F9;color:#475569}.rchip.r40{background:#DCFCE7;color:#15803D}.rchip.r30{background:#D1FAE5;color:#047857}.rchip.r20{background:#FEF3C7;color:#B45309}.rchip.r10{background:#FFEDD5;color:#C2410C}.rchip.r0{background:#FEE2E2;color:#B91C1C}
 .lbbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.lbk{grid-template-columns:repeat(2,1fr)}@media (min-width:768px){.lbk{grid-template-columns:repeat(4,1fr)}}
 .lbwrap{overflow-x:auto;padding:8px}.lbt{width:100%;min-width:560px;border-collapse:collapse;font-size:.82rem}.lbt th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
 .lbt td{padding:9px 6px;border-bottom:1px solid var(--border);white-space:nowrap}.lbt tr.me td{background:var(--good-bg);font-weight:700}.lbt tr.me td:first-child{box-shadow:inset 3px 0 0 #0891B2}
 .lg-in{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:10px;font:inherit;margin:4px 0 6px;background:#fff}
@@ -329,6 +336,11 @@ Object.assign(T.hi,{"tab_lb": "लीडरबोर्ड", "lbT": "लीड�
 Object.assign(T.te,{"tab_lb": "లీడర్‌బోర్డ్", "lbT": "లీడర్‌బోర్డ్", "lbAll": "అన్ని నగరాలు", "lbTechs": "టెక్నీషియన్లు", "lbAbove": "టార్గెట్ పైన", "lbPool": "మొత్తం చెల్లింపు", "lbTop": "అత్యధిక పాయింట్లు", "lbTechTab": "టెక్నీషియన్లు", "lbHubTab": "హబ్‌లు", "lbTech": "టెక్నీషియన్", "lbHub": "హబ్", "lbCity": "నగరం", "lbJcs": "జాబ్ కార్డులు", "lbPts": "పాయింట్లు", "lbAboveCol": "టార్గెట్ పైన", "lbPay": "చెల్లింపు", "lbPtsTech": "ఒక్కో టెక్నీషియన్ పాయింట్లు", "lbNone": "ఈ వారం ఈ నగరంలో జాబ్ కార్డులు లేవు.", "lbNote": "ఈ వారం పాయింట్లతో ర్యాంక్. వారం ఫైనల్ అయ్యే వరకు చెల్లింపు తాత్కాలికం."});
 Object.assign(T.ta,{"tab_lb": "லீடர்போர்டு", "lbT": "லீடர்போர்டு", "lbAll": "அனைத்து நகரங்கள்", "lbTechs": "டெக்னீஷியன்கள்", "lbAbove": "டார்கெட்டுக்கு மேல்", "lbPool": "மொத்த பணம்", "lbTop": "அதிக பாயிண்ட்", "lbTechTab": "டெக்னீஷியன்கள்", "lbHubTab": "ஹப்கள்", "lbTech": "டெக்னீஷியன்", "lbHub": "ஹப்", "lbCity": "நகரம்", "lbJcs": "ஜாப் கார்டுகள்", "lbPts": "பாயிண்ட்கள்", "lbAboveCol": "டார்கெட்டுக்கு மேல்", "lbPay": "பணம்", "lbPtsTech": "ஒரு டெக்னீஷியனுக்கு பாயிண்ட்", "lbNone": "இந்த வாரம் இந்த நகரத்தில் ஜாப் கார்டு இல்லை.", "lbNote": "இந்த வார பாயிண்ட்கள் மூலம் ரேங்க். வாரம் இறுதியாகும் வரை பணம் தற்காலிகம்."});
 Object.assign(T.kn,{"tab_lb": "ಲೀಡರ್‌ಬೋರ್ಡ್", "lbT": "ಲೀಡರ್‌ಬೋರ್ಡ್", "lbAll": "ಎಲ್ಲಾ ನಗರಗಳು", "lbTechs": "ಟೆಕ್ನಿಷಿಯನ್‌ಗಳು", "lbAbove": "ಟಾರ್ಗೆಟ್ ಮೇಲೆ", "lbPool": "ಒಟ್ಟು ಹಣ", "lbTop": "ಹೆಚ್ಚು ಪಾಯಿಂಟ್", "lbTechTab": "ಟೆಕ್ನಿಷಿಯನ್‌ಗಳು", "lbHubTab": "ಹಬ್‌ಗಳು", "lbTech": "ಟೆಕ್ನಿಷಿಯನ್", "lbHub": "ಹಬ್", "lbCity": "ನಗರ", "lbJcs": "ಜಾಬ್ ಕಾರ್ಡ್", "lbPts": "ಪಾಯಿಂಟ್", "lbAboveCol": "ಟಾರ್ಗೆಟ್ ಮೇಲೆ", "lbPay": "ಹಣ", "lbPtsTech": "ಪ್ರತಿ ಟೆಕ್ನಿಷಿಯನ್ ಪಾಯಿಂಟ್", "lbNone": "ಈ ವಾರ ಈ ನಗರದಲ್ಲಿ ಜಾಬ್ ಕಾರ್ಡ್ ಇಲ್ಲ.", "lbNote": "ಈ ವಾರದ ಪಾಯಿಂಟ್‌ನಿಂದ ರ್ಯಾಂಕ್. ವಾರ ಅಂತಿಮವಾಗುವವರೆಗೆ ಹಣ ತಾತ್ಕಾಲಿಕ."});
+Object.assign(T.en,{"lbWeekOf": "Week of {w}", "lbInBoard": "In the leaderboard", "lbEarn": "Earn money this week", "lbSum": "Sum of all payouts", "lbAvg": "Avg points", "lbAcross": "Across technicians above target", "lbCsv": "Export CSV", "lbRank": "Rank", "lbRate": "Rate", "lbTop": "Top points"});
+Object.assign(T.hi,{"lbWeekOf": "{w} का हफ़्ता", "lbInBoard": "लीडरबोर्ड में", "lbEarn": "इस हफ़्ते कमाई", "lbSum": "सभी पेमेंट का जोड़", "lbAvg": "औसत पॉइंट", "lbAcross": "टारगेट से ऊपर वालों में", "lbCsv": "CSV डाउनलोड", "lbRank": "रैंक", "lbRate": "रेट"});
+Object.assign(T.te,{"lbWeekOf": "{w} వారం", "lbInBoard": "లీడర్‌బోర్డ్‌లో", "lbEarn": "ఈ వారం సంపాదన", "lbSum": "అన్ని చెల్లింపుల మొత్తం", "lbAvg": "సగటు పాయింట్లు", "lbAcross": "టార్గెట్ పైన ఉన్నవారిలో", "lbCsv": "CSV డౌన్‌లోడ్", "lbRank": "ర్యాంక్", "lbRate": "రేటు"});
+Object.assign(T.ta,{"lbWeekOf": "{w} வாரம்", "lbInBoard": "லீடர்போர்டில்", "lbEarn": "இந்த வாரம் வருமானம்", "lbSum": "அனைத்து பணத்தின் கூட்டு", "lbAvg": "சராசரி பாயிண்ட்", "lbAcross": "டார்கெட்டுக்கு மேல் உள்ளவர்களில்", "lbCsv": "CSV பதிவிறக்கு", "lbRank": "ரேங்க்", "lbRate": "ரேட்"});
+Object.assign(T.kn,{"lbWeekOf": "{w} ವಾರ", "lbInBoard": "ಲೀಡರ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ", "lbEarn": "ಈ ವಾರ ಗಳಿಕೆ", "lbSum": "ಎಲ್ಲಾ ಹಣದ ಮೊತ್ತ", "lbAvg": "ಸರಾಸರಿ ಪಾಯಿಂಟ್", "lbAcross": "ಟಾರ್ಗೆಟ್ ಮೇಲಿನವರಲ್ಲಿ", "lbCsv": "CSV ಡೌನ್‌ಲೋಡ್", "lbRank": "ರ್ಯಾಂಕ್", "lbRate": "ರೇಟ್"});
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -675,30 +687,43 @@ async function saveZimyo(){const out=document.getElementById('z-res'),btn=docume
   finally{btn.disabled=false;}}
 /* Leaderboard (like the old FleetPro page): one week, city filter, Technician / Hub view; your own row highlighted. Ranked by points. */
 let LB_CACHE={},LB_CITY=null,LB_SUB='tech';const LB_CITIES=['Bangalore','NCR','Hyderabad','Mumbai'];
-function lbRows(b){if(b.mode==='real-local')return REAL.techs.map(x=>{const v=weekOf(x,REAL,WEEK).cur;if(!v.jcs)return null;const st=settle(v,REAL.config[grpOf(x.city)]);
-    return {technician:x.name,hub:x.hub,city:x.city,jcs:v.jcs,points:st.points,target:st.target,points_above:st.points_above,rate:st.rate,pay:st.pay};}).filter(Boolean);
-  if(LB_CACHE[WEEK])return LB_CACHE[WEEK];
-  sbClient.rpc('incentive_v2_leaderboard',{p_week:WEEK}).then(r=>{LB_CACHE[WEEK]=r.error?{err:r.error.message}:(r.data||[]);if(TAB==='lb')render();});return null;}
-function lbHtml(b){const all=lbRows(b);if(!all)return `<div class="card empty">${esc(t('lgBusy'))}</div>`;
+function lbRowsFor(b,ws){if(!ws)return [];if(b.mode==='real-local')return REAL.techs.map(x=>{const v=weekOf(x,REAL,ws).cur;if(!v.jcs)return null;const st=settle(v,REAL.config[grpOf(x.city)]);
+    return {technician:x.name,hub:x.hub,city:x.city,jcs:v.jcs,defects:v.defects,points:st.points,target:st.target,points_above:st.points_above,rate:st.rate,pay:st.pay};}).filter(Boolean);
+  if(LB_CACHE[ws])return LB_CACHE[ws];
+  LB_CACHE[ws]=null;sbClient.rpc('incentive_v2_leaderboard',{p_week:ws}).then(r=>{LB_CACHE[ws]=r.error?{err:r.error.message}:(r.data||[]);if(TAB==='lb')render();});return null;}
+let LB_LAST=[];
+function lbCsv(){const head=LB_SUB==='hub'?['rank','hub','city','technicians','above_target','points_per_technician','pay']:['rank','technician','hub','city','job_cards','points','target','above_target','rate','pay'];
+  const lines=[head.join(',')].concat(LB_LAST.map(r=>head.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([lines.join('\n')],{type:'text/csv'}));a.download='leaderboard_'+(LB_SUB)+'_'+WEEK+(LB_CITY?'_'+LB_CITY:'')+'.csv';a.click();}
+function lbHtml(b){const all=lbRowsFor(b,WEEK);if(!all)return `<div class="card empty">${esc(t('lgBusy'))}</div>`;
   if(all.err)return `<div class="card"><div class="msg go" style="margin:0">${esc(t('lbOff'))}</div></div>`;
   if(LB_CITY===null)LB_CITY=LB_CITIES.includes(b.tech&&b.tech.city)?b.tech.city:'';
-  const rows=all.filter(r=>!LB_CITY||r.city===LB_CITY).sort((x,y)=>y.points-x.points);const me=b.tech&&b.tech.display_name;
-  const above=rows.filter(r=>r.points_above>0).length,pool=rows.reduce((a,r)=>a+(+r.pay||0),0),top=rows[0];
-  const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':String(i+1);
-  const head=`<div class="card"><div class="lbbar"><h3 style="margin:0">${esc(t('lbT'))} · ${esc(rangeLbl(WEEK))}</h3>
+  const inCity=r=>!LB_CITY||r.city===LB_CITY;const rows=all.filter(inCity).sort((x,y)=>y.points-x.points);const me=b.tech&&b.tech.display_name;
+  const prevW=addDays(WEEK,-7);const prevAll=prevW>='2026-11-02'?lbRowsFor(b,prevW):[];const prevRank={};
+  if(Array.isArray(prevAll))prevAll.filter(inCity).sort((x,y)=>y.points-x.points).forEach((r,i)=>{prevRank[r.technician]=i+1;});
+  const above=rows.filter(r=>r.points_above>0),pool=rows.reduce((a,r)=>a+(+r.pay||0),0),top=rows[0];
+  const avgAbove=above.length?above.reduce((a,r)=>a+(+r.points),0)/above.length:0;
+  const medal=i=>i<3?['🥇','🥈','🥉'][i]+' ':'';
+  const delta=(r,i)=>{const p=prevRank[r.technician];if(!p)return '';const d=p-(i+1);return d>0?`<span class="up">▲${d}</span>`:d<0?`<span class="dn">▼${-d}</span>`:'';};
+  const rateChip=r=>`<span class="rchip r${+r.rate}">₹${+r.rate}</span>`;
+  const head=`<div class="lbhead"><div><div class="lbtitle">${esc(t('lbT'))}</div><div class="note" style="margin:2px 0 0">${esc(t('lbWeekOf',{w:rangeLbl(WEEK)}))}</div></div>
      <select class="lg-in" style="width:auto;margin:0" onchange="LB_CITY=this.value;render()"><option value="">${esc(t('lbAll'))}</option>${LB_CITIES.map(c=>`<option ${c===LB_CITY?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
-     <div class="grid lbk"><div class="stat"><div class="k">${esc(t('lbTechs'))}</div><div class="v">${rows.length}</div></div>
-       <div class="stat"><div class="k">${esc(t('lbAbove'))}</div><div class="v">${above}</div></div>
-       <div class="stat hl"><div class="k">${esc(t('lbPool'))}</div><div class="v">${rupees(Math.round(pool))}</div></div>
-       <div class="stat"><div class="k">${esc(t('lbTop'))}</div><div class="v">${top?num(top.points):'—'}</div><div class="n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${top?esc(top.technician):''}</div></div></div>
-     <div class="tabs" style="margin:12px 0 0"><button class="${LB_SUB==='tech'?'on':''}" onclick="LB_SUB='tech';render()">${esc(t('lbTechTab'))}</button><button class="${LB_SUB==='hub'?'on':''}" onclick="LB_SUB='hub';render()">${esc(t('lbHubTab'))}</button></div></div>`;
-  if(!rows.length)return head+`<div class="card empty">${esc(t('lbNone'))}</div>`;
-  if(LB_SUB==='hub'){const H={};rows.forEach(r=>{const h=H[r.hub||'—']||(H[r.hub||'—']={hub:r.hub||'—',city:r.city,n:0,above:0,pts:0,pay:0});h.n++;h.above+=r.points_above>0?1:0;h.pts+=+r.points;h.pay+=+r.pay||0;});
-    const hs=Object.values(H).sort((x,y)=>y.pts/y.n-x.pts/x.n);
-    return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>#</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbCity'))}</th><th>${esc(t('lbTechs'))}</th><th>${esc(t('lbAbove'))}</th><th>${esc(t('lbPtsTech'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
-      ${hs.map((h,i)=>`<tr class="${b.tech&&h.hub===b.tech.hub?'me':''}"><td>${medal(i)}</td><td><b>${esc(h.hub)}</b></td><td>${esc(h.city||'')}</td><td>${h.n}</td><td>${h.above}</td><td>${num(h.pts/h.n,1)}</td><td>${rupees(Math.round(h.pay))}</td></tr>`).join('')}</tbody></table></div>`;}
-  return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>#</th><th>${esc(t('lbTech'))}</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbJcs'))}</th><th>${esc(t('lbPts'))}</th><th>${esc(t('target'))}</th><th>${esc(t('lbAboveCol'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr class="${r.technician===me?'me':''}"><td>${medal(i)}</td><td><b>${esc(r.technician)}</b></td><td>${esc(r.hub||'')}</td><td>${r.jcs}</td><td><b>${num(r.points)}</b></td><td>${num(r.target)}</td><td>${num(r.points_above)}</td><td class="${+r.pay>0?'ok':''}">${rupees(Math.round(+r.pay||0))}</td></tr>`).join('')}</tbody></table></div>
+   <div class="lbk">
+     <div class="kc"><div class="k">${esc(t('lbTechs'))}</div><div class="v">${rows.length}</div><div class="n">${esc(t('lbInBoard'))}</div></div>
+     <div class="kc hl"><div class="k">${esc(t('lbAbove'))}</div><div class="v">${above.length}</div><div class="n">${esc(t('lbEarn'))}</div></div>
+     <div class="kc hl"><div class="k">${esc(t('lbPool'))}</div><div class="v g">${rupees(Math.round(pool))}</div><div class="n">${esc(t('lbSum'))}</div></div>
+     <div class="kc"><div class="k">${esc(t('lbAvg'))}</div><div class="v">${num(avgAbove,1)}</div><div class="n">${esc(t('lbAcross'))}</div></div>
+     <div class="kc"><div class="k">${esc(t('lbTop'))}</div><div class="v">${top?num(top.points):'—'}</div><div class="n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${top?esc(top.technician):'—'}</div></div></div>
+   <div class="lbsub"><button class="${LB_SUB==='hub'?'on':''}" onclick="LB_SUB='hub';render()">${esc(t('lbHubTab'))}</button><button class="${LB_SUB==='tech'?'on':''}" onclick="LB_SUB='tech';render()">${esc(t('lbTechTab'))}</button>
+     <button class="csv" onclick="lbCsv()">⬇ ${esc(t('lbCsv'))}</button></div>`;
+  if(!rows.length){LB_LAST=[];return head+`<div class="card empty">${esc(t('lbNone'))}</div>`;}
+  if(LB_SUB==='hub'){const H={};rows.forEach(r=>{const k=r.hub||'—';const h=H[k]||(H[k]={hub:k,city:r.city,technicians:0,above_target:0,pts:0,pay:0});h.technicians++;h.above_target+=r.points_above>0?1:0;h.pts+=+r.points;h.pay+=+r.pay||0;});
+    const hs=Object.values(H).sort((x,y)=>y.pts/y.technicians-x.pts/x.technicians).map((h,i)=>({...h,rank:i+1,points_per_technician:Math.round(10*h.pts/h.technicians)/10,pay:Math.round(h.pay)}));LB_LAST=hs;
+    return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>${esc(t('lbRank'))}</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbCity'))}</th><th>${esc(t('lbTechs'))}</th><th>${esc(t('lbAbove'))}</th><th>${esc(t('lbPtsTech'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
+      ${hs.map((h,i)=>`<tr class="${b.tech&&h.hub===b.tech.hub?'me':''}"><td class="rk">${medal(i)}${i+1}</td><td><b>${esc(h.hub)}</b></td><td>${esc(h.city||'')}</td><td>${h.technicians}</td><td>${h.above_target}</td><td><b>${num(h.points_per_technician,1)}</b></td><td class="${h.pay>0?'ok':''}">${rupees(h.pay)}</td></tr>`).join('')}</tbody></table></div>`;}
+  LB_LAST=rows.map((r,i)=>({...r,rank:i+1,job_cards:r.jcs,above_target:r.points_above,pay:Math.round(+r.pay||0)}));
+  return head+`<div class="card lbwrap"><table class="lbt"><thead><tr><th>${esc(t('lbRank'))}</th><th>${esc(t('lbTech'))}</th><th>${esc(t('lbHub'))}</th><th>${esc(t('lbJcs'))}</th><th>${esc(t('lbPts'))}</th><th>${esc(t('target'))}</th><th>${esc(t('lbAboveCol'))}</th><th>${esc(t('lbRate'))}</th><th>${esc(t('lbPay'))}</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr class="${r.technician===me?'me':''}"><td class="rk">${medal(i)}${i+1}</td><td><b>${esc(r.technician)}</b> ${delta(r,i)}</td><td>${esc(r.hub||'')}</td><td>${r.jcs}</td><td><b>${num(r.points)}</b></td><td>${num(r.target)}</td><td>${num(r.points_above)}</td><td>${rateChip(r)}</td><td class="${+r.pay>0?'ok':''}">${rupees(Math.round(+r.pay||0))}</td></tr>`).join('')}</tbody></table></div>
     <p class="note">${esc(t('lbNote'))}</p>`;}
 function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video class="vid" controls playsinline preload="metadata" src="video/explainer_${LANG}.mp4#t=0.5"></video></div>`;}
 function calcHtml(b,w,isCur){   // 16 Nov evening (Shivani): the steps again, the video at the end
