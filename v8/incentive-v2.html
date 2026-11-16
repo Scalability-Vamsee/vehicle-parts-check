@@ -83,6 +83,7 @@ button{font-family:inherit}
 .msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:.88rem;font-weight:600}
 .msg.go{background:var(--brand-bg);color:var(--brand-dark)}
 .msg.ok{background:var(--good-bg);color:var(--good)}
+.msg.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #FCA5A5}
 
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .stat{background:#F8F9FC;border-radius:12px;padding:12px}
@@ -343,6 +344,7 @@ Object.assign(T.ta,{"otpIdSub": "உங்கள் மொபைல் எண்
 Object.assign(T.kn,{"otpIdSub": "ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ. 6 ಅಂಕಿಯ OTP ಕಳುಹಿಸುತ್ತೇವೆ.", "idPh": "ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್", "idBad": "ನಿಮ್ಮ 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ.", "otpSub2": "6 ಅಂಕಿಯ OTP ಕಳುಹಿಸಿದ್ದೇವೆ:", "otpBack2": "← ನಂಬರ್ / ಇಮೇಲ್ ಬದಲಿಸಿ", "emUnknown": "ಈ ಇಮೇಲ್ ನೋಂದಣಿ ಆಗಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.", "otpBad": "ದಯವಿಟ್ಟು OTP ಹಾಕಿ."});
 T.en.notRecord="Your mobile number / email is not in our records, so you cannot sign in. Ask your hub manager to add it.";T.hi.notRecord="आपका मोबाइल नंबर / ईमेल हमारे रिकॉर्ड में नहीं है, इसलिए साइन इन नहीं हो सकता। अपने हब मैनेजर से जुड़वाएँ।";T.te.notRecord="మీ మొబైల్ నంబర్ / ఈమెయిల్ మా రికార్డుల్లో లేదు, కాబట్టి సైన్ ఇన్ కాదు. మీ హబ్ మేనేజర్‌ను జోడించమని అడగండి.";T.ta.notRecord="உங்கள் மொபைல் எண் / மின்னஞ்சல் எங்கள் பதிவுகளில் இல்லை, அதனால் உள்நுழைய முடியாது. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.";T.kn.notRecord="ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ / ಇಮೇಲ್ ನಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಸೈನ್ ಇನ್ ಆಗುವುದಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.";
 T.en.emEmpty='Please enter your email.';T.hi.emEmpty='कृपया अपना ईमेल डालें।';T.te.emEmpty='దయచేసి మీ ఈమెయిల్ ఎంటర్ చేయండి.';T.ta.emEmpty='தயவுசெய்து உங்கள் மின்னஞ்சலை உள்ளிடுங்கள்.';T.kn.emEmpty='ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಮೇಲ್ ಹಾಕಿ.';
+T.en.leaderAnon="Current leader of your hub (name hidden)";T.en.leaderLine="{p} points per day present · {d} of their job cards came back within 7 days";T.hi.leaderAnon="आपके हब में अभी सबसे आगे (नाम छुपा है)";T.hi.leaderLine="हाज़िर दिन पर {p} पॉइंट · उनके {d} जॉब कार्ड 7 दिन में वापस आए";T.te.leaderAnon="మీ హబ్‌లో ప్రస్తుత లీడర్ (పేరు దాచబడింది)";T.te.leaderLine="హాజరైన రోజుకు {p} పాయింట్లు · వారి జాబ్ కార్డుల్లో {d} 7 రోజుల్లో తిరిగి వచ్చాయి";T.ta.leaderAnon="உங்கள் ஹப்பில் தற்போதைய முன்னணி (பெயர் மறைக்கப்பட்டது)";T.ta.leaderLine="வந்த நாளுக்கு {p} பாயிண்ட்கள் · அவர்களின் ஜாப் கார்டுகளில் {d} 7 நாளில் திரும்பின";T.kn.leaderAnon="ನಿಮ್ಮ ಹಬ್‌ನಲ್ಲಿ ಈಗಿನ ಮುಂಚೂಣಿ (ಹೆಸರು ಮರೆಮಾಡಲಾಗಿದೆ)";T.kn.leaderLine="ಹಾಜರಾದ ದಿನಕ್ಕೆ {p} ಪಾಯಿಂಟ್ · ಅವರ ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿ {d} 7 ದಿನದಲ್ಲಿ ವಾಪಸ್ ಬಂದಿವೆ";
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -604,7 +606,7 @@ function checklistRealHtml(b){const p=b.skPerson,cy=b.skCycles;const sent=cy.fil
 function awardsTechSampleHtml(b){const tm=b.awards.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
   return `<div class="card"><h3>${esc(t('totmT'))} · ${esc(b.tech.hub)} <span class="tag prov">₹1,500</span></h3><p class="note" style="margin:0 0 6px">${esc(t('totmP'))} ${esc(t('totmNeed',{n:tm.needed}))}</p>
    <ul class="list"><li><div class="l"><b>${esc(t('eligibleN',{e:el.length,n:tm.rows.length}))}</b><small>${esc(el.length>=tm.needed?t('ownWinner'):t('toPool'))}</small></div></li>
-   <li><div class="l"><b>${esc(t('youNot'))}</b></div></li></ul></div>
+   <li><div class="l" style="width:100%"><div class="msg bad" style="margin:0">${esc(t('youNot'))}</div></div></li></ul></div>
    <div class="card"><h3>${esc(t('supT'))} <span class="tag prov">+₹2,000</span></h3><p class="note" style="margin:0">${esc(t('supP'))}</p></div>`;}
 /* Awards on real data (laptop only): Technician of the Month per hub; hub needs 4 eligible, else the city pool. */
 function awardsRealHtml(b){const A=b.awardsData;const line=(r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${num(r.ppd,1)} ${esc(t('ppd'))} · ${r.jcs} JC${r.hub?' · '+esc(r.hub):''}</small></div></div><div class="r">${pct(r.defect)}<small>${esc(t('defect'))}</small></div></li>`;
@@ -615,7 +617,7 @@ function awardsRealHtml(b){const A=b.awardsData;const line=(r,i)=>`<li><div clas
     const me=H.rows.findIndex(r=>r.name===b.tech.display_name);const pool=A.pools[b.tech.city]||[];
     const lead=H.own_winner?H.rows[0]:pool[0];
     return head+`<div class="card"><h3>${esc(hub)}</h3><ul class="list"><li><div class="l"><b>${esc(t('eligibleN',{e:H.eligible,n:H.technicians}))}</b><small>${esc(H.own_winner?t('ownWinner'):t('toPool'))}</small></div></li>
-      <li><div class="l"><b>${esc(me>=0?t('youEligible',{r:me+1}):t('youNot'))}</b></div></li>${lead?`<li><div class="l"><b>${esc(t('leaderAnon'))}</b><small>${pct(lead.defect)} ${esc(t('defect'))}</small></div></li>`:''}</ul></div>`+notes;}
+      <li><div class="l" style="width:100%"><div class="msg ${me>=0?'ok':'bad'}" style="margin:0">${esc(me>=0?t('youEligible',{r:me+1}):t('youNot'))}</div></div></li>${lead?`<li><div class="l"><b>🏆 ${esc(t('leaderAnon'))}</b><small style="white-space:normal">${esc(t('leaderLine',{p:num(lead.ppd,1),d:pct(lead.defect)}))}</small></div></li>`:''}</ul></div>`+notes;}
   const city=PICK_CITY;const hubs=Object.entries(A.hubs).filter(([h,v])=>v.city===city);const pool=A.pools[city]||[];
   return head+hubs.map(([h,v])=>`<div class="card"><h3>${esc(h)} <span class="tag ${v.own_winner?'final':'prov'}">${esc(v.own_winner?t('ownWinnerShort'):t('poolShort'))}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('eligibleN',{e:v.eligible,n:v.technicians}))}</p>${v.rows.length?`<ul class="list">${v.rows.slice(0,4).map(line).join('')}</ul>`:''}</div>`).join('')
    +`<div class="card"><h3>${esc(t('cityPool'))} · ${esc(city)}</h3><p class="note" style="margin:0 0 6px">${esc(t('poolNote'))}</p>${pool.length?`<ul class="list">${pool.slice(0,5).map(line).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`+notes;}
