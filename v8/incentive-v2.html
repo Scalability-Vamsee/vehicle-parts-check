@@ -156,17 +156,36 @@ table.sl td:last-child{text-align:right}
 <div id="auth-screen">
   <div class="auth-card">
     <img src="/v8/logo.jpg" alt="" style="width:44px;height:44px;border-radius:10px"/>
-    <div id="auth-form">
+    <!-- Technicians: phone number + SMS OTP (Supabase phone auth). Admins and staff keep the email link below. -->
+    <div id="auth-phone">
+      <div class="auth-title" data-i="authTitle">My Incentive</div>
+      <div class="auth-sub" data-i="phSub">Enter your mobile number. We'll send you a 6-digit OTP by SMS.</div>
+      <div style="display:flex;gap:8px"><span class="auth-input" style="width:auto;flex:none;background:#F8FAFC">+91</span>
+        <input id="auth-phone-no" class="auth-input" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel-national"/></div>
+      <button class="auth-btn" id="ph-btn" onclick="sendPhoneOtp()" data-i="phBtn">Send OTP</button>
+      <div class="auth-msg" id="ph-msg"></div>
+      <button class="link" style="margin-top:14px" onclick="showForm('email')" data-i="phToEmail">Admin? Sign in with email</button>
+    </div>
+    <div id="auth-otp" style="display:none">
+      <div class="auth-title" data-i="otpT">Enter OTP</div>
+      <div class="auth-sub"><span data-i="otpSub">We sent a 6-digit OTP by SMS to</span> <b id="otp-to" style="white-space:nowrap"></b></div>
+      <input id="auth-otp-code" class="auth-input" type="text" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" style="text-align:center;letter-spacing:.4em;font-size:1.2rem"/>
+      <button class="auth-btn" id="otp-btn" onclick="verifyPhoneOtp()" data-i="otpBtn">Sign in</button>
+      <div class="auth-msg" id="otp-msg"></div>
+      <button class="link" style="margin-top:14px" onclick="showForm('phone')" data-i="otpBack">← Change number</button>
+    </div>
+    <div id="auth-form" style="display:none">
       <div class="auth-title" data-i="authTitle">My Incentive</div>
       <div class="auth-sub" data-i="authSub">Enter your email and we'll send you a sign-in link.</div>
       <input id="auth-email" class="auth-input" type="email" placeholder="your@email.com" autocomplete="email"/>
       <button class="auth-btn" id="auth-btn" onclick="sendMagicLink()" data-i="authBtn">Send sign-in link</button>
       <div class="auth-msg" id="auth-msg"></div>
+      <button class="link" style="margin-top:14px" onclick="showForm('phone')" data-i="toPhone">Technician? Sign in with mobile number</button>
     </div>
-    <div id="auth-sent">
+    <div id="auth-sent" style="display:none">
       <div class="auth-title" data-i="authSentT">Check your email</div>
       <div class="auth-sub" data-i="authSentB">Open the link we sent to sign in.</div>
-      <button class="link" onclick="showForm()" data-i="authBack">← Use a different email</button>
+      <button class="link" onclick="showForm('email')" data-i="authBack">← Use a different email</button>
     </div>
   </div>
 </div>
@@ -209,6 +228,10 @@ let LANG='en', BUNDLE=null, WEEK=null, TAB='home';
 /* ── TEXT (English + Hindi; Hindi to be checked by a native speaker before launch) ── */
 const T={
  en:{title:'My Incentive',authTitle:'My Incentive',authSub:"Enter your email and we'll send you a sign-in link.",authBtn:'Send sign-in link',authSentT:'Check your email',authSentB:'Open the link we sent to sign in.',authBack:'← Use a different email',out:'Sign out',
+  phSub:"Enter your mobile number. We'll send you a 6-digit OTP by SMS.",phBtn:'Send OTP',phToEmail:'Admin? Sign in with email',toPhone:'Technician? Sign in with mobile number',
+  otpT:'Enter OTP',otpSub:'We sent a 6-digit OTP by SMS to',otpBtn:'Sign in',otpBack:'← Change number',
+  phBad:'Please enter a 10-digit mobile number.',phUnknown:'This number is not registered. Ask your hub manager to add it.',phOff:'Mobile number sign-in is not switched on yet. Please try again later.',
+  otpBad:'Please enter the 6-digit OTP.',otpWrong:'Wrong or expired OTP. Try again or send a new one.',
   sample:'Sample data — not real. The incentive tables are not live yet.',tabHome:'My week',tabCalc:'How is it calculated',
   thisWeek:'This week',week:'Week',prov:'Provisional',final:'Final',pointsSoFar:'points so far',target:'target',
   toGo:'{n} points to go to reach the target.',reached:'Target reached! Every point now earns money.',
@@ -227,6 +250,10 @@ const T={
   notFinal:'The rate is provisional until 7 days after the week ends, when every job card has had its full 7 days.',
   weekNotStarted:'This week has no job cards yet.'},
  hi:{title:'मेरा इंसेंटिव',authTitle:'मेरा इंसेंटिव',authSub:'अपना ईमेल डालें, हम साइन-इन लिंक भेजेंगे।',authBtn:'साइन-इन लिंक भेजें',authSentT:'अपना ईमेल देखें',authSentB:'साइन इन करने के लिए भेजा गया लिंक खोलें।',authBack:'← दूसरा ईमेल डालें',out:'साइन आउट',
+  phSub:'अपना मोबाइल नंबर डालें। हम SMS से 6 अंकों का OTP भेजेंगे।',phBtn:'OTP भेजें',phToEmail:'एडमिन? ईमेल से साइन इन करें',toPhone:'टेक्नीशियन? मोबाइल नंबर से साइन इन करें',
+  otpT:'OTP डालें',otpSub:'हमने SMS से 6 अंकों का OTP भेजा है',otpBtn:'साइन इन',otpBack:'← नंबर बदलें',
+  phBad:'कृपया 10 अंकों का मोबाइल नंबर डालें।',phUnknown:'यह नंबर रजिस्टर नहीं है। अपने हब मैनेजर से जुड़वाएँ।',phOff:'मोबाइल नंबर से साइन इन अभी चालू नहीं है। थोड़ी देर बाद कोशिश करें।',
+  otpBad:'कृपया 6 अंकों का OTP डालें।',otpWrong:'गलत या पुराना OTP। फिर से डालें या नया OTP भेजें।',
   sample:'सैंपल डेटा — असली नहीं। इंसेंटिव टेबल अभी लाइव नहीं हैं।',tabHome:'मेरा हफ़्ता',tabCalc:'हिसाब कैसे बनता है',
   thisWeek:'इस हफ़्ते',week:'हफ़्ता',prov:'अभी पक्का नहीं',final:'पक्का',pointsSoFar:'पॉइंट अब तक',target:'टारगेट',
   toGo:'टारगेट तक पहुँचने के लिए {n} पॉइंट और।',reached:'टारगेट पूरा! अब हर पॉइंट पर पैसे मिलेंगे।',
@@ -259,7 +286,7 @@ Object.assign(T.en,{viewAs:'View as',role_tech:'Technician',role_sm:'Service man
   totmT:'Technician of the Month',totmP:'Above target per day present, then the lowest 7-day defect rate wins.',totmOk:'{e} eligible: the hub has its own winner.',totmPool:'Only {e} eligible (a hub needs {n}): the award goes to the city pool.',
   supT:'Supervisor of the Month',supP:"Last month's Technician of the Month gets ₹2,000 more if every technician of the hub beats the target. Starts in December (November is the first month).",
   smotmT:'Service Manager of the Month (all India)',hubScore:'hub score',skotmT:'Store Keeper of the Month (all India)',
-  realBanner:'Real data · laptop only · 5 Oct to 11 Nov: every completed week, plus this week so far. Zimyo attendance up to 11 Nov; after that a day with a billed job card counts as present. Not shown anywhere else.',
+  realBanner:'Real data · laptop only · 5 Oct to 15 Nov: every completed week. Zimyo attendance up to 15 Nov. Not shown anywhere else.',
   stillSample:'This screen is still sample data: its real data is not loaded yet.',
   realBannerOct:'Real data · laptop only · October test: 3 weeks (5–25 Oct) with real Zimyo attendance, November targets. Not shown anywhere else.',
   realBannerNov:'Real data · laptop only · November: real Zimyo attendance up to 9 Nov; this week is still running. Not shown anywhere else.',
@@ -283,7 +310,7 @@ Object.assign(T.hi,{viewAs:'इस रूप में देखें',role_tec
   totmT:'टेक्नीशियन ऑफ़ द मंथ',totmP:'हाज़िर दिन पर टारगेट से ऊपर, फिर सबसे कम 7-दिन डिफ़ेक्ट रेट जीतता है।',totmOk:'{e} योग्य: हब का अपना विजेता होगा।',totmPool:'सिर्फ़ {e} योग्य (हब को {n} चाहिए): अवॉर्ड सिटी पूल में जाएगा।',
   supT:'सुपरवाइज़र ऑफ़ द मंथ',supP:'पिछले महीने के टेक्नीशियन ऑफ़ द मंथ को ₹2,000 और, अगर हब का हर टेक्नीशियन टारगेट पार करे। दिसंबर से शुरू (नवंबर पहला महीना है)।',
   smotmT:'सर्विस मैनेजर ऑफ़ द मंथ (पूरा भारत)',hubScore:'हब स्कोर',skotmT:'स्टोर कीपर ऑफ़ द मंथ (पूरा भारत)',
-  realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · 5 अक्टू से 11 नवं: हर पूरा हफ़्ता और यह हफ़्ता अब तक। Zimyo हाज़िरी 11 नवं तक; उसके बाद बिल हुए जॉब कार्ड वाला दिन हाज़िर गिना गया। कहीं और नहीं दिखता।',
+  realBanner:'असली डेटा · सिर्फ़ लैपटॉप पर · 5 अक्टू से 15 नवं: हर पूरा हफ़्ता। Zimyo हाज़िरी 15 नवं तक। कहीं और नहीं दिखता।',
   stillSample:'यह स्क्रीन अभी सैंपल डेटा है: इसका असली डेटा अभी लोड नहीं हुआ।',
   realBannerOct:'असली डेटा · सिर्फ़ लैपटॉप पर · अक्टूबर टेस्ट: 3 हफ़्ते (5–25 अक्टू), असली Zimyo हाज़िरी, नवंबर टारगेट। कहीं और नहीं दिखता।',
   realBannerNov:'असली डेटा · सिर्फ़ लैपटॉप पर · नवंबर: 9 नवंबर तक असली Zimyo हाज़िरी; यह हफ़्ता अभी चल रहा है। कहीं और नहीं दिखता।',
@@ -623,7 +650,39 @@ function showTab(x){TAB=x;render();window.scrollTo({top:0});}
 /* ── AUTH (FleetPro pattern: auth screen covers the page; permissions FIRST, then hide it) ── */
 function showAuthScreen(){document.getElementById('auth-screen').classList.remove('hidden');showForm();}
 function hideAuthScreen(){document.getElementById('auth-screen').classList.add('hidden');}
-function showForm(){document.getElementById('auth-form').style.display='block';document.getElementById('auth-sent').style.display='none';document.getElementById('auth-msg').textContent='';}
+function showForm(which){which=which==='email'?'email':'phone';
+  const show={'auth-phone':which==='phone','auth-otp':false,'auth-form':which==='email','auth-sent':false};
+  for(const id in show)document.getElementById(id).style.display=show[id]?'block':'none';
+  ['auth-msg','ph-msg','otp-msg'].forEach(id=>{document.getElementById(id).textContent='';});}
+/* Phone + SMS OTP (technicians). Needs, on Vamsee's side: Supabase Auth phone provider with an SMS sender (DLT-registered for India) and the
+   function incentive_v2_phone_known(p_phone) (sql/incentive_v9/10_phone_login.sql). Until that function exists the page sends no SMS at all,
+   so no OTP goes to an unknown number and nothing is charged. */
+let OTP_PHONE='';
+async function sendPhoneOtp(){
+  const n=document.getElementById('auth-phone-no').value.replace(/\D/g,'').replace(/^(91|0)(?=\d{10}$)/,'');
+  const msg=document.getElementById('ph-msg');const btn=document.getElementById('ph-btn');msg.textContent='';
+  if(!/^[6-9]\d{9}$/.test(n)){msg.textContent=t('phBad');return;}
+  btn.disabled=true;
+  try{
+    const{data:ok,error:e1}=await sbClient.rpc('incentive_v2_phone_known',{p_phone:n});
+    if(e1){msg.textContent=t('phOff');console.warn('[FP] phone check',e1.message);return;}
+    if(!ok){msg.textContent=t('phUnknown');return;}
+    const{error}=await sbClient.auth.signInWithOtp({phone:'+91'+n});
+    if(error){msg.textContent=/provider|disabled|not enabled|unsupported/i.test(error.message)?t('phOff'):error.message;return;}
+    OTP_PHONE='+91'+n;document.getElementById('otp-to').textContent='+91 '+n.slice(0,5)+' '+n.slice(5);
+    document.getElementById('auth-phone').style.display='none';document.getElementById('auth-otp').style.display='block';
+    document.getElementById('auth-otp-code').value='';document.getElementById('auth-otp-code').focus();
+  }finally{btn.disabled=false;}
+}
+async function verifyPhoneOtp(){
+  const code=document.getElementById('auth-otp-code').value.replace(/\D/g,'');const msg=document.getElementById('otp-msg');const btn=document.getElementById('otp-btn');msg.textContent='';
+  if(code.length!==6){msg.textContent=t('otpBad');return;}
+  btn.disabled=true;
+  try{const{error}=await sbClient.auth.verifyOtp({phone:OTP_PHONE,token:code,type:'sms'});if(error)msg.textContent=t('otpWrong');}   // success: onAuthStateChange SIGNED_IN opens the dashboard
+  finally{btn.disabled=false;}
+}
+document.getElementById('auth-phone-no').addEventListener('keydown',e=>{if(e.key==='Enter')sendPhoneOtp();});
+document.getElementById('auth-otp-code').addEventListener('keydown',e=>{if(e.key==='Enter')verifyPhoneOtp();});
 async function sendMagicLink(){
   const email=document.getElementById('auth-email').value.trim().toLowerCase();const msg=document.getElementById('auth-msg');const btn=document.getElementById('auth-btn');
   if(!email){msg.textContent='Please enter your email.';return;}
