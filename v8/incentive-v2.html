@@ -342,13 +342,14 @@ Object.assign(T.te,{"otpIdSub": "మీ మొబైల్ నంబర్ ల�
 Object.assign(T.ta,{"otpIdSub": "உங்கள் மொபைல் எண் அல்லது மின்னஞ்சலை உள்ளிடுங்கள். 6 இலக்க OTP அனுப்புவோம்.", "idPh": "மொபைல் எண் அல்லது மின்னஞ்சல்", "idBad": "உங்கள் 10 இலக்க மொபைல் எண் அல்லது மின்னஞ்சலை உள்ளிடுங்கள்.", "otpSub2": "6 இலக்க OTP அனுப்பினோம்:", "otpBack2": "← எண் / மின்னஞ்சலை மாற்று", "emUnknown": "இந்த மின்னஞ்சல் பதிவு செய்யப்படவில்லை. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.", "otpBad": "தயவுசெய்து OTP உள்ளிடுங்கள்."});
 Object.assign(T.kn,{"otpIdSub": "ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ. 6 ಅಂಕಿಯ OTP ಕಳುಹಿಸುತ್ತೇವೆ.", "idPh": "ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್", "idBad": "ನಿಮ್ಮ 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ನಂಬರ್ ಅಥವಾ ಇಮೇಲ್ ಹಾಕಿ.", "otpSub2": "6 ಅಂಕಿಯ OTP ಕಳುಹಿಸಿದ್ದೇವೆ:", "otpBack2": "← ನಂಬರ್ / ಇಮೇಲ್ ಬದಲಿಸಿ", "emUnknown": "ಈ ಇಮೇಲ್ ನೋಂದಣಿ ಆಗಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.", "otpBad": "ದಯವಿಟ್ಟು OTP ಹಾಕಿ."});
 T.en.notRecord="Your mobile number / email is not in our records, so you cannot sign in. Ask your hub manager to add it.";T.hi.notRecord="आपका मोबाइल नंबर / ईमेल हमारे रिकॉर्ड में नहीं है, इसलिए साइन इन नहीं हो सकता। अपने हब मैनेजर से जुड़वाएँ।";T.te.notRecord="మీ మొబైల్ నంబర్ / ఈమెయిల్ మా రికార్డుల్లో లేదు, కాబట్టి సైన్ ఇన్ కాదు. మీ హబ్ మేనేజర్‌ను జోడించమని అడగండి.";T.ta.notRecord="உங்கள் மொபைல் எண் / மின்னஞ்சல் எங்கள் பதிவுகளில் இல்லை, அதனால் உள்நுழைய முடியாது. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.";T.kn.notRecord="ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ / ಇಮೇಲ್ ನಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಸೈನ್ ಇನ್ ಆಗುವುದಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.";
+T.en.emEmpty='Please enter your email.';T.hi.emEmpty='कृपया अपना ईमेल डालें।';T.te.emEmpty='దయచేసి మీ ఈమెయిల్ ఎంటర్ చేయండి.';T.ta.emEmpty='தயவுசெய்து உங்கள் மின்னஞ்சலை உள்ளிடுங்கள்.';T.kn.emEmpty='ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಮೇಲ್ ಹಾಕಿ.';
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function setLang(l){LANG=l;try{localStorage.setItem('fp_lang',l);}catch(e){}document.body.classList.toggle('lang-hi',l==='hi');document.documentElement.lang=l;
   LANGS.forEach(x=>document.getElementById('l-'+x).classList.toggle('on',l===x));document.querySelectorAll('.alang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
-  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});document.querySelectorAll('[data-ip]').forEach(el=>{el.placeholder=t(el.getAttribute('data-ip'));});if(BUNDLE)render();}
+  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});document.querySelectorAll('[data-ip]').forEach(el=>{el.placeholder=t(el.getAttribute('data-ip'));});document.querySelectorAll('[data-mk]').forEach(el=>{el.textContent=t(el.dataset.mk);});if(BUNDLE)render();}
 
 /* ── FORMAT ── */
 const num=(x,d=2)=>Number(x).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:d});
@@ -664,11 +665,12 @@ function showTab(x){TAB=x;render();window.scrollTo({top:0});if(x==='calc'){const
 function showAuthScreen(){document.getElementById('auth-screen').classList.remove('hidden');showForm();}
 function hideAuthScreen(){document.getElementById('auth-screen').classList.add('hidden');}
 let AUTH_NOTE=null;
+function setMsg(el,key){if(key){el.dataset.mk=key;el.textContent=t(key);}else{delete el.dataset.mk;el.textContent='';}}   // message follows the language buttons
 function showForm(which){which=which==='email'?'email':'phone';
   const show={'auth-phone':which==='phone','auth-otp':false,'auth-form':which==='email','auth-sent':false};
   for(const id in show)document.getElementById(id).style.display=show[id]?'block':'none';
-  ['auth-msg','ph-msg','otp-msg'].forEach(id=>{document.getElementById(id).textContent='';});
-  if(AUTH_NOTE&&which==='phone')document.getElementById('ph-msg').textContent=t(AUTH_NOTE);}   // e.g. 'not in our records' after a refused sign-in
+  ['auth-msg','ph-msg','otp-msg'].forEach(id=>setMsg(document.getElementById(id),null));
+  if(AUTH_NOTE&&which==='phone')setMsg(document.getElementById('ph-msg'),AUTH_NOTE);}   // e.g. 'not in our records' after a refused sign-in
 /* OTP sign-in. Email: Supabase sends the sign-in email; its template must show {{ .Token }} (the 6-digit code). Phone: SMS, needs the Supabase phone
    provider with an SMS sender. Before sending, the number / email must be on file: incentive_v2_phone_known (sql/incentive_v9/10_phone_login.sql) or
    is_approved_user (live; @bounceshare.com always allowed). Until those exist nothing is sent. */
@@ -676,16 +678,16 @@ let OTP_TO=null;   // {phone:'+91…'} or {email:'…'}
 function parseId(v){const d=v.replace(/[\s\-()+]/g,'');if(/^\d+$/.test(d)){const n=d.replace(/^(91|0)(?=\d{10}$)/,'');return /^[6-9]\d{9}$/.test(n)?{phone:'+91'+n,n}:null;}
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)?{email:v.toLowerCase()}:null;}
 async function sendOtp(){AUTH_NOTE=null;
-  const msg=document.getElementById('ph-msg'),btn=document.getElementById('ph-btn');msg.textContent='';
-  const id=parseId(document.getElementById('auth-id').value.trim());if(!id){msg.textContent=t('idBad');return;}
+  const msg=document.getElementById('ph-msg'),btn=document.getElementById('ph-btn');setMsg(msg,null);
+  const id=parseId(document.getElementById('auth-id').value.trim());if(!id){setMsg(msg,'idBad');return;}
   btn.disabled=true;
   try{
     if(id.phone){const{data:ok,error:e1}=await sbClient.rpc('incentive_v2_phone_known',{p_phone:id.n});
-      if(e1){msg.textContent=t('phOff');console.warn('[FP] phone check',e1.message);return;}if(!ok){msg.textContent=t('phUnknown');return;}}
+      if(e1){setMsg(msg,'phOff');console.warn('[FP] phone check',e1.message);return;}if(!ok){setMsg(msg,'phUnknown');return;}}
     else if(!id.email.endsWith('@bounceshare.com')){const{data:ok,error:e1}=await sbClient.rpc('is_approved_user',{p_email:id.email});
-      if(e1||!ok){msg.textContent=t('emUnknown');return;}}
+      if(e1||!ok){setMsg(msg,'emUnknown');return;}}
     const{error}=await sbClient.auth.signInWithOtp(id.phone?{phone:id.phone}:{email:id.email,options:{emailRedirectTo:location.origin+location.pathname}});
-    if(error){msg.textContent=/provider|disabled|not enabled|unsupported/i.test(error.message)?t('phOff'):error.message;return;}
+    if(error){if(/provider|disabled|not enabled|unsupported/i.test(error.message))setMsg(msg,'phOff');else{msg.textContent=error.message;delete msg.dataset.mk;}return;}
     OTP_TO=id.phone?{phone:id.phone}:{email:id.email};
     document.getElementById('otp-to').textContent=id.phone?'+91 '+id.n.slice(0,5)+' '+id.n.slice(5):id.email;
     document.getElementById('auth-phone').style.display='none';document.getElementById('auth-otp').style.display='block';
@@ -693,19 +695,19 @@ async function sendOtp(){AUTH_NOTE=null;
   }finally{btn.disabled=false;}
 }
 async function verifyOtpCode(){
-  const code=document.getElementById('auth-otp-code').value.replace(/\D/g,'');const msg=document.getElementById('otp-msg'),btn=document.getElementById('otp-btn');msg.textContent='';
-  if(code.length<6||!OTP_TO){msg.textContent=t('otpBad');return;}
+  const code=document.getElementById('auth-otp-code').value.replace(/\D/g,'');const msg=document.getElementById('otp-msg'),btn=document.getElementById('otp-btn');setMsg(msg,null);
+  if(code.length<6||!OTP_TO){setMsg(msg,'otpBad');return;}
   btn.disabled=true;
-  try{const{error}=await sbClient.auth.verifyOtp({...OTP_TO,token:code,type:OTP_TO.phone?'sms':'email'});if(error)msg.textContent=t('otpWrong');}   // success: onAuthStateChange SIGNED_IN opens the dashboard
+  try{const{error}=await sbClient.auth.verifyOtp({...OTP_TO,token:code,type:OTP_TO.phone?'sms':'email'});if(error)setMsg(msg,'otpWrong');}   // success: onAuthStateChange SIGNED_IN opens the dashboard
   finally{btn.disabled=false;}
 }
 document.getElementById('auth-id').addEventListener('keydown',e=>{if(e.key==='Enter')sendOtp();});
 document.getElementById('auth-otp-code').addEventListener('keydown',e=>{if(e.key==='Enter')verifyOtpCode();});
 async function sendMagicLink(){
   const email=document.getElementById('auth-email').value.trim().toLowerCase();const msg=document.getElementById('auth-msg');const btn=document.getElementById('auth-btn');
-  if(!email){msg.textContent='Please enter your email.';return;}
+  if(!email){setMsg(msg,'emEmpty');return;}
   btn.disabled=true;
-  if(!email.endsWith('@bounceshare.com')){const{data:ok}=await sbClient.rpc('is_approved_user',{p_email:email});if(!ok){msg.textContent='Your email is not registered. Contact your hub manager.';btn.disabled=false;return;}}
+  if(!email.endsWith('@bounceshare.com')){const{data:ok}=await sbClient.rpc('is_approved_user',{p_email:email});if(!ok){setMsg(msg,'emUnknown');btn.disabled=false;return;}}
   const res=await sbClient.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});btn.disabled=false;
   if(res.error){msg.textContent=res.error.message;}else{document.getElementById('auth-form').style.display='none';document.getElementById('auth-sent').style.display='block';}
 }
@@ -724,10 +726,11 @@ async function activateSession(session){
   let noRole=!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk'];
   // Live mode: a technician needs no manual FleetPro group. The database decides (incentive_v2_whoami: sign-in email -> technician from the sheet,
   // locked at first login). Only own data comes back from the read functions.
-  if(noRole){try{const{data}=await sbClient.rpc('incentive_v2_whoami');if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}else if(data&&data.role==='admin'){f['incentive-admin']=true;noRole=false;}}catch(e){console.warn('[FP] whoami failed',e);}}
+  let refused=false;   // true only when the database answered "no technician / admin for this login"; an expired or broken saved login just signs out quietly
+  if(noRole){try{const{data,error}=await sbClient.rpc('incentive_v2_whoami');if(error)throw error;if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}else if(data&&data.role==='admin'){f['incentive-admin']=true;noRole=false;}else refused=true;}catch(e){console.warn('[FP] whoami failed',e);}}
   // 16 Nov (Shivani): only someone whose email / mobile number matches the records may sign in. No technician or admin match = signed out at once,
   // with a clear message on the sign-in screen (sample mode too). The read functions also refuse unknown logins, so no data is ever shown.
-  if(noRole){AUTH_NOTE='notRecord';await sbClient.auth.signOut();_booted=false;showAuthScreen();return;}
+  if(noRole){AUTH_NOTE=refused?'notRecord':null;await sbClient.auth.signOut();_booted=false;showAuthScreen();return;}
   window.NO_ROLE=noRole;
   ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=DATA_MODE==='sample';   // live: technician view only for now (SM / store keeper paused); admins get the technician picker
   _booted=true;hideAuthScreen();document.getElementById('logout-btn').style.display='block';await start();
