@@ -670,7 +670,7 @@ async function readZimyo(file){if(!file)return;ZIM=null;
     R.slice(hi+1).forEach(r=>{const des=String(r[ix('Designation')]||'').trim();
       if(r[ix('Employee Code')]&&/^(service manager|storekeeper)$/i.test(des))roster.push({emp:String(r[ix('Employee Code')]).trim(),name:String(r[ix('Full Name')]||'').trim(),designation:des,location:String(r[ix('Location')]||'').trim(),branch:String(r[ix('Branch')]||'').trim()});   // 16 Nov: service manager / store keeper list (16_roster_upload.sql)
       if(!r[ix('Employee Code')]||!/technician/i.test(des))return;techs.add(r[ix('Employee Code')]);
-      cols.forEach(({j,d})=>{const c=String(r[j]||'').split('|')[0].split(' (')[0].trim();if(c&&c!=='-')rows.push({emp:String(r[ix('Employee Code')]).trim(),name:String(r[ix('Full Name')]||'').trim(),d,code:c});});});
+      cols.forEach(({j,d})=>{const c=String(r[j]||'').split('|')[0].split(' (')[0].trim();if(c&&c!=='-')rows.push({emp:String(r[ix('Employee Code')]).trim(),name:String(r[ix('Full Name')]||'').trim(),hub:String(r[ix('Branch')]||'').trim(),d,code:c});});});
     if(!rows.length)throw new Error(t('zBad'));
     ZIM={rows,roster,techs:techs.size,from:rows.reduce((a,x)=>x.d<a?x.d:a,'9999'),to:rows.reduce((a,x)=>x.d>a?x.d:a,'')};}
   catch(e){ZIM={err:e.message};}
@@ -682,7 +682,7 @@ async function saveZimyo(){const out=document.getElementById('z-res'),btn=docume
     let rosterHtml='';if(ZIM.roster&&ZIM.roster.length){try{const r2=await sbClient.rpc('incentive_v2_upload_roster',{p_rows:ZIM.roster});if(r2.error)throw r2.error;const d2=r2.data;
         rosterHtml=`<div style="margin-top:8px">${esc(t('zRosterDone',{s:d2.service_managers,k:d2.store_keepers}))}${(d2.no_hub||[]).length?`<br><small style="color:var(--warn)">${esc(t('zNoHub'))} ${(d2.no_hub||[]).map(x=>esc(x.name+' ('+x.emp+')')).join(' · ')}</small>`:''}</div>`;}
       catch(e2){rosterHtml=`<div style="margin-top:8px;color:var(--warn)">${esc(t('zRosterOff'))}</div>`;}}
-    out.className='lg-out ok';out.innerHTML=esc(t('zDone',{s:data.saved,n:data.technicians,f:dayName(data.from),to:dayName(data.to)}))+(um.length?`<div style="margin-top:8px;color:var(--warn)">${esc(t('zUnmatched',{n:um.length}))}<br><small>${um.map(esc).join(' · ')}</small></div>`:'')+rosterHtml;}
+    out.className='lg-out ok';out.innerHTML=esc(t('zDone',{s:data.saved,n:data.technicians,f:dayName(data.from),to:dayName(data.to)}))+(data.how?`<div style="margin-top:4px;font-weight:500"><small>${Object.entries(data.how).map(([k,v])=>esc(k)+': '+v).join(' · ')}</small></div>`:'')+(um.length?`<div style="margin-top:8px;color:var(--warn)">${esc(t('zUnmatched',{n:um.length}))}<br><small>${um.map(esc).join(' · ')}</small></div>`:'')+rosterHtml;}
   catch(e){out.className='lg-out bad';out.textContent=/function|does not exist|404|not signed in/i.test(e.message||'')?t('zOff'):(e.message||String(e));}
   finally{btn.disabled=false;}}
 /* Leaderboard (like the old FleetPro page): one week, city filter, Technician / Hub view; your own row highlighted. Ranked by points. */
