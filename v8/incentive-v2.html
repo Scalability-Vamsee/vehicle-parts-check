@@ -342,6 +342,7 @@ Object.assign(T.te,{"lbWeekOf": "{w} వారం", "lbInBoard": "లీడర�
 Object.assign(T.ta,{"lbWeekOf": "{w} வாரம்", "lbInBoard": "லீடர்போர்டில்", "lbEarn": "இந்த வாரம் வருமானம்", "lbSum": "அனைத்து பணத்தின் கூட்டு", "lbAvg": "சராசரி பாயிண்ட்", "lbAcross": "டார்கெட்டுக்கு மேல் உள்ளவர்களில்", "lbCsv": "CSV பதிவிறக்கு", "lbRank": "ரேங்க்", "lbRate": "ரேட்"});
 Object.assign(T.kn,{"lbWeekOf": "{w} ವಾರ", "lbInBoard": "ಲೀಡರ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ", "lbEarn": "ಈ ವಾರ ಗಳಿಕೆ", "lbSum": "ಎಲ್ಲಾ ಹಣದ ಮೊತ್ತ", "lbAvg": "ಸರಾಸರಿ ಪಾಯಿಂಟ್", "lbAcross": "ಟಾರ್ಗೆಟ್ ಮೇಲಿನವರಲ್ಲಿ", "lbCsv": "CSV ಡೌನ್‌ಲೋಡ್", "lbRank": "ರ್ಯಾಂಕ್", "lbRate": "ರೇಟ್"});
 T.en.lbPayOwn="Pay is shown only on your own row.";T.hi.lbPayOwn="पेमेंट सिर्फ़ आपकी अपनी लाइन में दिखती है।";T.te.lbPayOwn="చెల్లింపు మీ సొంత లైన్‌లో మాత్రమే కనిపిస్తుంది.";T.ta.lbPayOwn="பணம் உங்கள் சொந்த வரியில் மட்டுமே தெரியும்.";T.kn.lbPayOwn="ಹಣ ನಿಮ್ಮ ಸ್ವಂತ ಸಾಲಿನಲ್ಲಿ ಮಾತ್ರ ಕಾಣುತ್ತದೆ.";
+T.en.lbYourPay="Your pay";T.en.lbYourRank="Your rank: #{r}";T.hi.lbYourPay="आपकी पेमेंट";T.hi.lbYourRank="आपकी रैंक: #{r}";T.te.lbYourPay="మీ చెల్లింపు";T.te.lbYourRank="మీ ర్యాంక్: #{r}";T.ta.lbYourPay="உங்கள் பணம்";T.ta.lbYourRank="உங்கள் ரேங்க்: #{r}";T.kn.lbYourPay="ನಿಮ್ಮ ಹಣ";T.kn.lbYourRank="ನಿಮ್ಮ ರ್ಯಾಂಕ್: #{r}";
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -712,7 +713,7 @@ function lbHtml(b){const all=lbRowsFor(b,WEEK);if(!all)return `<div class="card 
    <div class="lbk">
      <div class="kc"><div class="k">${esc(t('lbTechs'))}</div><div class="v">${rows.length}</div><div class="n">${esc(t('lbInBoard'))}</div></div>
      <div class="kc hl"><div class="k">${esc(t('lbAbove'))}</div><div class="v">${above.length}</div><div class="n">${esc(t('lbEarn'))}</div></div>
-     <div class="kc hl"><div class="k">${esc(t('lbPool'))}</div><div class="v g">${rupees(Math.round(pool))}</div><div class="n">${esc(t('lbSum'))}</div></div>
+     ${IS_ADMIN||LOCAL_PREVIEW?`<div class="kc hl"><div class="k">${esc(t('lbPool'))}</div><div class="v g">${rupees(Math.round(pool))}</div><div class="n">${esc(t('lbSum'))}</div></div>`:`<div class="kc hl"><div class="k">${esc(t('lbYourPay'))}</div><div class="v g">${(()=>{const m=rows.find(r=>r.technician===me);return m?rupees(Math.round(+m.pay||0)):'—';})()}</div><div class="n">${esc(t('lbYourRank',{r:(rows.findIndex(r=>r.technician===me)+1)||'—'}))}</div></div>`}
      <div class="kc"><div class="k">${esc(t('lbAvg'))}</div><div class="v">${num(avgAbove,1)}</div><div class="n">${esc(t('lbAcross'))}</div></div>
      <div class="kc"><div class="k">${esc(t('lbTop'))}</div><div class="v">${top?num(top.points):'—'}</div><div class="n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${top?esc(top.technician):'—'}</div></div></div>
    <div class="lbsub"><button class="${LB_SUB==='hub'?'on':''}" onclick="LB_SUB='hub';render()">${esc(t('lbHubTab'))}</button><button class="${LB_SUB==='tech'?'on':''}" onclick="LB_SUB='tech';render()">${esc(t('lbTechTab'))}</button>
