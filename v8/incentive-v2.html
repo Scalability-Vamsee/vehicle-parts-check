@@ -149,6 +149,17 @@ table.sl td:last-child{text-align:right}
 .rank{flex:0 0 26px;height:26px;border-radius:50%;background:#F1F5F9;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-right:10px}
 .rank.r1{background:#FEF3C7;color:#92400E}
 .rowl{display:flex;align-items:center;min-width:0}
+/* Responsive (16 Nov): phone first; tablet and laptop get a wider page and two columns on My week */
+.vid{display:block;width:100%;max-width:420px;max-height:78vh;margin:0 auto;border-radius:12px;background:#000;aspect-ratio:9/16;object-fit:contain}
+.v-calc .card{text-align:center}.v-calc .card h3{justify-content:center}
+@media (max-width:380px){.top{padding:8px 10px;gap:6px}.top .ttl{font-size:.9rem}.lang button{padding:5px 5px;font-size:.7rem}.wrap{padding:0 12px 32px}.hero .big b{font-size:2.2rem}.stat .v{font-size:1.15rem}}
+@media (min-width:768px){.wrap{max-width:760px;padding:0 24px 48px}.top{padding:12px 24px}.top img{width:32px;height:32px}.top .ttl{font-size:1.1rem}.lang button{font-size:.8rem;padding:6px 10px}
+  .tabs button{font-size:.92rem}.grid{grid-template-columns:repeat(4,1fr)}}
+@media (min-width:1024px){.wrap{max-width:1120px}
+  .v-home{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;align-items:start}.v-home>.hero,.v-home>.sample{grid-column:1/-1}
+  .v-home>.card:last-child{grid-column:1/-1}.v-home .grid{grid-template-columns:1fr 1fr}
+  .v-awards{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;align-items:start}
+  .who .nm{font-size:1.35rem}}
 </style>
 </head>
 <body>
@@ -515,13 +526,13 @@ function render(){
   else{nm.textContent=b.skReal?b.skPerson.name:t('role_sk');sub.textContent=(b.skReal?t('role_sk')+' · '+b.skPerson.hub:b.sk.hub)+' · '+monthLbl(b.month);}
   const tabs=TABS_BY_ROLE[ROLE];if(!tabs.includes(TAB))TAB=tabs[0];
   document.getElementById('tabs').innerHTML=tabs.map(x=>`<button class="${x===TAB?'on':''}" onclick="showTab('${x}')">${esc(t('tab_'+x))}</button>`).join('');
-  const weekTab=TAB==='home'||TAB==='calc';const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local'||!all.some(x=>x.week_start===WEEK))WEEK=b.current.week_start;   // the picked week must exist in this data
+  const weekTab=TAB==='home';/* week dates only on My week (16 Nov) */const all=b.mode==='real-local'?[b.current,...b.past].sort((x,y)=>x.week_start<y.week_start?-1:1):[b.current,...b.past];if(!WEEK||b.mode==='real-local'||!all.some(x=>x.week_start===WEEK))WEEK=b.current.week_start;   // the picked week must exist in this data
   const wk=document.getElementById('weeks');wk.style.display=weekTab?'flex':'none';
   wk.innerHTML=weekTab?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek')):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=settle(all.find(x=>x.week_start===WEEK),b.config);const isCur=WEEK===b.current.week_start;
-  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),checklist:()=>checklistHtml(b)};
   const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
-  document.getElementById('view').innerHTML=stillSample+V[TAB]();
+  const vw=document.getElementById('view');vw.className='v-'+TAB;vw.innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
 
@@ -632,21 +643,8 @@ function homeHtml(b,w,isCur){
   h+=`<div class="card"><h3>${esc(t('pastWeeks'))}</h3><ul class="list">${rows.map(x=>`<li onclick="pickWeek('${x.week_start}')" style="cursor:pointer"><div class="l"><b>${esc(rangeLbl(x.week_start))}</b><small>${num(x.points)} / ${num(x.target)} ${esc(t('pts'))} · ${rupees(x.rate)}/${esc(t('pts'))} · ${esc(x.is_final?t('final'):t('prov'))}</small></div><div class="r">${rupees(x.pay)}<small>${esc(t('pay'))}</small></div></li>`).join('')}</ul></div>`;
   return h;
 }
-function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video controls playsinline preload="metadata" style="width:100%;max-height:70vh;border-radius:12px;background:#000" src="video/explainer_${LANG}.mp4#t=0.5"></video></div>`;}
-function calcHtml(b,w,isCur){
-  if(!isCur)return videoCard()+`<div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`;
-  const lastD=b.days.length?b.days[b.days.length-1].d:null;
-  const byDay=b.days.map(d=>{const list=b.jcs.filter(j=>j.billed_date===d.d);
-    return `<details class="day" ${d.d===lastD?'open':''}><summary class="dh"><span>${esc(dayName(d.d))} · ${list.length} JC</span><span>${num(d.points)} ${esc(t('pts'))}</span></summary>${list.length?list.map(j=>{const raw=0.25+j.labour_min/60;
-      return `<div class="jc"><div class="jh"><span>${esc(jcLabel(j))}${j.reg?` <small style="font-weight:500;color:#6B7280">${esc(j.reg)}</small>`:''}${j.def_7d?`<span class="pill d">7d</span>`:''}</span><span>${num(j.points)}</span></div><div class="pt">${esc(j.parts.map(p=>p.name+' '+p.labour_min+' min').join(' · ')||'—')}</div><div class="fx">${esc(t('formula',{m:j.labour_min,raw:num(raw),pts:num(j.points)}))}</div></div>`;}).join(''):`<div class="empty">${esc(t('noJcs'))}</div>`}</details>`;}).join('');
-  const daysHtml=b.days.map(d=>{const cls=d.present>=1?'y':d.present>0?'h':'n';const lbl=d.present>=1?t('dayPresent'):d.present>0?t('dayHalf'):t('dayAbs');
-    return `<li><div class="l"><b>${esc(dayName(d.d))}<span class="pill ${cls}">${esc(lbl)}</span></b><small>${esc(why(d.reason))}</small></div><div class="r">${num(d.present,1)}</div></li>`;}).join('');
-  return videoCard()+`<div class="card">
-   ${stepHtml(1,t('s1'),t('s1p'),byDay+`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}</div>
-   <div class="card">${stepHtml(2,t('s2'),t('s2p'),`<ul class="list">${daysHtml}</ul><div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}</div>
-   <div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)} ${esc(t('pts'))}</span></div>`)}</div>
-   <div class="card">${rateStep(b,w)}</div><div class="card">${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`;
-}
+function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video class="vid" controls playsinline preload="metadata" src="video/explainer_${LANG}.mp4#t=0.5"></video></div>`;}
+function calcHtml(){return videoCard();}   // 16 Nov (Shivani): this tab shows only the explainer video in the chosen language
 /* Job card label: the DMS job card number technicians see in DMS (jc_jc_status_log.dmsjcid); the internal bike-jc id only when there is none. */
 function jcLabel(j){return j.dms_id?'DMS '+j.dms_id:j.jc_no;}
 function stepHtml(no,title,p,body){return `<div class="step"><div class="no">${no}</div><div class="tx"><h3 style="margin-bottom:4px">${esc(title)}</h3><p>${esc(p)}</p>${body}</div></div>`;}
