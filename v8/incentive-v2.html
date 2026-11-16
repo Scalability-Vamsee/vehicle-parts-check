@@ -325,7 +325,7 @@ function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function setLang(l){LANG=l;try{localStorage.setItem('fp_lang',l);}catch(e){}document.body.classList.toggle('lang-hi',l==='hi');document.documentElement.lang=l;
   LANGS.forEach(x=>document.getElementById('l-'+x).classList.toggle('on',l===x));document.querySelectorAll('.alang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
-  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});document.querySelectorAll('[data-ip]').forEach(el=>{el.placeholder=t(el.getAttribute('data-ip'));});document.querySelectorAll('[data-mk]').forEach(el=>{el.textContent=t(el.dataset.mk);});if(BUNDLE)render();}
+  document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});document.querySelectorAll('[data-ip]').forEach(el=>{el.placeholder=t(el.getAttribute('data-ip'));});document.querySelectorAll('[data-mk]').forEach(el=>{el.textContent=t(el.dataset.mk);});if(BUNDLE)render();else if(_booted&&!LOCAL_PREVIEW&&document.querySelector('[data-mk="liveSoon"]'))renderNoData();}
 
 /* ── FORMAT ── */
 const num=(x,d=2)=>Number(x).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:d});
@@ -650,7 +650,7 @@ async function readZimyo(file){if(!file)return;ZIM=null;
     if(!rows.length)throw new Error(t('zBad'));
     ZIM={rows,techs:techs.size,from:rows.reduce((a,x)=>x.d<a?x.d:a,'9999'),to:rows.reduce((a,x)=>x.d>a?x.d:a,'')};}
   catch(e){ZIM={err:e.message};}
-  render();}
+  BUNDLE?render():renderNoData();}
 async function saveZimyo(){const out=document.getElementById('z-res'),btn=document.getElementById('z-save');btn.disabled=true;out.className='lg-out';out.textContent=t('lgBusy');
   try{const{data,error}=await sbClient.rpc('incentive_v2_upload_zimyo',{p_rows:ZIM.rows});if(error)throw error;
     const um=(data.unmatched||[]).map(x=>x.name+(x.emp?' ('+x.emp+')':''));
@@ -695,7 +695,9 @@ async function activateSession(session){
   _booted=true;document.getElementById('logout-btn').style.display='block';await start();
 }
 async function start(){try{BUNDLE=await loadWeekBundle();if(!BUNDLE||!BUNDLE.current)throw new Error('no data yet');if(LOCAL_PREVIEW)CAN_SWITCH=true;TAB=TABS_BY_ROLE[ROLE][0];render();}
-  catch(e){console.error(e);document.getElementById('view').innerHTML=`<div class="card"><div class="msg go" style="margin:0" data-mk="liveSoon">${esc(t('liveSoon'))}</div></div>`;}}   // tables not filled yet / no row for this technician
+  catch(e){console.error(e);BUNDLE=null;renderNoData();}}
+/* No rows yet (tables being filled) or no row for this login: a message; an admin still gets Upload Zimyo, since the upload is what fills attendance. */
+function renderNoData(){document.getElementById('view').innerHTML=`<div class="card"><div class="msg go" style="margin:0" data-mk="liveSoon">${esc(t('liveSoon'))}</div></div>`+(IS_ADMIN?zimyoHtml():'');}   // tables not filled yet / no row for this technician
 
 (async function boot(){
   let saved='en';try{saved=localStorage.getItem('fp_lang')||'en';}catch(e){}setLang(LANGS.includes(saved)?saved:'en');
