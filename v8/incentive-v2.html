@@ -28,6 +28,7 @@
 .auth-btn:disabled{background:#CBD5E1}
 .auth-msg{font-size:.8rem;margin-top:12px;min-height:18px;color:#DC2626}
 #auth-sent{display:none}
+.alang{display:flex;justify-content:center;gap:4px;margin:-12px 0 16px;flex-wrap:wrap}.alang button{border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:.85rem;font-weight:700;padding:6px 11px;border-radius:999px;cursor:pointer;min-height:36px;min-width:42px}.alang button.on{background:#1A1A2E;border-color:#1A1A2E;color:#fff}
 
 :root{
   --brand:#E8191C;--brand-dark:#B01010;--brand-bg:#FEF2F2;
@@ -166,6 +167,7 @@ table.sl td:last-child{text-align:right}
 
 <div id="auth-screen">
   <div class="auth-card">
+    <div class="alang"><button data-l="en" onclick="setLang('en')">EN</button><button data-l="hi" onclick="setLang('hi')">हिं</button><button data-l="te" onclick="setLang('te')">తె</button><button data-l="ta" onclick="setLang('ta')">த</button><button data-l="kn" onclick="setLang('kn')">ಕ</button></div>
     <img src="/v8/logo.jpg" alt="" style="width:44px;height:44px;border-radius:10px"/>
     <!-- Technicians: phone number + SMS OTP (Supabase phone auth). Admins and staff keep the email link below. -->
     <div id="auth-phone">
@@ -341,7 +343,7 @@ function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function setLang(l){LANG=l;try{localStorage.setItem('fp_lang',l);}catch(e){}document.body.classList.toggle('lang-hi',l==='hi');document.documentElement.lang=l;
-  LANGS.forEach(x=>document.getElementById('l-'+x).classList.toggle('on',l===x));
+  LANGS.forEach(x=>document.getElementById('l-'+x).classList.toggle('on',l===x));document.querySelectorAll('.alang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
   document.querySelectorAll('[data-i]').forEach(el=>{el.textContent=t(el.getAttribute('data-i'));});if(BUNDLE)render();}
 
 /* ── FORMAT ── */
