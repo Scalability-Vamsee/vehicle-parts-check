@@ -466,18 +466,24 @@ function realBundle(){const R=REAL;const wks=realWeeks(R);if(!REAL_WEEK||!wks.in
   const t=R.techs.find(x=>x.name===PICK_TECH);   // keep the chosen technician even in a week without job cards
   if(!PICK_CITY)PICK_CITY=t.city;
   const cfg=R.config[grpOf(t.city)];const w=weekOf(t,R,REAL_WEEK);
-  const stat=x=>{const v=weekOf(x,R,REAL_WEEK).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
+  const statW=(x,wk)=>{const v=weekOf(x,R,wk).cur;const c=R.config[grpOf(x.city)];const tg=c.target*v.days_present;return {...v,name:x.name,hub:x.hub,city:x.city,ppd:v.days_present?v.points/v.days_present:0,above:v.days_present>0&&v.points>tg,ppd_above:v.days_present?(v.points-tg)/v.days_present:0,defect:v.jcs?100*v.defects/v.jcs:0};};
+  const stat=x=>statW(x,REAL_WEEK);
   const all=techs.map(stat);const mates=all.filter(x=>x.hub===t.hub).sort((a,c)=>c.ppd-a.ppd);
-  const cityAll=all.filter(x=>x.city===PICK_CITY);
+  /* 17 Nov: the service manager view has no week picker, so its Leaderboard uses the last complete week and its Top 3 the last final week (not a 1-day current week). */
+  const inWk=wk=>R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=wk&&j.billed_date<addDays(wk,7))).map(x=>statW(x,wk));
+  const boardWk=ROLE==='sm'?(wks.filter(x=>addDays(x,6)<=R.as_of).pop()||REAL_WEEK):REAL_WEEK;
+  const top3Wk=ROLE==='sm'?(R.final_until&&wks.includes(R.final_until)?R.final_until:boardWk):REAL_WEEK;
+  const boardAll=boardWk===REAL_WEEK?all:inWk(boardWk),top3All=top3Wk===REAL_WEEK?all:inWk(top3Wk);
+  const cityAll=boardAll.filter(x=>x.city===PICK_CITY);
   const hubsAgg={};cityAll.forEach(x=>{const h=hubsAgg[x.hub]||(hubsAgg[x.hub]={hub:x.hub,techs:0,above:0,pts:0,dp:0,j:0,d:0});h.techs++;h.above+=x.above?1:0;h.pts+=x.points;h.dp+=x.days_present;h.j+=x.jcs;h.d+=x.defects;});
   const ws=R.workshop[PICK_CITY]||{hubs:[],bikes:[]};
   const cities=['Bangalore','NCR','Hyderabad','Mumbai'];
   return {...sampleOthers(),mode:'real-local',as_of:R.as_of,month:R.month,notes:R.notes,
     tech:{display_name:t.name,hub:t.hub,city:t.city},config:cfg,current:w.cur,past:wks.filter(x=>x!==REAL_WEEK).map(x=>weekOf(t,R,x).cur).filter(x=>x.jcs>0).reverse(),days:w.days,jcs:w.jcs,
     hub:{rank:mates.findIndex(x=>x.name===t.name)+1,of:mates.length,avg_ppd:mates.reduce((a,x)=>a+x.ppd,0)/(mates.length||1),above:mates.filter(x=>x.above).length},
-    top3:{week_start:REAL_WEEK,final:R.final_until?REAL_WEEK<=R.final_until:!!R.final,cities:cities.map(c=>({city:c,rows:all.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
-    workshop:{hubs:ws.hubs,bikes:ws.bikes.slice(0,40)},
-    board:{hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
+    top3:{week_start:top3Wk,final:R.final_until?top3Wk<=R.final_until:!!R.final,cities:cities.map(c=>({city:c,rows:top3All.filter(x=>x.city===c&&x.ppd_above>0).sort((a,b)=>b.ppd_above-a.ppd_above).slice(0,3).map(x=>({name:x.name,hub:x.hub,ppd_above:x.ppd_above}))}))},
+    workshop:{hubs:ws.hubs,bikes:ws.bikes,as_of:ws.as_of||''},   // 17 Nov: every bike over 5 days (was the oldest 40)
+    board:{week_start:boardWk,hubs:Object.values(hubsAgg).map(h=>({hub:h.hub,techs:h.techs,above:h.above,ppd:h.dp?h.pts/h.dp:0,defect:h.j?100*h.d/h.j:0})),
       techs:cityAll.map(x=>({name:x.name,hub:x.hub,ppd:x.ppd,defect:x.defect}))},
     sm:(R.sm&&R.sm[PICK_CITY])?R.sm[PICK_CITY]:{...sampleOthers().sm,city:PICK_CITY},smReal:!!(R.sm&&R.sm[PICK_CITY]),cityCfg:R.config[grpOf(PICK_CITY)],
     roster:R.roster?R.roster.filter(x=>x.city===PICK_CITY).sort((a,z)=>a.role.localeCompare(z.role)||a.hub.localeCompare(z.hub)):null,rosterDays:R.roster_days||'',
@@ -562,7 +568,7 @@ function cityHtml(b){const s=b.sm;const ms=s.metrics.map(m=>({...m,pay:smPay(m)}
   const barTxt=(m,v)=>(m.dir==='low'?'≤ ':'≥ ')+fmt(m,v);
   return `<div class="card hero"><h3>${esc(t('cityT'))} · ${esc(s.city)} <span class="tag prov">${esc(t('monthToDate'))}</span></h3>
     <div class="big"><b>${rupees(per)}</b><span>${esc(t('perSm'))} / ₹5,000</span></div>
-    <div class="note">${esc(t('cityP',{n:s.sms,w:s.window}))}</div></div>
+    <div class="note">${esc(t('cityP',{n:s.sms,w:s.window}))}</div>${s.note?`<div class="note" style="margin-top:4px">${esc(s.note)}</div>`:''}</div>
    <div class="card">${ms.map(m=>`<div class="met"><div class="mh"><b>${esc(t('m_'+m.key))}</b><span class="earn ${m.pay?'p':'z'}">${rupees(m.pay)}</span></div>
      <div class="mv">${esc(fmt(m,m.value))}${m.key==='B2'?` <small style="font-size:.75rem;color:var(--muted);font-weight:600">P98 ${num(m.p98,1)} (≤ ${num(m.p98bar)})</small>`:''}</div>
      <div class="bars"><span class="${m.pay>=500?'hit':''}">₹500: ${esc(barTxt(m,m.s500))}</span><span class="${m.pay>=1000?'hit':''}">₹1,000: ${esc(barTxt(m,m.s1000))}${m.key==='B2'?esc(' + P98 ≤ '+num(m.p98bar)):''}</span></div>
@@ -576,11 +582,11 @@ function rosterHtml(b){if(!b.roster||!b.roster.length)return '';const sm=b.roste
 function workshopHtml(b){const x=b.workshop;const hubs=[...x.hubs].sort((a,c)=>c.over5-a.over5);
   return `<div class="card"><h3>${esc(t('wsT'))}</h3><ul class="list">${hubs.map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('wsHub',{b:h.bikes,p:num(h.p90,1)}))}</small></div><div class="r ${h.over5>=10?'no':''}">${h.over5}<small>${esc(t('over5'))}</small></div></li>`).join('')}</ul></div>
    <div class="card"><h3>${esc(t('wsList'))}</h3><ul class="list">${[...x.bikes].sort((a,c)=>c.days-a.days).map(k=>`<li><div class="l"><b>${esc(k.reg)}</b><small>${esc(k.hub)} · ${esc(k.jc)}</small></div><div class="r">${num(k.days,1)}<small>${esc(t('days'))}</small></div></li>`).join('')}</ul>
-   <p class="note">${esc(t('wsNote'))}</p></div>`;}
+   <p class="note">${esc(t('wsNote'))}${x.as_of?esc(' · '+x.as_of+' IST'):''}</p></div>`;}
 
 /* Service manager: own city's hubs and technicians (SM sees own city, approved 5 Nov). */
 function boardHtml(b){const x=b.board;
-  return `<div class="card"><h3>${esc(t('bdHubs'))}</h3><ul class="list">${[...x.hubs].sort((a,c)=>c.ppd-a.ppd).map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('bdHub',{a:h.above,n:h.techs,d:pct(h.defect)}))}</small></div><div class="r">${num(h.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul></div>
+  return `<div class="card"><h3>${esc(t('bdHubs'))}${x.week_start?' · '+esc(rangeLbl(x.week_start)):''}</h3><ul class="list">${[...x.hubs].sort((a,c)=>c.ppd-a.ppd).map(h=>`<li><div class="l"><b>${esc(h.hub)}</b><small>${esc(t('bdHub',{a:h.above,n:h.techs,d:pct(h.defect)}))}</small></div><div class="r">${num(h.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul></div>
    <div class="card"><h3>${esc(t('bdTechs'))}</h3><ul class="list">${[...x.techs].sort((a,c)=>c.ppd-a.ppd).map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)} · ${esc(t('defect'))} ${pct(r.defect)}</small></div></div><div class="r ${r.ppd>=b.config.target?'ok':''}">${num(r.ppd,1)}<small>${esc(t('ppd'))}</small></div></li>`).join('')}</ul>
    <p class="note">${esc(t('bdNote',{t:num((b.cityCfg||b.config).target)}))}</p></div>`;}
 
