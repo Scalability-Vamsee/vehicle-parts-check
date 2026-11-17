@@ -323,6 +323,28 @@ Object.assign(T.kn,{"otpIdSub": "ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ
 T.en.notRecord="Your mobile number / email is not in our records, so you cannot sign in. Ask your hub manager to add it.";T.hi.notRecord="आपका मोबाइल नंबर / ईमेल हमारे रिकॉर्ड में नहीं है, इसलिए साइन इन नहीं हो सकता। अपने हब मैनेजर से जुड़वाएँ।";T.te.notRecord="మీ మొబైల్ నంబర్ / ఈమెయిల్ మా రికార్డుల్లో లేదు, కాబట్టి సైన్ ఇన్ కాదు. మీ హబ్ మేనేజర్‌ను జోడించమని అడగండి.";T.ta.notRecord="உங்கள் மொபைல் எண் / மின்னஞ்சல் எங்கள் பதிவுகளில் இல்லை, அதனால் உள்நுழைய முடியாது. உங்கள் ஹப் மேனேஜரிடம் சேர்க்கச் சொல்லுங்கள்.";T.kn.notRecord="ನಿಮ್ಮ ಮೊಬೈಲ್ ನಂಬರ್ / ಇಮೇಲ್ ನಮ್ಮ ದಾಖಲೆಯಲ್ಲಿ ಇಲ್ಲ, ಆದ್ದರಿಂದ ಸೈನ್ ಇನ್ ಆಗುವುದಿಲ್ಲ. ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್‌ಗೆ ಸೇರಿಸಲು ಹೇಳಿ.";
 T.en.emEmpty='Please enter your email.';T.hi.emEmpty='कृपया अपना ईमेल डालें।';T.te.emEmpty='దయచేసి మీ ఈమెయిల్ ఎంటర్ చేయండి.';T.ta.emEmpty='தயவுசெய்து உங்கள் மின்னஞ்சலை உள்ளிடுங்கள்.';T.kn.emEmpty='ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಮೇಲ್ ಹಾಕಿ.';
 T.en.leaderAnon="Current leader of your hub (name hidden)";T.en.leaderLine="{p} points per day present · {d} of their job cards came back within 7 days";T.hi.leaderAnon="आपके हब में अभी सबसे आगे (नाम छुपा है)";T.hi.leaderLine="हाज़िर दिन पर {p} पॉइंट · उनके {d} जॉब कार्ड 7 दिन में वापस आए";T.te.leaderAnon="మీ హబ్‌లో ప్రస్తుత లీడర్ (పేరు దాచబడింది)";T.te.leaderLine="హాజరైన రోజుకు {p} పాయింట్లు · వారి జాబ్ కార్డుల్లో {d} 7 రోజుల్లో తిరిగి వచ్చాయి";T.ta.leaderAnon="உங்கள் ஹப்பில் தற்போதைய முன்னணி (பெயர் மறைக்கப்பட்டது)";T.ta.leaderLine="வந்த நாளுக்கு {p} பாயிண்ட்கள் · அவர்களின் ஜாப் கார்டுகளில் {d} 7 நாளில் திரும்பின";T.kn.leaderAnon="ನಿಮ್ಮ ಹಬ್‌ನಲ್ಲಿ ಈಗಿನ ಮುಂಚೂಣಿ (ಹೆಸರು ಮರೆಮಾಡಲಾಗಿದೆ)";T.kn.leaderLine="ಹಾಜರಾದ ದಿನಕ್ಕೆ {p} ಪಾಯಿಂಟ್ · ಅವರ ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿ {d} 7 ದಿನದಲ್ಲಿ ವಾಪಸ್ ಬಂದಿವೆ";
+/* 17 Nov (Shivani): "How it is calculated" for service managers. English + Hindi; other languages show English until checked. */
+Object.assign(T.en,{tab_smcalc:'How it is calculated',
+  sc1:'Who gets it',sc1p:'Every service manager of the city gets the same amount: the city score. Counted: {w}. Service managers in {c}: {n}.',
+  sc2:'Five measures, ₹0 / ₹500 / ₹1,000 each',sc2p:'Each measure has two bars. Reach the first bar: ₹500. Reach the second bar: ₹1,000. Highest possible: ₹5,000 a month.',
+  sc_B1:'Of the job cards billed in the city, the share where the same bike came back for repair within 7 days. ₹500 bar = the city\'s own rate of the last 4 weeks (whole %); ₹1,000 bar = 1 point better.',
+  sc_B2:'Every night at 23:59 we count the bikes still in the workshop and how many days each has been there. P90 = 9 out of 10 bikes have been there for less than this. The month is the average of the nights. ₹500 bar = the last 4 weeks\' average (whole days, rounded down); ₹1,000 bar = 20% less, and the oldest bikes (P98) also under their bar.',
+  sc_B3:'Share of customer ratings in the city with 4 or 5 stars. Same bars in every city: ₹500 at 80%, ₹1,000 at 85%.',
+  sc_B4:'Seven body parts (front cover, rear side cover, front inner panel, handle lock, rear rim with motor, front fork, seat): the share fitted as refurbished parts. ₹500 at 25%, ₹1,000 at 50%.',
+  sc_B5:'All points of the city\'s technicians divided by all their days present. ₹500 bar = city target − 0.5; ₹1,000 bar = city target.',
+  scThis:'This month',sc3:'Add the five amounts',sc3p:'The total is what each service manager of the city gets for the month.',
+  sc4:'When it is final',sc4p:'Bars are set at the start of the month from the last 4 weeks. During the month the numbers change every day. The month is final after its last week ends and the 7 days for repeat repairs have passed.'});
+Object.assign(T.hi,{tab_smcalc:'हिसाब कैसे बनता है',
+  sc1:'किसे मिलता है',sc1p:'शहर के हर सर्विस मैनेजर को एक जैसी रकम मिलती है: शहर का स्कोर। गिनती: {w}। {c} में सर्विस मैनेजर: {n}।',
+  sc2:'पाँच पैमाने, हर एक ₹0 / ₹500 / ₹1,000',sc2p:'हर पैमाने के दो बार हैं। पहला बार पार: ₹500। दूसरा बार पार: ₹1,000। ज़्यादा से ज़्यादा: ₹5,000 महीना।',
+  sc_B1:'शहर में बिल हुए जॉब कार्ड में से, जिनकी वही बाइक 7 दिन के अंदर फिर रिपेयर के लिए आई, उनका हिस्सा। ₹500 बार = पिछले 4 हफ़्तों का शहर का अपना रेट (पूरा %); ₹1,000 बार = 1 पॉइंट बेहतर।',
+  sc_B2:'हर रात 23:59 पर वर्कशॉप में खड़ी बाइक और हर बाइक कितने दिन से है, यह गिना जाता है। P90 = 10 में से 9 बाइक इससे कम दिन से हैं। महीना = रातों का औसत। ₹500 बार = पिछले 4 हफ़्तों का औसत (पूरे दिन, नीचे की ओर); ₹1,000 बार = 20% कम, और सबसे पुरानी बाइक (P98) भी अपने बार के अंदर।',
+  sc_B3:'शहर की ग्राहक रेटिंग में 4 या 5 स्टार का हिस्सा। हर शहर में एक जैसे बार: ₹500 पर 80%, ₹1,000 पर 85%।',
+  sc_B4:'सात बॉडी पार्ट (फ्रंट कवर, रियर साइड कवर, फ्रंट इनर पैनल, हैंडल लॉक, मोटर वाला रियर रिम, फ्रंट फोर्क, सीट): रिफ़र्बिश्ड लगे पार्ट का हिस्सा। ₹500 पर 25%, ₹1,000 पर 50%।',
+  sc_B5:'शहर के सभी टेक्नीशियन के कुल पॉइंट ÷ उनके कुल हाज़िर दिन। ₹500 बार = शहर का टारगेट − 0.5; ₹1,000 बार = शहर का टारगेट।',
+  scThis:'इस महीने',sc3:'पाँचों रकम जोड़ें',sc3p:'कुल रकम = शहर के हर सर्विस मैनेजर को इस महीने मिलने वाली रकम।',
+  sc4:'कब पक्का होता है',sc4p:'बार महीने की शुरुआत में पिछले 4 हफ़्तों से तय होते हैं। महीने के दौरान नंबर रोज़ बदलते हैं। आख़िरी हफ़्ता ख़त्म होने और दोबारा रिपेयर के 7 दिन बीतने के बाद महीना पक्का होता है।'});
+for(const l in T)if(T[l].tab_calc&&!T[l].tab_smcalc)T[l].tab_smcalc=T[l].tab_calc;
 Object.assign(T.en,{zRoster:'Also found: {s} service managers, {k} store keepers.',zRosterDone:'Saved the manager list: {s} service managers, {k} store keepers.',zNoHub:'Hub not known in Zimyo (Branch is Head Office or 0) for:',zRosterOff:'The service manager list saves after Vamsee applies 16_roster_upload.sql.'});
 Object.assign(T.en,{tab_zimyo:'Upload Zimyo',zT:'Upload Zimyo attendance',
   zP:'Pick the Zimyo "Daily Attendance Report" (.xlsx) from your laptop. The file is read here in your browser; only technicians\' attendance codes for days before today are saved. Upload again any time: a newer file corrects the older one.',
@@ -516,7 +538,7 @@ function skCycle(c,asOf){const met=!!c.no_parts||(!!c.note&&!!c.date&&c.date<=c.
 /* Tabs per role. Who is which role comes from FleetPro permissions: incentive-tech (exists), incentive-admin (exists, can switch role),
    incentive-sm and incentive-sk (NEW keys, need Vamsee's approval). A technician never gets the city or other technicians' detail. */
 const TABS_BY_ROLE={tech:['home','calc','lb','awards'],   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
-  sm:['city','workshop','board','top3','awards'],sk:['checklist','awards']};
+  sm:['city','smcalc','workshop','board','top3','awards'],sk:['checklist','awards']};
 let ROLE='tech', CAN_SWITCH=false;
 async function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];if(!LOCAL_PREVIEW&&DATA_MODE==='live'){try{BUNDLE=await loadWeekBundle();}catch(e){console.error(e);BUNDLE=null;renderNoData(r==='sm'?'smSoon':'liveSoon');return;}}render();window.scrollTo({top:0});}
 const monthLbl=s=>D(s).toLocaleDateString(LOCALE[LANG]||'en-IN',{month:'long',year:'numeric'});
@@ -551,8 +573,8 @@ function render(){
   const wk=document.getElementById('weeks');const showWeeks=weekTab&&ROLE==='tech'&&!!b.current;wk.style.display=showWeeks?'flex':'none';
   wk.innerHTML=showWeeks?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek'))+' · '+esc(rangeLbl(w.week_start)):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=b.current?settle(all.find(x=>x.week_start===WEEK),b.config):null;const isCur=!!b.current&&WEEK===b.current.week_start;
-  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
-  const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||(TAB==='city'&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),smcalc:()=>smCalcHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
+  const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||((TAB==='city'||TAB==='smcalc')&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   const vw=document.getElementById('view');vw.className='v-'+TAB;vw.innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
@@ -573,6 +595,17 @@ function cityHtml(b){const s=b.sm;const ms=s.metrics.map(m=>({...m,pay:smPay(m)}
      <div class="mv">${esc(fmt(m,m.value))}${m.key==='B2'?` <small style="font-size:.75rem;color:var(--muted);font-weight:600">P98 ${num(m.p98,1)} (≤ ${num(m.p98bar)})</small>`:''}</div>
      <div class="bars"><span class="${m.pay>=500?'hit':''}">₹500: ${esc(barTxt(m,m.s500))}</span><span class="${m.pay>=1000?'hit':''}">₹1,000: ${esc(barTxt(m,m.s1000))}${m.key==='B2'?esc(' + P98 ≤ '+num(m.p98bar)):''}</span></div>
      <div class="note" style="margin-top:4px">${esc(t('mh_'+m.key))}</div></div>`).join('')}</div>`+rosterHtml(b);}
+/* Service manager: how the city amount is worked out, step by step, with this month's numbers (17 Nov, Shivani). Same rules as smPay / 04_sm_scorecard.sql. */
+function smCalcHtml(b){const s=b.sm;const ms=(s.metrics||[]).map(m=>({...m,pay:smPay(m)}));const per=ms.reduce((a,m)=>a+m.pay,0);
+  const fmt=(m,v)=>v==null?'—':m.unit==='%'?pct(v):m.unit==='d'?num(v,1)+' '+t('days'):num(v,1);
+  const bar=(m,v)=>(m.dir==='low'?'≤ ':'≥ ')+fmt(m,v);
+  const one=m=>`<div class="met"><div class="mh"><b>${esc(t('m_'+m.key))}</b><span class="earn ${m.pay?'p':'z'}">${rupees(m.pay)}</span></div>
+     <p class="note" style="margin:2px 0 6px">${esc(t('sc_'+m.key))}</p>
+     <div class="bars"><span>${esc(t('scThis'))}: <b>${esc(fmt(m,m.value))}</b>${m.key==='B2'&&m.p98!=null?esc(' · P98 '+num(m.p98,1)):''}</span><span class="${m.pay>=500?'hit':''}">₹500: ${esc(bar(m,m.s500))}</span><span class="${m.pay>=1000?'hit':''}">₹1,000: ${esc(bar(m,m.s1000))}${m.key==='B2'?esc(' + P98 ≤ '+num(m.p98bar)):''}</span></div></div>`;
+  return `<div class="card">${stepHtml(1,t('sc1'),t('sc1p',{w:s.window||'',c:s.city,n:s.sms}),'')}</div>
+   <div class="card">${stepHtml(2,t('sc2'),t('sc2p'),ms.map(one).join(''))}</div>
+   <div class="card">${stepHtml(3,t('sc3'),t('sc3p'),ms.map(m=>`<div class="sum" style="font-weight:500"><span>${esc(t('m_'+m.key))}</span><span>${rupees(m.pay)}</span></div>`).join('')+`<div class="sum"><span>${esc(t('total'))}</span><span>${rupees(per)} / ₹5,000</span></div>`)}</div>
+   <div class="card">${stepHtml(4,t('sc4'),t('sc4p'),s.note?`<p class="note">${esc(s.note)}</p>`:'')}</div>`;}
 /* People of the city from Zimyo (laptop real-data mode only): who gets the city amount, and store keepers, with days present. */
 function rosterHtml(b){if(!b.roster||!b.roster.length)return '';const sm=b.roster.filter(x=>x.role==='Service manager').length;
   return `<div class="card"><h3>${esc(t('rosterT'))} <span class="tag final">Zimyo · ${esc(b.rosterDays)}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('rosterP',{n:sm}))}</p>`+
