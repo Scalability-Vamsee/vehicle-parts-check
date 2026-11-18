@@ -861,12 +861,12 @@ async function activateSession(session){
   let noRole=!f['incentive-tech']&&!f['incentive-admin']&&!f['incentive-sm']&&!f['incentive-sk'];
   // Live mode: a technician needs no manual FleetPro group. The database decides (incentive_v2_whoami: sign-in email -> technician from the sheet,
   // locked at first login). Only own data comes back from the read functions.
-  let refused=false;   // true only when the database answered "no technician / admin for this login"; an expired or broken saved login just signs out quietly
-  if(noRole){try{const{data,error}=await sbClient.rpc('incentive_v2_whoami');if(error)throw error;if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}else if(data&&data.role==='admin'){f['incentive-admin']=true;noRole=false;}else if(data&&data.role==='sm'){f['incentive-sm']=true;noRole=false;}else refused=true;}catch(e){console.warn('[FP] whoami failed',e);}}
+  let refused=false,closedYet=false;   // closedYet (18 Nov): the database says the dashboard is not switched on for technicians yet (v2_open_to_technicians = 0)   // true only when the database answered "no technician / admin for this login"; an expired or broken saved login just signs out quietly
+  if(noRole){try{const{data,error}=await sbClient.rpc('incentive_v2_whoami');if(error)throw error;if(data&&data.role==='tech'){f['incentive-tech']=true;noRole=false;}else if(data&&data.role==='admin'){f['incentive-admin']=true;noRole=false;}else if(data&&data.role==='sm'){f['incentive-sm']=true;noRole=false;}else if(data&&data.closed){closedYet=true;}else refused=true;}catch(e){console.warn('[FP] whoami failed',e);}}
   // 16 Nov (Shivani): only someone whose email / mobile number matches the records may sign in. No technician or admin match = signed out at once,
   // with a clear message on the sign-in screen (sample mode too). The read functions also refuse unknown logins, so no data is ever shown.
   if(noRole){_booted=true;document.getElementById('logout-btn').style.display='block';
-    document.getElementById('view').innerHTML=`<div class="card"><div class="msg bad" style="margin:0" data-mk="${refused?'notRecord':'noRole'}">${esc(t(refused?'notRecord':'noRole'))}</div><p class="note"><a href="./index.html">← FleetPro</a></p></div>`;return;}
+    document.getElementById('view').innerHTML=`<div class="card"><div class="msg bad" style="margin:0" data-mk="${closedYet?'liveSoon':refused?'notRecord':'noRole'}">${esc(t(closedYet?'liveSoon':refused?'notRecord':'noRole'))}</div><p class="note"><a href="./index.html">← FleetPro</a></p></div>`;return;}
   window.NO_ROLE=noRole;
   IS_ADMIN=!!f['incentive-admin'];ROLE=f['incentive-sm']?'sm':f['incentive-sk']?'sk':'tech';CAN_SWITCH=DATA_MODE==='sample';   // live: technician view only for now (SM / store keeper paused); admins get the technician picker
   _booted=true;document.getElementById('logout-btn').style.display='block';await start();
