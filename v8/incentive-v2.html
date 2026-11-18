@@ -773,7 +773,17 @@ function lbRowsFor(b,ws){if(!ws)return [];if(b.mode==='real-local')return REAL.t
   return raw.map(r=>{const p=P[r.technician];const J=(+r.jcs||0)+(p?+p.jcs||0:0),Dd=(+r.defects||0)+(p?+p.defects||0:0);const rate=+r.jcs?rateOf(J?100*Dd/J:0,mailCfg({},r.city)):0;
     return {...r,rate,pay:r.pay==null?null:(+r.points_above||0)*rate};});}
 function lbFetch(ws){if(ws in LB_CACHE)return LB_CACHE[ws];
-  LB_CACHE[ws]=null;sbClient.rpc('incentive_v2_leaderboard',{p_week:ws}).then(r=>{LB_CACHE[ws]=r.error?{err:r.error.message}:(r.data||[]);if(TAB==='lb')render();});return null;}
+  LB_CACHE[ws]=null;sbClient.rpc('incentive_v2_leaderboard',{p_week:ws}).then(r=>{
+    if(r.error&&IS_ADMIN&&ADMIN_PEOPLE&&ADMIN_PEOPLE.length){adminLbAll().then(all=>{Object.keys(LB_CACHE).forEach(k=>{if(!Array.isArray(LB_CACHE[k]))LB_CACHE[k]=all[k]||[];});lbRerender();})
+      .catch(e=>{console.error(e);LB_CACHE[ws]={err:String(e)};lbRerender();});return;}
+    LB_CACHE[ws]=r.error?{err:r.error.message}:(r.data||[]);lbRerender();});return null;}
+function lbRerender(){if(TAB==='lb'||TAB==='awards')render();}   /* 18 Nov: Awards also waits for these rows (it stayed on 'Working...') */
+/* 18 Nov: admin preview while incentive_v2_leaderboard (17) is not applied: every technician's weeks from incentive_v2_my_bundle (allowed for admins), 12 at a time, once. */
+let ADMIN_LB_P=null;
+function adminLbAll(){if(ADMIN_LB_P)return ADMIN_LB_P;ADMIN_LB_P=(async()=>{const out={};const ppl=ADMIN_PEOPLE||[];
+  for(let i=0;i<ppl.length;i+=12){await Promise.all(ppl.slice(i,i+12).map(p=>sbClient.rpc('incentive_v2_my_bundle',{p_technician:p.name}).then(r=>{const d=r.data;if(r.error||!d||!d.current||!d.tech)return;const tg=+((d.config||{}).target)||0;
+    [d.current,...(d.past||[])].forEach(w=>{const dp=+w.days_present||0,pts=+w.points||0;(out[w.week_start]=out[w.week_start]||[]).push({technician:d.tech.display_name,hub:d.tech.hub,city:d.tech.city,jcs:+w.jcs||0,defects:+w.defects||0,points:pts,days_present:dp,target:tg,points_above:dp>0?Math.max(0,pts-tg*dp):0,pay:0,is_final:!!w.is_final});});})));}
+  return out;})();return ADMIN_LB_P;}
 let LB_LAST=[];
 function lbCsv(){const head=LB_SUB==='hub'?['rank','hub','city','technicians','above_target','points_per_technician','pay']:['rank','technician','hub','city','job_cards','points','target','above_target','rate','pay'];
   const lines=[head.join(',')].concat(LB_LAST.map(r=>head.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(',')));
