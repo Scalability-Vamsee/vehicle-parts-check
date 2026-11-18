@@ -108,6 +108,8 @@ button{font-family:inherit}
 .step .no{flex:0 0 26px;height:26px;border-radius:50%;background:#1A1A2E;color:#fff;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .step .tx{flex:1;min-width:0}
 .step .tx p{font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.step .tx h3{justify-content:flex-start!important;text-align:left}   /* 18 Nov: step titles left, in line with their text (wide screens centred them) */
+.step+.step{margin-top:22px;padding-top:18px;border-top:1px dashed var(--border)}   /* 18 Nov: space between steps 3, 4, 5 of a past week */
 .sum{display:flex;justify-content:space-between;font-weight:800;padding-top:10px;margin-top:6px;border-top:2px solid var(--text)}
 .day{border-top:1px solid var(--border);padding:10px 0}
 .day:first-of-type{border-top:none}
