@@ -324,6 +324,8 @@ T.en.notRecord="Your mobile number / email is not in our records, so you cannot 
 T.en.emEmpty='Please enter your email.';T.hi.emEmpty='कृपया अपना ईमेल डालें।';T.te.emEmpty='దయచేసి మీ ఈమెయిల్ ఎంటర్ చేయండి.';T.ta.emEmpty='தயவுசெய்து உங்கள் மின்னஞ்சலை உள்ளிடுங்கள்.';T.kn.emEmpty='ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಮೇಲ್ ಹಾಕಿ.';
 T.en.leaderAnon="Current leader of your hub (name hidden)";T.en.leaderLine="{p} points per day present · {d} of their job cards came back within 7 days";T.hi.leaderAnon="आपके हब में अभी सबसे आगे (नाम छुपा है)";T.hi.leaderLine="हाज़िर दिन पर {p} पॉइंट · उनके {d} जॉब कार्ड 7 दिन में वापस आए";T.te.leaderAnon="మీ హబ్‌లో ప్రస్తుత లీడర్ (పేరు దాచబడింది)";T.te.leaderLine="హాజరైన రోజుకు {p} పాయింట్లు · వారి జాబ్ కార్డుల్లో {d} 7 రోజుల్లో తిరిగి వచ్చాయి";T.ta.leaderAnon="உங்கள் ஹப்பில் தற்போதைய முன்னணி (பெயர் மறைக்கப்பட்டது)";T.ta.leaderLine="வந்த நாளுக்கு {p} பாயிண்ட்கள் · அவர்களின் ஜாப் கார்டுகளில் {d} 7 நாளில் திரும்பின";T.kn.leaderAnon="ನಿಮ್ಮ ಹಬ್‌ನಲ್ಲಿ ಈಗಿನ ಮುಂಚೂಣಿ (ಹೆಸರು ಮರೆಮಾಡಲಾಗಿದೆ)";T.kn.leaderLine="ಹಾಜರಾದ ದಿನಕ್ಕೆ {p} ಪಾಯಿಂಟ್ · ಅವರ ಜಾಬ್ ಕಾರ್ಡ್‌ಗಳಲ್ಲಿ {d} 7 ದಿನದಲ್ಲಿ ವಾಪಸ್ ಬಂದಿವೆ";
 /* 17 Nov (Shivani): "How it is calculated" for service managers. English + Hindi; other languages show English until checked. */
+Object.assign(T.en,{noneAboveMonth:'No technician above target this month yet.'});
+Object.assign(T.hi,{noneAboveMonth:'इस महीने अभी कोई टेक्नीशियन टारगेट से ऊपर नहीं।'});
 Object.assign(T.en,{tab_smcalc:'How it is calculated',
   sc1:'Who gets it',sc1p:'Every service manager of the city gets the same amount: the city score. Counted: {w}. Service managers in {c}: {n}.',
   sc2:'Five measures, ₹0 / ₹500 / ₹1,000 each',sc2p:'Each measure has two bars. Reach the first bar: ₹500. Reach the second bar: ₹1,000. Highest possible: ₹5,000 a month.',
@@ -673,8 +675,8 @@ function awardsRealHtml(b){const A=b.awardsData;const line=(r,i)=>`<li><div clas
     const lead=H.rows[0];
     return head+`<div class="card"><h3>${esc(hub)}</h3><ul class="list"><li><div class="l"><b>${esc(t('eligibleN',{e:H.eligible,n:H.technicians}))}</b></div></li>
       <li><div class="l" style="width:100%"><div class="msg ${me>=0?'ok':'bad'}" style="margin:0">${esc(me>=0?t('youEligible',{r:me+1}):t('youNot'))}</div></div></li>${lead?`<li><div class="l"><b>🏆 ${esc(t('leaderAnon'))}</b><small style="white-space:normal">${esc(t('leaderLine',{p:num(lead.ppd,1),d:pct(lead.defect)}))}</small></div></li>`:''}</ul></div>`+notes;}
-  const city=PICK_CITY;const hubs=Object.entries(A.hubs).filter(([h,v])=>v.city===city);
-  return head+hubs.map(([h,v])=>`<div class="card"><h3>${esc(h)}</h3><p class="note" style="margin:0 0 6px">${esc(t('eligibleN',{e:v.eligible,n:v.technicians}))}</p>${v.rows.length?`<ul class="list">${v.rows.slice(0,4).map(line).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`).join('')+notes;}
+  const city=PICK_CITY;const hubs=Object.entries(A.hubs).filter(([h,v])=>v.city===city&&h!=='RSA Team');   // 18 Nov: RSA Team is not a workshop hub, left out of Technician of the Month (Vamsee, 16 Nov, Q2)
+  return head+hubs.map(([h,v])=>`<div class="card"><h3>${esc(h)}</h3><p class="note" style="margin:0 0 6px">${esc(t('eligibleN',{e:v.eligible,n:v.technicians}))}</p>${v.rows.length?`<ul class="list">${v.rows.slice(0,4).map(line).join('')}</ul>`:`<div class="empty">${esc(t('noneAboveMonth'))}</div>`}</div>`).join('')+notes;}
 
 /* Awards race (R14). */
 function awardsHtml(b){if(b.awardsReal)return awardsRealHtml(b);if(!b.awards)return `<div class="card empty">${esc(t('notYet'))}</div>`;if(ROLE==='tech')return awardsTechSampleHtml(b);const a=b.awards;const tm=a.totm;const el=tm.rows.filter(r=>r.ppd>r.target).sort((x,y)=>x.defect-y.defect);
