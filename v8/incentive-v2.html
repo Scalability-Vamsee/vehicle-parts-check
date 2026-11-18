@@ -790,7 +790,9 @@ function lbHtml(b){const all=lbRowsFor(b,WEEK);if(!all)return `<div class="card 
     ${rows.map((r,i)=>`<tr class="${r.technician===me?'me':''}"><td class="rk">${medal(i)}${i+1}</td><td><b>${esc(r.technician)}</b> ${delta(r,i)}</td><td>${esc(r.hub||'')}</td><td>${r.jcs}</td><td><b>${num(r.points)}</b></td><td>${num(r.target)}</td><td>${num(r.points_above)}</td><td>${rateChip(r)}</td><td class="${+r.pay>0?'ok':''}">${showPay(r)?rupees(Math.round(+r.pay||0)):'—'}</td></tr>`).join('')}</tbody></table></div>
     <p class="note">${esc(t('lbNote'))}${IS_ADMIN||LOCAL_PREVIEW?'':' '+esc(t('lbPayOwn'))}</p>`;}
 function showPay(r){return IS_ADMIN||LOCAL_PREVIEW||(BUNDLE&&BUNDLE.tech&&r.technician===BUNDLE.tech.display_name);}   // N8 (Vamsee's Claude, 16 Nov): names, rank and points for all; pay only on your own row (admins see all)
-function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video class="vid" controls playsinline preload="metadata" src="video/explainer_${LANG}.mp4#t=0.5"></video></div>`;}
+/* 18 Nov (Shivani): one video per city group, so a technician sees only his own city's target and cut-offs */
+function vidCity(){const c=(BUNDLE&&BUNDLE.tech&&BUNDLE.tech.city)||'';return c==='NCR'?'ncr':(c==='Hyderabad'||c==='Mumbai')?'hm':'blr';}
+function videoCard(){return `<div class="card"><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p><video class="vid" controls playsinline preload="metadata" src="video/explainer_${vidCity()}_${LANG}.mp4#t=0.5"></video></div>`;}
 function calcHtml(b,w,isCur){   // 16 Nov evening (Shivani): the steps again, the video at the end
   if(!isCur)return `<div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
   const lastD=b.days.length?b.days[b.days.length-1].d:null;
