@@ -676,7 +676,7 @@ function awardsTechSampleHtml(b){const tm=b.awards.totm;const el=tm.rows.filter(
 /* Awards on real data (laptop only): Technician of the Month per hub (5 Nov mail: above target, lowest 7-day defect rate; no city pool since 18 Nov). */
 function awardsRealHtml(b){const A=b.awardsData;const line=(r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${num(r.ppd,1)} ${esc(t('ppd'))} · ${r.jcs} JC${r.hub?' · '+esc(r.hub):''}</small></div></div><div class="r">${pct(r.defect)}<small>${esc(t('defect'))}</small></div></li>`;
   const notes=`<div class="card"><h3>${esc(t('supT'))} <span class="tag prov">+₹2,000</span></h3><p class="note" style="margin:0">${esc(t('supP'))}</p></div>
-   <div class="card"><h3>${esc(t('smotmT'))} · ${esc(t('skotmT'))}</h3><div class="empty">${esc(t('notYet'))}</div></div>`;
+`;   /* 19 Nov: no Service Manager / Store Keeper of the Month box on the technician page (SM and store keeper paused) */
   const head=`<div class="card"><h3>${esc(t('totmT'))} · ${esc(A.window)} <span class="tag prov">₹1,500</span></h3><p class="note" style="margin:0">${esc(t('totmP'))}</p></div>`;
   if(ROLE==='tech'){const hub=b.tech.hub;const H=A.hubs[hub];if(!H)return head+`<div class="card empty">${esc(t('noHubData'))}</div>`+notes;
     const me=H.rows.findIndex(r=>r.name===b.tech.display_name);
