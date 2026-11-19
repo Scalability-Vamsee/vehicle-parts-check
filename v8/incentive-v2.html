@@ -405,13 +405,17 @@ function rateOf(defPct,c){if(defPct<=c.c40)return 40;if(defPct<=c.c30)return 30;
 /* 18 Nov (Shivani): rules of Vamsee's sent mail of 5 Nov: these city cut-offs, and the rate from the 7-day defect rate of the job cards of THIS WEEK AND THE WEEK BEFORE. */
 const MAIL_CUTS={'Bangalore':{c40:3.5,c30:5.5,c20:7,c10:9.5},'NCR':{c40:3,c30:5,c20:7,c10:8.5},'Hyderabad+Mumbai':{c40:1.5,c30:4,c20:5,c10:6.5}};
 function mailCfg(cfg,city){const g=city==='Hyderabad'||city==='Mumbai'?'Hyderabad+Mumbai':city;return {...cfg,...(MAIL_CUTS[g]||{})};}
-function settle(w,cfg){const target=cfg.target*w.days_present;const above=w.days_present>0?Math.max(0,w.points-target):0;
+/* 19 Nov: target per day present by week (same as incentive_config): Bangalore 7 / 7.5 from 30 Nov / 8 from 28 Dec; NCR, Hyderabad, Mumbai 6 / 6.5 / 7 */
+const TARGET_STEPS={'Bangalore':[['2026-11-02',7],['2026-11-30',7.5],['2026-12-28',8]],'other':[['2026-11-02',6],['2026-11-30',6.5],['2026-12-28',7]]};
+function targetFor(city,ws){if(!city||!ws)return null;const st=TARGET_STEPS[city==='Bangalore'?'Bangalore':'other'];let v=null;st.forEach(([d,x])=>{if(ws>=d)v=x;});return v;}
+function settle(w,cfg){const tpd=(w.target!=null&&!w._settled)?+w.target:(targetFor(cfg.city,w.week_start)??cfg.target);   /* 19 Nov: the week's own target per day (server row), so November weeks keep 7 / 6 in December */
+  const target=tpd*w.days_present;const above=w.days_present>0?Math.max(0,w.points-target):0;
   const J=w.jcs+(w.prev_jcs||0),Dd=w.defects+(w.prev_defects||0);const def=J?100*Dd/J:0;let rate=w.jcs?rateOf(def,cfg):0;
-  return {...w,target,points_above:above,defect_pct:def,def_jcs:J,def_defects:Dd,rate,pay:above*rate};}
+  return {...w,_settled:true,tpd,target,points_above:above,defect_pct:def,def_jcs:J,def_defects:Dd,rate,pay:above*rate};}
 /* live bundle: give every week the job cards / defects of the week before (when that week is in the bundle) and the mail's cut-offs */
 function attachPrev(b){if(!b||!b.current)return b;const all=[b.current,...(b.past||[])];
   all.forEach(w=>{const p=all.find(x=>x.week_start===addDays(w.week_start,-7));if(p){w.prev_jcs=+p.jcs||0;w.prev_defects=+p.defects||0;}});
-  if(b.tech)b.config=mailCfg(b.config,b.tech.city);return b;}
+  if(b.tech)b.config={...mailCfg(b.config,b.tech.city),city:b.tech.city};return b;}
 
 /* ── DATA ──
    Shape = the proposed tables in bounce-workspace sql/incentive_v9/08_proposed_objects.sql:
@@ -502,7 +506,7 @@ function weekOf(t,R,ws){const end=addDays(ws,7);const inW=s=>s>=ws&&s<end;
   const pw=addDays(ws,-7);const pjs=t.jcs.filter(j=>j.billed_date>=pw&&j.billed_date<ws);let pj=pjs.length,pdf=pjs.filter(j=>j.def_7d).length;
   if(!pj&&R.prev_week&&R.prev_week.start===pw&&R.prev_week.techs[t.name]){[pj,pdf]=R.prev_week.techs[t.name];}   // 26 Oct to 1 Nov (before the data starts)
   return {days,jcs:js,cur:{week_start:ws,jcs:js.length,defects:js.filter(j=>j.def_7d).length,prev_jcs:pj,prev_defects:pdf,points:pts,days_present:dp,is_final:R.final_until?ws<=R.final_until:!!R.final}};}
-function realBundle(){const R=REAL;if(!R._mailCuts){Object.keys(R.config).forEach(g=>Object.assign(R.config[g],MAIL_CUTS[g]||{}));R._mailCuts=true;}const wks=realWeeks(R);if(!REAL_WEEK||!wks.includes(REAL_WEEK))REAL_WEEK=wks[wks.length-1];
+function realBundle(){const R=REAL;if(!R._mailCuts){Object.keys(R.config).forEach(g=>Object.assign(R.config[g],MAIL_CUTS[g]||{},{city:g==='Bangalore'?'Bangalore':'NCR'}));R._mailCuts=true;}const wks=realWeeks(R);if(!REAL_WEEK||!wks.includes(REAL_WEEK))REAL_WEEK=wks[wks.length-1];
   const techs=R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=REAL_WEEK&&j.billed_date<addDays(REAL_WEEK,7)));
   if(!PICK_TECH||!R.techs.find(x=>x.name===PICK_TECH))PICK_TECH=[...techs].sort((a,c)=>c.jcs.length-a.jcs.length)[0].name;
   const t=R.techs.find(x=>x.name===PICK_TECH);   // keep the chosen technician even in a week without job cards
@@ -710,7 +714,7 @@ function homeHtml(b,w,isCur){
   let h=`<div class="card hero"><h3>${esc(isCur&&b.mode!=='real-local'?t('thisWeek'):t('week'))} · ${esc(rangeLbl(w.week_start))} ${tag}</h3>
    <div class="big"><b>${num(w.points)}</b><span>${esc(t('pointsSoFar'))} / ${num(w.target)} ${esc(t('target'))}</span></div>
    <div class="bar"><i class="${reached?'ok':''}" style="width:${prog}%"></i></div>
-   <div class="barlbl"><span>0</span><span>${esc(t('target'))} ${num(w.target)} = ${num(b.config.target)} × ${num(w.days_present,1)} ${esc(t('daysPresent'))}</span></div>
+   <div class="barlbl"><span>0</span><span>${esc(t('target'))} ${num(w.target)} = ${num(w.tpd)} × ${num(w.days_present,1)} ${esc(t('daysPresent'))}</span></div>
    <div class="msg ${reached?'ok':'go'}">${esc(reached?t('reached'):t('toGo',{n:num(w.target-w.points)}))}</div></div>`;
   h+=`<div class="card"><div class="grid">
    <div class="stat"><div class="k">${esc(t('above'))}</div><div class="v">${num(w.points_above)}</div></div>
@@ -781,8 +785,8 @@ function lbRerender(){if(TAB==='lb'||TAB==='awards')render();}   /* 18 Nov: Awar
 /* 18 Nov: admin preview while incentive_v2_leaderboard (17) is not applied: every technician's weeks from incentive_v2_my_bundle (allowed for admins), 12 at a time, once. */
 let ADMIN_LB_P=null;
 function adminLbAll(){if(ADMIN_LB_P)return ADMIN_LB_P;ADMIN_LB_P=(async()=>{const out={};const ppl=ADMIN_PEOPLE||[];
-  for(let i=0;i<ppl.length;i+=12){await Promise.all(ppl.slice(i,i+12).map(p=>sbClient.rpc('incentive_v2_my_bundle',{p_technician:p.name}).then(r=>{const d=r.data;if(r.error||!d||!d.current||!d.tech)return;const tg=+((d.config||{}).target)||0;
-    [d.current,...(d.past||[])].forEach(w=>{const dp=+w.days_present||0,pts=+w.points||0;(out[w.week_start]=out[w.week_start]||[]).push({technician:d.tech.display_name,hub:d.tech.hub,city:d.tech.city,jcs:+w.jcs||0,defects:+w.defects||0,points:pts,days_present:dp,target:tg,points_above:dp>0?Math.max(0,pts-tg*dp):0,pay:0,is_final:!!w.is_final});});})));}
+  for(let i=0;i<ppl.length;i+=12){await Promise.all(ppl.slice(i,i+12).map(p=>sbClient.rpc('incentive_v2_my_bundle',{p_technician:p.name}).then(r=>{const d=r.data;if(r.error||!d||!d.current||!d.tech)return;const tgNow=+((d.config||{}).target)||0;
+    [d.current,...(d.past||[])].forEach(w=>{const dp=+w.days_present||0,pts=+w.points||0,tg=targetFor(d.tech.city,w.week_start)??tgNow;(out[w.week_start]=out[w.week_start]||[]).push({technician:d.tech.display_name,hub:d.tech.hub,city:d.tech.city,jcs:+w.jcs||0,defects:+w.defects||0,points:pts,days_present:dp,target:tg,points_above:dp>0?Math.max(0,pts-tg*dp):0,pay:0,is_final:!!w.is_final});});})));}
   return out;})();return ADMIN_LB_P;}
 let LB_LAST=[];
 function lbCsv(){const head=LB_SUB==='hub'?['rank','hub','city','technicians','above_target','points_per_technician','pay']:['rank','technician','hub','city','job_cards','points','target','above_target','rate','pay'];
@@ -823,7 +827,7 @@ function showPay(r){return IS_ADMIN||LOCAL_PREVIEW||(BUNDLE&&BUNDLE.tech&&r.tech
 function vidCity(){const c=(BUNDLE&&BUNDLE.tech&&BUNDLE.tech.city)||'';return c==='NCR'?'ncr':(c==='Hyderabad'||c==='Mumbai')?'hm':'blr';}
 function videoCard(){return `<div class="card vidcard"><div><h3>▶ ${esc(t('vidT'))}</h3><p class="note" style="margin:4px 0 10px">${esc(t('vidP'))}</p>${(()=>{const v=(T[LANG]&&T[LANG].vidList)||T.en.vidList;return `<div class="vlist"><b>${esc(v[0])}</b><ol>${v.slice(1).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`;})()}</div><video class="vid" controls playsinline preload="metadata" src="video/explainer_${vidCity()}_${LANG}.mp4#t=0.5"></video></div>`;}
 function calcHtml(b,w,isCur){   // 16 Nov evening (Shivani): the steps again, the video at the end
-  if(!isCur)return `<div class="card">${stepHtml(1,t('s1'),t('s1p'),`<div class="sum"><span>${w.jcs} JC</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}${stepHtml(2,t('s2'),t('s2p'),`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
+  if(!isCur)return `<div class="card">${stepHtml(1,t('s1'),t('s1p'),`<div class="sum"><span>${w.jcs} JC</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}${stepHtml(2,t('s2'),t('s2p'),`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(w.tpd)} × ${num(w.days_present,1)}</span><span>${num(w.target)}</span></div>`)}${rateStep(b,w)}${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
   const lastD=b.days.length?b.days[b.days.length-1].d:null;
   const byDay=b.days.map(d=>{const list=b.jcs.filter(j=>j.billed_date===d.d);
     return `<details class="day" ${d.d===lastD?'open':''}><summary class="dh"><span>${esc(dayName(d.d))} · ${list.length} JC</span><span>${num(d.points)} ${esc(t('pts'))}</span></summary>${list.length?list.map(j=>{const raw=0.25+j.labour_min/60;
@@ -833,7 +837,7 @@ function calcHtml(b,w,isCur){   // 16 Nov evening (Shivani): the steps again, th
   return `<div class="card">
    ${stepHtml(1,t('s1'),t('s1p'),byDay+`<div class="sum"><span>${esc(t('total'))}</span><span>${num(w.points)} ${esc(t('pts'))}</span></div>`)}</div>
    <div class="card">${stepHtml(2,t('s2'),t('s2p'),`<ul class="list">${daysHtml}</ul><div class="sum"><span>${esc(t('total'))}</span><span>${num(w.days_present,1)}</span></div>`)}</div>
-   <div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(b.config.target)} × ${num(w.days_present,1)}</span><span>${num(w.target)} ${esc(t('pts'))}</span></div>`)}</div>
+   <div class="card">${stepHtml(3,t('s3'),t('s3p'),`<div class="sum"><span>${num(w.tpd)} × ${num(w.days_present,1)}</span><span>${num(w.target)} ${esc(t('pts'))}</span></div>`)}</div>
    <div class="card">${rateStep(b,w)}</div><div class="card">${payStep(w)}</div><p class="note">${esc(t('notFinal'))}</p>`+videoCard();
 }
 /* Job card label: the DMS job card number technicians see in DMS (jc_jc_status_log.dmsjcid); the internal bike-jc id only when there is none. */
