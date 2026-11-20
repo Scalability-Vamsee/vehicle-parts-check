@@ -518,7 +518,7 @@ function realBundle(){const R=REAL;if(!R._mailCuts){Object.keys(R.config).forEac
   /* 17 Nov: the service manager view has no week picker, so its Leaderboard uses the last complete week and its Top 3 the last final week (not a 1-day current week). */
   const inWk=wk=>R.techs.filter(x=>x.jcs.some(j=>j.billed_date>=wk&&j.billed_date<addDays(wk,7))).map(x=>statW(x,wk));
   const boardWk=ROLE==='sm'?(wks.filter(x=>addDays(x,6)<=R.as_of).pop()||REAL_WEEK):REAL_WEEK;
-  const top3Wk=ROLE==='sm'?(R.final_until&&wks.includes(R.final_until)?R.final_until:boardWk):REAL_WEEK;
+  const top3Wk=R.final_until&&wks.includes(R.final_until)?R.final_until:boardWk;   /* 20 Nov: last final week for technicians too */
   const boardAll=boardWk===REAL_WEEK?all:inWk(boardWk),top3All=top3Wk===REAL_WEEK?all:inWk(top3Wk);
   const cityAll=boardAll.filter(x=>x.city===PICK_CITY);
   const hubsAgg={};cityAll.forEach(x=>{const h=hubsAgg[x.hub]||(hubsAgg[x.hub]={hub:x.hub,techs:0,above:0,pts:0,dp:0,j:0,d:0});h.techs++;h.above+=x.above?1:0;h.pts+=x.points;h.dp+=x.days_present;h.j+=x.jcs;h.d+=x.defects;});
@@ -561,7 +561,7 @@ function skCycle(c,asOf){const met=!!c.no_parts||(!!c.note&&!!c.date&&c.date<=c.
 /* ── RENDER ── */
 /* Tabs per role. Who is which role comes from FleetPro permissions: incentive-tech (exists), incentive-admin (exists, can switch role),
    incentive-sm and incentive-sk (NEW keys, need Vamsee's approval). A technician never gets the city or other technicians' detail. */
-const TABS_BY_ROLE={tech:['home','calc','lb','awards'],   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
+const TABS_BY_ROLE={tech:['home','calc','lb','top3','awards'],   /* 20 Nov: weekly top 3 per city back for technicians (dashboard spec, Incentive v2 pack) */   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
   sm:['city','smcalc','workshop','board','top3','awards'],sk:['checklist','awards']};
 let ROLE='tech', CAN_SWITCH=false;
 async function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];if(!LOCAL_PREVIEW&&DATA_MODE==='live'){try{BUNDLE=await loadWeekBundle();}catch(e){console.error(e);BUNDLE=null;renderNoData(r==='sm'?'smSoon':'liveSoon');return;}}render();window.scrollTo({top:0});}
@@ -597,13 +597,21 @@ function render(){
   const wk=document.getElementById('weeks');const showWeeks=weekTab&&ROLE==='tech'&&!!b.current;wk.style.display=showWeeks?'flex':'none';
   wk.innerHTML=showWeeks?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek'))+' · '+esc(rangeLbl(w.week_start)):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=b.current?settle(all.find(x=>x.week_start===WEEK),b.config):null;const isCur=!!b.current&&WEEK===b.current.week_start;
-  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>top3Html(b),city:()=>cityHtml(b),smcalc:()=>smCalcHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>(b.mode==='live'?top3LiveHtml(b):top3Html(b)),city:()=>cityHtml(b),smcalc:()=>smCalcHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
   const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||((TAB==='city'||TAB==='smcalc')&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   const vw=document.getElementById('view');vw.className='v-'+TAB;vw.innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
 }
 
 /* Weekly top 3 per city: final weeks only, points above target per day present. Names shown here (spec default; Vamsee to confirm). */
+/* 20 Nov: weekly top 3 per city for technicians in live mode, from the leaderboard rows of the last FINAL week (a week is final 7 days after its Sunday):
+   points above target per day present, only technicians above target. The database top-3 function is for service managers only. */
+function top3LiveHtml(b){const today=incentiveToday();const wks=[b.current,...(b.past||[])].map(x=>x.week_start).filter(ws=>addDays(ws,14)<=today).sort().reverse();
+  let ws=wks[0];if(!ws){ws=addDays(b.current.week_start,-14);if(ws<'2026-11-02')return `<div class="card empty">${esc(t('noneAbove'))}</div>`;}
+  const rows=lbFetch(ws);if(!rows)return `<div class="card empty">${esc(t('lgBusy'))}</div>`;if(rows.err)return `<div class="card"><div class="msg go" style="margin:0">${esc(t('lbOff'))}</div></div>`;
+  const cities=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>({city:c,rows:rows.filter(r=>r.city===c&&+r.points_above>0&&+r.days_present>0)
+    .map(r=>({name:r.technician,hub:r.hub||'',ppd_above:(+r.points_above)/(+r.days_present)})).sort((x,y)=>y.ppd_above-x.ppd_above).slice(0,3)}));
+  return top3Html({top3:{week_start:ws,final:true,cities}});}
 function top3Html(b){const x=b.top3;
   return `<div class="card"><h3>${esc(t('top3T'))} · ${esc(rangeLbl(x.week_start))} ${x.final===false?`<span class="tag prov">${esc(t('prov'))}</span>`:`<span class="tag final">${esc(t('final'))}</span>`}</h3><p class="note" style="margin:0 0 6px">${esc(t('top3P'))}</p></div>`+
    x.cities.map(c=>`<div class="card"><h3>${esc(c.city)}</h3>${c.rows.length?`<ul class="list">${c.rows.map((r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${esc(r.hub)}</small></div></div><div class="r">+${num(r.ppd_above,1)}<small>${esc(t('ppdAbove'))}</small></div></li>`).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`).join('');}
@@ -781,7 +789,7 @@ function lbFetch(ws){if(ws in LB_CACHE)return LB_CACHE[ws];
     if(r.error&&IS_ADMIN&&ADMIN_PEOPLE&&ADMIN_PEOPLE.length){adminLbAll().then(all=>{Object.keys(LB_CACHE).forEach(k=>{if(!Array.isArray(LB_CACHE[k]))LB_CACHE[k]=all[k]||[];});lbRerender();})
       .catch(e=>{console.error(e);LB_CACHE[ws]={err:String(e)};lbRerender();});return;}
     LB_CACHE[ws]=r.error?{err:r.error.message}:(r.data||[]);lbRerender();});return null;}
-function lbRerender(){if(TAB==='lb'||TAB==='awards')render();}   /* 18 Nov: Awards also waits for these rows (it stayed on 'Working...') */
+function lbRerender(){if(TAB==='lb'||TAB==='awards'||TAB==='top3')render();}   /* 18 Nov: Awards also waits for these rows (it stayed on 'Working...') */
 /* 18 Nov: admin preview while incentive_v2_leaderboard (17) is not applied: every technician's weeks from incentive_v2_my_bundle (allowed for admins), 12 at a time, once. */
 let ADMIN_LB_P=null;
 function adminLbAll(){if(ADMIN_LB_P)return ADMIN_LB_P;ADMIN_LB_P=(async()=>{const out={};const ppl=ADMIN_PEOPLE||[];
