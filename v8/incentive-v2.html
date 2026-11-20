@@ -564,7 +564,7 @@ function skCycle(c,asOf){const met=!!c.no_parts||(!!c.note&&!!c.date&&c.date<=c.
 /* ── RENDER ── */
 /* Tabs per role. Who is which role comes from FleetPro permissions: incentive-tech (exists), incentive-admin (exists, can switch role),
    incentive-sm and incentive-sk (NEW keys, need Vamsee's approval). A technician never gets the city or other technicians' detail. */
-const TABS_BY_ROLE={tech:['home','calc','lb','top3','awards'],   /* 20 Nov: weekly top 3 per city back for technicians (dashboard spec, Incentive v2 pack) */   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
+const TABS_BY_ROLE={tech:['home','calc','lb','awards'],   /* 20 Nov (Shivani): no Top 3 tab for technicians, it is not in the 5 Nov mail */   // 16 Nov evening (Shivani): Leaderboard like the old FleetPro (live needs 17_leaderboard.sql + Vamsee's yes)
   sm:['city','smcalc','workshop','board','top3','awards'],sk:['checklist','awards']};
 let ROLE='tech', CAN_SWITCH=false;
 async function setRole(r){ROLE=r;TAB=TABS_BY_ROLE[r][0];if(!LOCAL_PREVIEW&&DATA_MODE==='live'){try{BUNDLE=await loadWeekBundle();}catch(e){console.error(e);BUNDLE=null;renderNoData(r==='sm'?'smSoon':'liveSoon');return;}}render();window.scrollTo({top:0});}
