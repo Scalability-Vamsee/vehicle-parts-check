@@ -379,6 +379,7 @@ T.en.vidList=["In this video", "1 point = 1 hour of work: 15 minutes per job car
 T.en.poolNote="Technicians above target in hubs with fewer than 4 eligible compete together; one winner per pool. Hyderabad and Mumbai are one pool.";T.hi.poolNote="4 से कम योग्य टेक्नीशियन वाले हब के टारगेट से ऊपर टेक्नीशियन साथ में मुकाबला करते हैं; हर पूल में एक विजेता। हैदराबाद और मुंबई एक पूल हैं।";
 T.en.totmNeed2="Every hub has its own winner; Hyderabad and Mumbai together have one winner.";T.en.poolNote="Hyderabad and Mumbai compete together: one winner for all their hubs.";T.en.toPool="Hyderabad + Mumbai: one winner together.";T.hi.totmNeed2="हर हब का अपना विजेता; हैदराबाद और मुंबई का मिलाकर एक विजेता।";T.hi.poolNote="हैदराबाद और मुंबई साथ में मुकाबला करते हैं: उनके सभी हब का एक विजेता।";T.hi.toPool="हैदराबाद + मुंबई: मिलाकर एक विजेता।";T.te.totmNeed2="ప్రతి హబ్‌కు ఒక విజేత; హైదరాబాద్, ముంబై కలిపి ఒక విజేత.";T.te.poolNote="హైదరాబాద్, ముంబై కలిసి పోటీ: వారి అన్ని హబ్‌లకు ఒక విజేత.";T.te.toPool="హైదరాబాద్ + ముంబై: కలిపి ఒక విజేత.";T.ta.totmNeed2="ஒவ்வொரு ஹப்பிற்கும் ஒரு வெற்றியாளர்; ஹைதராபாத், மும்பை சேர்த்து ஒரு வெற்றியாளர்.";T.ta.poolNote="ஹைதராபாத், மும்பை சேர்ந்து போட்டி: அவர்களின் எல்லா ஹப்புகளுக்கும் ஒரு வெற்றியாளர்.";T.ta.toPool="ஹைதராபாத் + மும்பை: சேர்த்து ஒரு வெற்றியாளர்.";T.kn.totmNeed2="ಪ್ರತಿ ಹಬ್‌ಗೆ ಒಬ್ಬ ವಿಜೇತ; ಹೈದರಾಬಾದ್, ಮುಂಬೈ ಸೇರಿ ಒಬ್ಬ ವಿಜೇತ.";T.kn.poolNote="ಹೈದರಾಬಾದ್, ಮುಂಬೈ ಒಟ್ಟಿಗೆ ಸ್ಪರ್ಧೆ: ಅವರ ಎಲ್ಲಾ ಹಬ್‌ಗಳಿಗೆ ಒಬ್ಬ ವಿಜೇತ.";T.kn.toPool="ಹೈದರಾಬಾದ್ + ಮುಂಬೈ: ಸೇರಿ ಒಬ್ಬ ವಿಜೇತ.";
 T.en.totmNeed2="One winner per hub.";T.hi.totmNeed2="हर हब का एक विजेता।";T.te.totmNeed2="ప్రతి హబ్‌కు ఒక విజేత.";T.ta.totmNeed2="ஒவ்வொரு ஹப்பிற்கும் ஒரு வெற்றியாளர்.";T.kn.totmNeed2="ಪ್ರತಿ ಹಬ್‌ಗೆ ಒಬ್ಬ ವಿಜೇತ.";
+T.en.inactiveTag="inactive";T.en.inactT="Inactive technicians";T.en.inactP="Worked earlier in November, but no job card and no present day in the last full week (Monday to Sunday) and none this week. They count again as soon as they bill a job card.";T.en.inactLast="last job card {d}";T.en.inactNone="Nobody inactive.";T.hi.inactiveTag="निष्क्रिय";T.hi.inactT="निष्क्रिय टेक्नीशियन";T.hi.inactP="नवंबर में पहले काम किया, पर पिछले पूरे हफ़्ते (सोम से रवि) और इस हफ़्ते न कोई जॉब कार्ड, न हाज़िरी। जॉब कार्ड बिल होते ही फिर सक्रिय।";T.hi.inactLast="आख़िरी जॉब कार्ड {d}";T.hi.inactNone="कोई निष्क्रिय नहीं।";T.te.inactiveTag="నిష్క్రియ";T.ta.inactiveTag="செயலற்ற";T.kn.inactiveTag="ನಿಷ್ಕ್ರಿಯ";
 const LANGS=['en','hi','te','ta','kn'];const LOCALE={en:'en-IN',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN'};
 function t(k,v){let s=(T[LANG]&&T[LANG][k])??T.en[k]??k;if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s;}
 function why(code){const w=T[LANG].why||T.en.why;return w[code]||code;}
@@ -577,7 +578,7 @@ function render(){
   const ps=document.getElementById('pick-sel');
   if(b.mode==='real-local'&&(ROLE==='tech'||ROLE==='sm')){ps.style.display='block';
     if(ROLE==='tech'){ps.onchange=e=>pickTech(e.target.value);
-      ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${REAL.techs.filter(x=>x.city===c).sort((a,z)=>a.name.localeCompare(z.name)).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
+      const IMP=inactiveMap()||{};ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${REAL.techs.filter(x=>x.city===c).sort((a,z)=>a.name.localeCompare(z.name)).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub)}${IMP[x.name]?' · '+esc(t('inactiveTag')):''}</option>`).join('')}</optgroup>`).join('');}
     else if(REAL.roster){const sms=REAL.roster.filter(x=>x.role==='Service manager');if(!PICK_SM){const f=sms.find(x=>x.city===PICK_CITY);if(f)PICK_SM=f.name;}
       ps.onchange=e=>pickSm(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${sms.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SM?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('')}</optgroup>`).join('');}
     else{ps.onchange=e=>pickCity(e.target.value);ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<option ${c===PICK_CITY?'selected':''}>${esc(c)}</option>`).join('');}
@@ -585,7 +586,7 @@ function render(){
     ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<option ${c===SM_CITY?'selected':''}>${esc(c)}</option>`).join('');
   }else if(b.mode==='live'&&ADMIN_PEOPLE&&ADMIN_PEOPLE.length){ps.style.display='block';
     ps.onchange=async e=>{PICK_TECH=e.target.value;BUNDLE=await loadWeekBundle();WEEK=null;render();};
-    ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${ADMIN_PEOPLE.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub||'')}</option>`).join('')}</optgroup>`).join('');
+    const IMP=inactiveMap()||{};ps.innerHTML=['Bangalore','NCR','Hyderabad','Mumbai'].map(c=>`<optgroup label="${esc(c)}">${ADMIN_PEOPLE.filter(x=>x.city===c).map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_TECH?'selected':''}>${esc(x.name)} · ${esc(x.hub||'')}${IMP[x.name]?' · '+esc(t('inactiveTag')):''}</option>`).join('')}</optgroup>`).join('');
   }else if(b.mode==='real-local'&&ROLE==='sk'&&b.skReal){ps.style.display='block';ps.onchange=e=>pickSk(e.target.value);
     ps.innerHTML=REAL.roster.filter(x=>x.role==='Store keeper').map(x=>`<option value="${esc(x.name)}" ${x.name===PICK_SK?'selected':''}>${esc(x.name)} · ${esc(x.hub)}</option>`).join('');
   }else ps.style.display='none';
@@ -600,7 +601,7 @@ function render(){
   const wk=document.getElementById('weeks');const showWeeks=weekTab&&ROLE==='tech'&&!!b.current;wk.style.display=showWeeks?'flex':'none';
   wk.innerHTML=showWeeks?all.map(w=>`<button class="wk ${w.week_start===WEEK?'on':''}" onclick="pickWeek('${w.week_start}')">${w.week_start===b.current.week_start&&b.mode!=='real-local'?esc(t('thisWeek'))+' · '+esc(rangeLbl(w.week_start)):esc(rangeLbl(w.week_start))}</button>`).join(''):'';
   const w=b.current?settle(all.find(x=>x.week_start===WEEK),b.config):null;const isCur=!!b.current&&WEEK===b.current.week_start;
-  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>(b.mode==='live'?top3LiveHtml(b):top3Html(b)),city:()=>cityHtml(b),smcalc:()=>smCalcHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
+  const V={home:()=>homeHtml(b,w,isCur),calc:()=>calcHtml(b,w,isCur),top3:()=>(b.mode==='live'?top3LiveHtml(b):top3Html(b)),city:()=>cityHtml(b),smcalc:()=>smCalcHtml(b),workshop:()=>workshopHtml(b),board:()=>boardHtml(b),awards:()=>awardsHtml(b),lb:()=>lbHtml(b)+inactiveCard(),checklist:()=>checklistHtml(b),zimyo:()=>zimyoHtml()};
   const stillSample=b.mode==='real-local'&&((TAB==='awards'&&!b.awardsReal)||(TAB==='checklist'&&!b.skReal)||((TAB==='city'||TAB==='smcalc')&&!b.smReal))?`<div class="sample">${esc(t('stillSample'))}</div>`:'';
   const vw=document.getElementById('view');vw.className='v-'+TAB;vw.innerHTML=stillSample+V[TAB]();
   document.getElementById('foot').textContent=t('asOf',{d:dayName(b.as_of)})+' · '+t('updated');
@@ -690,6 +691,24 @@ function awardsTechSampleHtml(b){const tm=b.awards.totm;const el=tm.rows.filter(
    <div class="card"><h3>${esc(t('supT'))} <span class="tag prov">+₹2,000</span></h3><p class="note" style="margin:0">${esc(t('supP'))}</p></div>`;}
 /* Awards on real data (laptop only): Technician of the Month per hub (5 Nov mail: above target, lowest 7-day defect rate; no city pool since 18 Nov). */
 /* 20 Nov: Technician of the Month pool rule (Incentive v2 Drive pack, chosen by Shivani): own winner only with 4+ eligible in the hub; else one pool per city group. */
+/* 20 Nov (Shivani): INACTIVE = had job cards earlier in November, but no job card and no present day in the last full week (Mon-Sun) and none this week yet.
+   Laptop: from the full data. Live: from the leaderboard rows (technicians with job cards in a week); a Zimyo-present week without job cards is not visible there. */
+function weekMonday(d){const x=new Date(d+'T00:00:00Z');return addDays(d,-((x.getUTCDay()+6)%7));}
+function inactiveMap(){const m={};
+  if(REAL_LOCAL&&REAL){const lastMon=addDays(weekMonday(REAL.as_of),-7);
+    REAL.techs.forEach(x=>{const before=x.jcs.map(j=>j.billed_date).filter(d=>d<lastMon).sort();
+      const recent=x.jcs.some(j=>j.billed_date>=lastMon)||x.days.some(d=>d.d>=lastMon&&d.present>0&&d.reason!=='none_jc'&&d.reason!=='zero_week');
+      if(before.length&&!recent)m[x.name]={hub:x.hub,city:x.city,last:before[before.length-1]};});return m;}
+  if(DATA_MODE!=='live')return m;
+  const thisMon=weekMonday(incentiveToday()),lastMon=addDays(thisMon,-7);const seen={};
+  for(let w='2026-11-02';w<=thisMon;w=addDays(w,7)){const r=lbFetch(w);if(!r)return null;if(r.err)return m;
+    r.forEach(x=>{const p=seen[x.technician]||(seen[x.technician]={hub:x.hub,city:x.city,last:null,recent:false});if(w>=lastMon)p.recent=true;else p.last=addDays(w,6);if(x.hub)p.hub=x.hub;if(x.city)p.city=x.city;});}
+  Object.entries(seen).forEach(([n,p])=>{if(p.last&&!p.recent)m[n]={hub:p.hub,city:p.city,last:p.last};});return m;}
+function inactiveCard(){if(!(IS_ADMIN||LOCAL_PREVIEW))return '';const IM=inactiveMap();if(!IM)return '';
+  const rows=Object.entries(IM).filter(([n,p])=>!LB_CITY||p.city===LB_CITY).sort((a,z)=>(a[1].hub||'').localeCompare(z[1].hub||'')||a[0].localeCompare(z[0]));
+  return `<div class="card"><h3>${esc(t('inactT'))}${LB_CITY?' · '+esc(LB_CITY):''} <span class="tag prov">${rows.length}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('inactP'))}</p>`
+   +(rows.length?`<ul class="list">${rows.map(([n,p])=>`<li><div class="l"><b>${esc(n)}</b><small>${esc(p.hub||'')} · ${esc(t('inactLast',{d:dayName(p.last)}))}</small></div></li>`).join('')}</ul>`:`<div class="empty">${esc(t('inactNone'))}</div>`)+`</div>`;}
+function activeCount(hub,v){const IM=inactiveMap()||{};return Math.max(v.eligible,v.technicians-Object.values(IM).filter(p=>p.hub===hub).length);}
 const POOL_MIN=4;const poolName=g=>g==='Hyderabad+Mumbai'?'Hyderabad + Mumbai':g;
 /* 20 Nov (Shivani, correction): ONLY Hyderabad + Mumbai is one pool (one winner for all their hubs); Bangalore and NCR: every hub its own winner, no minimum. */
 function applyPool(A){const pools={};Object.entries(A.hubs).forEach(([h,v])=>{if(h==='RSA Team')return;v.own_winner=true;   /* 20 Nov (Shivani, final): no pool anywhere; one Technician of the Month per hub (5 Nov mail) */if(!v.own_winner){const g=grpOf(v.city);(pools[g]=pools[g]||[]).push(...v.rows);}});
@@ -702,10 +721,10 @@ function awardsRealHtml(b){const A=applyPool(b.awardsData);const line=(r,i)=>`<l
     const g=grpOf(b.tech.city);const list=H.own_winner?H.rows:(A.pools[g]||[]);
     const me=list.findIndex(r=>r.name===b.tech.display_name);
     const lead=list[0];
-    return head+`<div class="card"><h3>${esc(H.own_winner?hub:hub+' → '+t('cityPool')+' · '+poolName(g))}</h3><ul class="list"><li><div class="l"><b>${esc(t('eligibleN',{e:H.eligible,n:H.technicians}))}</b><small>${esc(H.own_winner?t('ownWinner'):t('toPool'))}</small></div></li>
+    return head+`<div class="card"><h3>${esc(H.own_winner?hub:hub+' → '+t('cityPool')+' · '+poolName(g))}</h3><ul class="list"><li><div class="l"><b>${esc(t('eligibleN',{e:H.eligible,n:activeCount(hub,H)}))}</b><small>${esc(H.own_winner?t('ownWinner'):t('toPool'))}</small></div></li>
       <li><div class="l" style="width:100%"><div class="msg ${me>=0?'ok':'bad'}" style="margin:0">${esc(me>=0?t('youEligible',{r:me+1}):t('youNot'))}</div></div></li>${lead?`<li><div class="l"><b>🏆 ${esc(t('leaderAnon'))}</b><small style="white-space:normal">${esc(t('leaderLine',{p:num(lead.ppd,1),d:pct(lead.defect)}))}</small></div></li>`:''}</ul></div>`+notes;}
   const g=grpOf(PICK_CITY);const hubs=Object.entries(A.hubs).filter(([h,v])=>grpOf(v.city)===g&&h!=='RSA Team');const pool=A.pools[g]||[];   // 18 Nov: RSA Team is not a workshop hub, left out of Technician of the Month (Vamsee, 16 Nov, Q2)
-  return head+hubs.map(([h,v])=>`<div class="card"><h3>${esc(h)} <span class="tag ${v.own_winner?'final':'prov'}">${esc(v.own_winner?t('ownWinnerShort'):t('poolShort'))}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('eligibleN',{e:v.eligible,n:v.technicians}))}</p>${v.own_winner&&v.rows.length?`<ul class="list">${v.rows.slice(0,4).map(line).join('')}</ul>`:v.rows.length?'':`<div class="empty">${esc(t('noneAboveMonth'))}</div>`}</div>`).join('')
+  return head+hubs.map(([h,v])=>`<div class="card"><h3>${esc(h)} <span class="tag ${v.own_winner?'final':'prov'}">${esc(v.own_winner?t('ownWinnerShort'):t('poolShort'))}</span></h3><p class="note" style="margin:0 0 6px">${esc(t('eligibleN',{e:v.eligible,n:activeCount(h,v)}))}</p>${v.own_winner&&v.rows.length?`<ul class="list">${v.rows.slice(0,4).map(line).join('')}</ul>`:v.rows.length?'':`<div class="empty">${esc(t('noneAboveMonth'))}</div>`}</div>`).join('')
    +(true?'':`<div class="card"><h3>${esc(t('cityPool'))} · ${esc(poolName(g))}</h3><p class="note" style="margin:0 0 6px">${esc(t('poolNote'))}</p>${pool.length?`<ul class="list">${pool.slice(0,5).map(line).join('')}</ul>`:`<div class="empty">${esc(t('noneAbove'))}</div>`}</div>`)+notes;}
 
 /* 18 Nov: Technician of the Month in live mode, from the leaderboard rows of the weeks of this month (5 Nov mail: per hub, above target, lowest 7-day defect rate). */
