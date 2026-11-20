@@ -711,7 +711,8 @@ function inactiveCard(){if(!(IS_ADMIN||LOCAL_PREVIEW))return '';const IM=inactiv
 function activeCount(hub,v){const IM=inactiveMap()||{};return Math.max(v.eligible,v.technicians-Object.values(IM).filter(p=>p.hub===hub).length);}
 const POOL_MIN=4;const poolName=g=>g==='Hyderabad+Mumbai'?'Hyderabad + Mumbai':g;
 /* 20 Nov (Shivani, correction): ONLY Hyderabad + Mumbai is one pool (one winner for all their hubs); Bangalore and NCR: every hub its own winner, no minimum. */
-function applyPool(A){const pools={};Object.entries(A.hubs).forEach(([h,v])=>{if(h==='RSA Team')return;v.own_winner=true;   /* 20 Nov (Shivani, final): no pool anywhere; one Technician of the Month per hub (5 Nov mail) */if(!v.own_winner){const g=grpOf(v.city);(pools[g]=pools[g]||[]).push(...v.rows);}});
+function applyPool(A){const pools={};const IM=inactiveMap()||{};Object.entries(A.hubs).forEach(([h,v])=>{if(h==='RSA Team')return;v.rows=v.rows.filter(r=>!IM[r.name]);v.eligible=v.rows.length;   /* 20 Nov (Shivani): inactive technicians are not eligible for Technician of the Month */
+  v.own_winner=true;   /* 20 Nov (Shivani, final): no pool anywhere; one Technician of the Month per hub (5 Nov mail) */if(!v.own_winner){const g=grpOf(v.city);(pools[g]=pools[g]||[]).push(...v.rows);}});
   Object.values(pools).forEach(p=>p.sort((x,y)=>x.defect-y.defect||y.ppd-x.ppd));A.pools=pools;A.needed=POOL_MIN;return A;}
 function awardsRealHtml(b){const A=applyPool(b.awardsData);const line=(r,i)=>`<li><div class="rowl"><span class="rank ${i===0?'r1':''}">${i+1}</span><div class="l"><b>${esc(r.name)}</b><small>${num(r.ppd,1)} ${esc(t('ppd'))} · ${r.jcs} JC${r.hub?' · '+esc(r.hub):''}</small></div></div><div class="r">${pct(r.defect)}<small>${esc(t('defect'))}</small></div></li>`;
   const notes=`<div class="card"><h3>${esc(t('supT'))} <span class="tag prov">+₹2,000</span></h3><p class="note" style="margin:0">${esc(t('supP'))}</p></div>
