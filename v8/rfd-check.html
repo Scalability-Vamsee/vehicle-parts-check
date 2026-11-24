@@ -222,9 +222,11 @@ body.pinned #main{margin-left:var(--sb-width)}
 .jf-body{display:none;border-top:1px solid var(--border)}
 .jf-item.open .jf-body{display:block}
 .jf-step{display:flex;gap:10px;font-size:.72rem;padding:3px 0;color:#374151}
-.jf-step .t{color:var(--muted);white-space:nowrap;min-width:150px}
+.jf-step .t{color:var(--muted);white-space:nowrap;min-width:185px}
 .jf-step.rfd{font-weight:700;color:#1D4ED8}
 .jf-step.bill{font-weight:700;color:#065F46}
+.jf-step.fail{font-weight:700;color:#DC2626}
+.jf-step.pend{color:#9CA3AF}
 .manual{color:#B45309!important}
 .jf-empty{padding:24px 20px;text-align:center;font-size:.8rem;color:var(--muted);background:var(--card);border-radius:var(--radius);border:1px solid var(--border)}
 @media(max-width:600px){
@@ -763,15 +765,32 @@ function jfDetails(j){
     +'<div class="rc-section"><div class="rc-section-title">Flow</div>'+jfFlowSteps(j)+'</div>';
 }
 
-// Full flow of one JC: status steps + the RFD move, in time order
+// Flow of one JC in a fixed order: 1 Job Open → 2 Billed → 3 RFD check (Shivani, 24 Nov 2026).
+// Times are the real ones; if RFD came before billing, step 3 says so in red.
 function jfFlowSteps(j){
-  var ev=j.steps.map(function(s){
-    return {t:s.t,cls:s.status==='Billed'?'bill':'',txt:s.status+(s.tech?' · '+s.tech:'')};
-  });
-  if(j.rfd)ev.push({t:j.rfd.t,cls:'rfd',txt:'RFD: vehicle oos → active · '+(j.rfd.by||'—')});
-  ev.sort(function(a,b){return a.t-b.t||(a.cls==='rfd'?1:0)-(b.cls==='rfd'?1:0);});
-  return ev.map(function(e){
-    return '<div class="jf-step '+e.cls+'"><span class="t">'+fmtIst(e.t)+'</span><span>'+esc(e.txt)+'</span></div>';
+  var bill=null;
+  j.steps.forEach(function(s){if(s.status==='Billed'&&bill==null)bill=s;});
+  var first=j.steps[0]||{status:'Job Open',tech:''};
+  var st=JF_STATUS[j.status];
+  var rfdTxt,rfdCls='rfd';
+  if(j.rfd){
+    rfdTxt='RFD check · '+(j.rfd.by||'—');
+    if(j.billed!=null){
+      var a=Math.abs(j.gap);
+      rfdTxt+=st.grp==='problem'?' · 🚨 before billing':(a<60000?' · ✅ after billing (same minute)':(j.gap<0?' · ✅ after billing':' · ✅ allowed (within 1 h of billing)'));
+      if(st.grp==='problem')rfdCls='fail';
+    }else{rfdTxt+=' · 🚨 JC not billed';rfdCls='fail';}
+  }else{
+    rfdTxt='RFD check · '+(j.status==='no_rfd_data'?'not in data (JC older than the RFD log)':'not done yet');
+    rfdCls='pend';
+  }
+  var rows=[
+    {n:1,t:j.created,cls:'',txt:(first.status||'Job Open')},
+    {n:2,t:bill?bill.t:null,cls:bill?'bill':'pend',txt:bill?'Billed'+(bill.tech?' · '+bill.tech:''):'Billed · not yet'},
+    {n:3,t:j.rfd?j.rfd.t:null,cls:rfdCls,txt:rfdTxt}
+  ];
+  return rows.map(function(e){
+    return '<div class="jf-step '+e.cls+'"><span class="t">'+e.n+'. '+(e.t!=null?fmtIst(e.t):'—')+'</span><span>'+esc(e.txt)+'</span></div>';
   }).join('');
 }
 

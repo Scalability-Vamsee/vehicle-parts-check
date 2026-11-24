@@ -21,6 +21,8 @@
 
 **Job cards first (Shivani, 24 Nov):** the job card list sits above the RFD card. Same-minute result reads "RFD done in the same minute as billing (DMS moves the bike to RFD when the JC is billed)".
 
+**Flow as fixed steps (Shivani, 24 Nov):** each JC's Flow shows only 1. Job Open → 2. Billed → 3. RFD check, always in that order with the real times (other DMS statuses dropped). Step 3 says ✅ after billing / ✅ allowed (within 1 h) / 🚨 before billing / 🚨 JC not billed.
+
 **Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 Charan, KA05AQ9991 JC 7781 DMS automatic, MH03FJ1133 JC 407 Srinivas Naik), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
 
 ---
