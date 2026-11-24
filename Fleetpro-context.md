@@ -2,6 +2,21 @@
 *Last updated: 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod (staging → main fast-forward, 9690093) + incentive_v9 SQL 21 applied (21-day sign-in rule, past-week job cards); prior: 2026-10-14 — RSA Warroom "FW Map" tab LIVE (PR #30) + FW toggle one-at-a-time / Refresh fix LIVE (PR #31); prior: 2026-09-18 jc-failure-alert v14 (DB-driven FIXED_CC); sync-incentive-technicians edge fn + cron; PR #12 open (staging→main).*
 
 
+## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (branch `rfd-jc-flow`, NOT pushed)
+
+**Ask (Shivani, 24 Nov):** enter a vehicle number → every JC, newest first, with JC number, RFD time, RFD −1 h / +1 h, billed time, RFD validation status and the exact flow. Purpose: RFD must come after billing, never before.
+
+**Built in `v8/rfd-check.html`** (new section under the existing card; also shown when the bike is not in `rfd_violations_cache`):
+- Sources: `jc_jc_status_log` (JC steps, DMS JC number, Billed rows; card `b1470077`, ~90 days, every 15 min) and `jc_ops_log` (vehicle status moves; card `98f2dc7c`, ~30 days, every 15 min). No new table, function or migration.
+- RFD of a JC = first `oos → active` after the JC's first status and before the next JC of the bike. Billed = first Billed row (same as `sql/rrr/RRR_JC_Main_Query.sql`).
+- Result: billed more than 1 h after RFD → **RFD before billing** (red); RFD with no Billed step → red; billed inside RFD ±1 h or earlier → OK; billed, no RFD yet → amber; JC older than the ops log → "RFD not in data".
+- "RFD by" shows `performed_by_name`: "DMS automatic" = DMS moved the bike at billing; any name = manual move (orange).
+- Filter chips All / Problems / OK / Other; tap a JC for the full flow (status steps + RFD and window lines in time order).
+
+**Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 Charan, KA05AQ9991 JC 7781 DMS automatic, MH03FJ1133 JC 407 Srinivas Naik), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
+
+---
+
 ## 🆕 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod; staging → main
 
 - **What went live:** staging `9690093` was fast-forwarded into main (`dd4f46f` → `9690093`; 65 commits, 21 files):

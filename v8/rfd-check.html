@@ -193,6 +193,42 @@ body.pinned #main{margin-left:var(--sb-width)}
 .ctx-val{font-size:.78rem;font-weight:500;color:var(--text);padding:5px 0;word-break:break-word}
 .ctx-desc{font-size:.65rem;color:#94A3B8;font-weight:400;display:block;margin-top:1px}
 
+/* ── JC flow (RFD vs billed time, per JC) ── */
+#jc-flow-area{max-width:700px;margin:0 auto 60px;padding:0 16px}
+.jf-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid var(--border);overflow:hidden}
+.jf-head{padding:16px 20px;border-bottom:1px solid var(--border)}
+.jf-title{font-size:.95rem;font-weight:800}
+.jf-sub{font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.5}
+.jf-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.jf-chip{border:1px solid var(--border);background:#fff;border-radius:20px;padding:4px 11px;font-size:.7rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit}
+.jf-chip.on{background:#111827;border-color:#111827;color:#fff}
+.jf-row{border-top:1px solid #F1F5F9}
+.jf-row:first-child{border-top:none}
+.jf-sum{display:flex;align-items:flex-start;gap:12px;padding:12px 20px;cursor:pointer}
+.jf-sum:hover{background:#F9FAFB}
+.jf-jc{font-weight:800;font-size:.85rem;min-width:84px}
+.jf-jc small{display:block;font-size:.62rem;color:var(--muted);font-weight:500;margin-top:2px}
+.jf-grid{flex:1;display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:.72rem}
+.jf-grid .k{color:var(--muted)}
+.jf-grid .v{font-weight:600;color:var(--text)}
+.jf-grid .v.manual{color:#B45309}
+.jf-flow{display:none;padding:4px 20px 14px 116px}
+.jf-row.open .jf-flow{display:block}
+.jf-step{display:flex;gap:10px;font-size:.7rem;padding:3px 0;color:#374151}
+.jf-step .t{color:var(--muted);white-space:nowrap;min-width:128px}
+.jf-step.rfd{font-weight:700;color:#1D4ED8}
+.jf-step.bill{font-weight:700;color:#065F46}
+.jf-step.win{color:#94A3B8;font-style:italic}
+.jf-empty{padding:24px 20px;text-align:center;font-size:.8rem;color:var(--muted)}
+@media(max-width:600px){
+  .jf-flow{padding-left:20px}
+  .jf-sum{flex-wrap:wrap;padding:12px 16px}
+  .jf-jc{flex:1 1 auto}
+  .jf-grid{order:3;flex:1 1 100%}
+  .jf-step{flex-direction:column;gap:0;padding:4px 0}
+  .jf-step .t{min-width:0;font-size:.64rem}
+}
+
 /* ── Empty ── */
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-state .em-icon{font-size:2.5rem;margin-bottom:12px}
@@ -269,10 +305,11 @@ body.pinned #main{margin-left:var(--sb-width)}
 
   <!-- Results -->
   <div class="content-section" id="result-area"></div>
+  <div id="jc-flow-area"></div>
 
   <footer class="site-footer">
     FleetPro v8 · RFD Check · Bounce Fleet Operations<br/>
-    Data synced every 2 hours from Metabase · Internal use only
+    RFD check data synced every 2 hours, job card flow every 15 min, from Metabase · Internal use only
   </footer>
 </div>
 
@@ -395,6 +432,7 @@ function doSearch(){
   var btn=document.getElementById('search-btn');
   btn.disabled=true;btn.textContent='Checking…';
   document.getElementById('result-area').innerHTML='';
+  document.getElementById('jc-flow-area').innerHTML='';
 
   fetch(SB_URL+'/rest/v1/rfd_violations_cache?select=*&reg_number=ilike.'+encodeURIComponent(raw)+'&order=reg_number&limit=20',
     {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
@@ -422,8 +460,9 @@ function renderNotFound(reg){
   document.getElementById('result-area').innerHTML=
     '<div class="empty-state"><div class="em-icon">🔍</div>'
     +'<p><strong>'+esc(reg)+'</strong> not found in RFD violation data.</p>'
-    +'<p style="margin-top:6px;font-size:.72rem;color:#9CA3AF">This bike may have no open violations, or the cache hasn\'t synced yet. Last sync shown above.</p>'
+    +'<p style="margin-top:6px;font-size:.72rem;color:#9CA3AF">This bike may have no open violations, or the cache hasn\'t synced yet. Last sync shown above. Its job cards are listed below.</p>'
     +'</div>';
+  loadJcFlow(reg);
 }
 
 function renderMulti(rows){
@@ -538,6 +577,170 @@ function renderCard(r){
   html+='</div>';
   document.getElementById('result-area').innerHTML=html;
   document.getElementById('result-area').scrollIntoView({behavior:'smooth',block:'start'});
+  loadJcFlow(r.reg_number);
+}
+
+// ── JC flow: every JC of the bike, newest first, RFD ±1 h vs billed time ─────
+// Rule: the JC must be billed before the bike goes to RFD (oos → active), never after.
+// Sources (Supabase, refreshed every 15 min from Metabase):
+//   jc_jc_status_log — JC status steps, DMS JC number, Billed rows (last ~90 days)
+//   jc_ops_log       — vehicle status changes; RFD = oos → active (last ~30 days)
+// RFD of a JC = first oos → active after the JC's first status and before the next JC.
+// Billed = first Billed row (same as sql/rrr RRR_JC_Main_Query.sql).
+var RFD_WINDOW_MS=3600000;
+var JF_STATUS={
+  rfd_before_bill:{txt:'RFD before billing',cls:'cb-fail',grp:'problem',
+    why:'Bike moved to RFD more than 1 h before the JC was billed'},
+  rfd_no_bill:{txt:'RFD, JC not billed',cls:'cb-fail',grp:'problem',
+    why:'Bike moved to RFD but this JC has no Billed step'},
+  ok_window:{txt:'OK: billed within RFD ±1 h',cls:'cb-ok',grp:'ok',
+    why:'Billed time falls inside the RFD −1 h to +1 h window'},
+  ok_early:{txt:'OK: billed, RFD later',cls:'cb-ok',grp:'ok',
+    why:'Billed more than 1 h before RFD (billing came first)'},
+  wait_rfd:{txt:'Billed, no RFD yet',cls:'cb-amber',grp:'other',
+    why:'JC billed, no oos → active move found after it'},
+  no_rfd_data:{txt:'RFD not in data',cls:'cb-muted',grp:'other',
+    why:'JC is older than the vehicle status log (starts %s)'},
+  open:{txt:'JC open',cls:'cb-muted',grp:'other',why:'Not billed and no RFD yet'}
+};
+var jfState={reg:null,jcs:[],filter:'all',seq:0};
+
+// "2026-10-26 22:15:27.101948" (IST, no zone) → ms on a UTC clock, shown back with timeZone UTC
+function parseIst(s){
+  if(!s)return null;
+  var m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
+  if(!m)return null;
+  return Date.UTC(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6],m[7]?+(m[7]+'00').slice(0,3):0);
+}
+function fmtIst(ms){
+  if(ms==null)return '—';
+  return new Date(ms).toLocaleString('en-IN',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+}
+function fmtGap(ms){
+  var a=Math.abs(ms),h=Math.floor(a/3600000),m=Math.round((a%3600000)/60000);
+  if(m===60){h++;m=0;}
+  var s=(h?h+' h ':'')+m+' min';
+  return a<60000?'same minute':s+(ms>0?' after RFD':' before RFD');
+}
+
+// Pure: status rows + ops rows → JC list (newest first). opsStart = first time in jc_ops_log.
+function buildJcFlow(statusRows,opsRows,opsStart){
+  var by={};
+  (statusRows||[]).forEach(function(r){
+    var id=r.job_card_id;if(!id)return;
+    var t=parseIst(r.created_at_ist);if(t==null)return;
+    var j=by[id]||(by[id]={id:id,dms:null,created:t,billed:null,billedCount:0,steps:[]});
+    if(!j.dms&&r.dmsjcid)j.dms=String(r.dmsjcid);
+    if(t<j.created)j.created=t;
+    if(r.new_status==='Billed'){j.billedCount++;if(j.billed==null||t<j.billed)j.billed=t;}
+    j.steps.push({t:t,status:r.new_status||'',tech:r.technician_name||''});
+  });
+  var rfds=(opsRows||[]).filter(function(o){
+    return o.previous_vehicle_status==='oos'&&o.new_vehicle_status==='active';
+  }).map(function(o){return {t:parseIst(o.created_at_ist),by:o.performed_by_name||''};})
+    .filter(function(o){return o.t!=null;}).sort(function(a,b){return a.t-b.t;});
+  var list=Object.keys(by).map(function(k){return by[k];}).sort(function(a,b){return a.created-b.created;});
+  list.forEach(function(j,i){
+    j.steps.sort(function(a,b){return a.t-b.t;});
+    var next=i+1<list.length?list[i+1].created:Infinity;
+    j.rfd=null;
+    for(var x=0;x<rfds.length;x++){if(rfds[x].t>j.created&&rfds[x].t<next){j.rfd=rfds[x];break;}}
+    if(j.rfd&&j.billed!=null){
+      var d=j.billed-j.rfd.t;j.gap=d;
+      j.status=d>RFD_WINDOW_MS?'rfd_before_bill':(d<-RFD_WINDOW_MS?'ok_early':'ok_window');
+    }else if(j.rfd){j.status='rfd_no_bill';}
+    else if(opsStart!=null&&j.created<opsStart){j.status='no_rfd_data';}
+    else if(j.billed!=null){j.status='wait_rfd';}
+    else{j.status='open';}
+  });
+  return list.reverse();
+}
+
+function loadJcFlow(reg){
+  var area=document.getElementById('jc-flow-area');
+  if(!reg){area.innerHTML='';return;}
+  var seq=++jfState.seq;
+  area.innerHTML='<div class="jf-card"><div class="jf-empty">Loading job cards for '+esc(reg)+'…</div></div>';
+  var h={headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}};
+  var r=encodeURIComponent(reg);
+  Promise.all([
+    fetch(SB_URL+'/rest/v1/jc_jc_status_log?select=job_card_id,new_status,technician_name,dmsjcid,created_at_ist&reg_number=eq.'+r+'&order=created_at_ist.desc&limit=5000',h).then(function(x){if(!x.ok)throw new Error('status log '+x.status);return x.json();}),
+    fetch(SB_URL+'/rest/v1/jc_ops_log?select=previous_vehicle_status,new_vehicle_status,performed_by_name,created_at_ist&reg_number=eq.'+r+'&order=created_at_ist.asc&limit=5000',h).then(function(x){if(!x.ok)throw new Error('ops log '+x.status);return x.json();}),
+    fetch(SB_URL+'/rest/v1/jc_ops_log?select=created_at_ist&order=created_at_ist.asc&limit=1',h).then(function(x){return x.ok?x.json():[];}).catch(function(){return [];})
+  ]).then(function(res){
+    if(seq!==jfState.seq)return;
+    var opsStart=res[2]&&res[2][0]?parseIst(res[2][0].created_at_ist):null;
+    jfState={reg:reg,jcs:buildJcFlow(res[0],res[1],opsStart),filter:'all',seq:seq,opsStart:opsStart};
+    renderJcFlow();
+  }).catch(function(e){
+    if(seq!==jfState.seq)return;
+    area.innerHTML='<div class="jf-card"><div class="jf-empty">Could not load job cards ('+esc(e.message)+'). Try again.</div></div>';
+  });
+}
+
+function jfSetFilter(f){jfState.filter=f;renderJcFlow();}
+
+function renderJcFlow(){
+  var area=document.getElementById('jc-flow-area');
+  var all=jfState.jcs,f=jfState.filter;
+  var cnt={all:all.length,problem:0,ok:0,other:0};
+  all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
+  var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
+  var startTxt=jfState.opsStart!=null?fmtIst(jfState.opsStart).split(',')[0]:'about 30 days ago';
+  var html='<div class="jf-card"><div class="jf-head">'
+    +'<div class="jf-title">Job cards · '+esc(jfState.reg)+' · RFD vs billed time</div>'
+    +'<div class="jf-sub">Newest JC first. Rule: the JC must be billed before the bike goes to RFD (oos → active). '
+    +'Window = RFD time −1 h to +1 h; billed inside it or earlier is OK, billed more than 1 h after RFD is flagged. '
+    +'RFD by "DMS automatic" means DMS moved the bike when the JC was billed; a name means a manual move. '
+    +'JC log covers about 90 days, RFD log since '+esc(startTxt)+'. Tap a JC to see its full flow.</div>'
+    +'<div class="jf-chips">'
+    +[['all','All'],['problem','Problems'],['ok','OK'],['other','Other']].map(function(c){
+      return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
+    }).join('')
+    +'</div></div>';
+  if(!all.length){
+    html+='<div class="jf-empty">No job cards for '+esc(jfState.reg)+' in the last ~90 days.</div>';
+  }else if(!shown.length){
+    html+='<div class="jf-empty">No job cards in this filter.</div>';
+  }else{
+    shown.forEach(function(j,i){
+      var st=JF_STATUS[j.status];
+      var why=st.why.replace('%s',startTxt);
+      var manual=j.rfd&&!/dms automatic/i.test(j.rfd.by);
+      html+='<div class="jf-row" id="jf-'+i+'"><div class="jf-sum" onclick="this.parentNode.classList.toggle(\'open\')">'
+        +'<div class="jf-jc">'+(j.dms?'JC '+esc(j.dms):'No DMS #')+'<small>'+esc(j.id)+'</small></div>'
+        +'<div class="jf-grid">'
+        +'<span class="k">JC created</span><span class="v">'+fmtIst(j.created)+'</span>'
+        +'<span class="k">RFD time</span><span class="v">'+(j.rfd?fmtIst(j.rfd.t):'—')+'</span>'
+        +(j.rfd?'<span class="k">RFD −1 h</span><span class="v">'+fmtIst(j.rfd.t-RFD_WINDOW_MS)+'</span>'
+               +'<span class="k">RFD +1 h</span><span class="v">'+fmtIst(j.rfd.t+RFD_WINDOW_MS)+'</span>':'')
+        +'<span class="k">Billed time</span><span class="v">'+(j.billed!=null?fmtIst(j.billed)+(j.billedCount>1?' (billed '+j.billedCount+'×, first shown)':''):'—')+'</span>'
+        +(j.rfd&&j.billed!=null?'<span class="k">Billed vs RFD</span><span class="v">'+fmtGap(j.gap)+'</span>':'')
+        +(j.rfd?'<span class="k">RFD by</span><span class="v'+(manual?' manual':'')+'">'+esc(j.rfd.by||'—')+(manual?' (manual)':'')+'</span>':'')
+        +'<span class="k">RFD validation</span><span class="v">'+esc(why)+'</span>'
+        +'</div>'
+        +'<span class="check-badge '+st.cls+'">'+esc(st.txt)+'</span>'
+        +'</div><div class="jf-flow">'+jfFlowSteps(j)+'</div></div>';
+    });
+  }
+  html+='</div>';
+  area.innerHTML=html;
+}
+
+// Full flow of one JC: status steps + RFD and its ±1 h window, in time order
+function jfFlowSteps(j){
+  var ev=j.steps.map(function(s){
+    return {t:s.t,cls:s.status==='Billed'?'bill':'',txt:s.status+(s.tech?' · '+s.tech:'')};
+  });
+  if(j.rfd){
+    ev.push({t:j.rfd.t-RFD_WINDOW_MS,cls:'win',txt:'RFD −1 h (window opens)'});
+    ev.push({t:j.rfd.t,cls:'rfd',txt:'RFD: vehicle oos → active · '+(j.rfd.by||'—')});
+    ev.push({t:j.rfd.t+RFD_WINDOW_MS,cls:'win',txt:'RFD +1 h (window closes)'});
+  }
+  ev.sort(function(a,b){return a.t-b.t||(a.cls==='rfd'?1:0)-(b.cls==='rfd'?1:0);});
+  return ev.map(function(e){
+    return '<div class="jf-step '+e.cls+'"><span class="t">'+fmtIst(e.t)+'</span><span>'+esc(e.txt)+'</span></div>';
+  }).join('');
 }
 
 function checkRow(icon,label,detail,badgeCls,badgeTxt){
