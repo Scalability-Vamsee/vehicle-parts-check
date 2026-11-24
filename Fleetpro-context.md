@@ -2,7 +2,7 @@
 *Last updated: 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod (staging → main fast-forward, 9690093) + incentive_v9 SQL 21 applied (21-day sign-in rule, past-week job cards); prior: 2026-10-14 — RSA Warroom "FW Map" tab LIVE (PR #30) + FW toggle one-at-a-time / Refresh fix LIVE (PR #31); prior: 2026-09-18 jc-failure-alert v14 (DB-driven FIXED_CC); sync-incentive-technicians edge fn + cron; PR #12 open (staging→main).*
 
 
-## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (branch `rfd-jc-flow`, NOT pushed)
+## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (on staging 2312378, not on main)
 
 **Ask (Shivani, 24 Nov):** enter a vehicle number → every JC, newest first, with JC number, RFD time, RFD −1 h / +1 h, billed time, RFD validation status and the exact flow. Purpose: RFD must come after billing, never before.
 
