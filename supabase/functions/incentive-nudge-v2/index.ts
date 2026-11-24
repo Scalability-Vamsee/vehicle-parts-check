@@ -28,6 +28,14 @@ const SUMMARY_TO = (Deno.env.get('NUDGE_SUMMARY_TO') ?? '').split(',').map(s => 
 const APP = 'https://www.bounceops.online';
 const ACTIVE_DAYS = 21;
 
+// Caller check (24 Nov 2026, Vamsee's window): only the service role may run this. The public anon key also passes verify_jwt, and this
+// function returns technician emails with ?dry=1 and can mail any address with ?to=. Deploy with verify_jwt = true; the cron sends the
+// service-role key (from Vault, not copied from another job's command).
+function isServiceRole(req: Request): boolean {
+  const tok = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  return !!SB_KEY && tok === SB_KEY;
+}
+
 // same as the page: cut-offs (5 Nov mail) and target per day present by week start
 const CUTS: Record<string, number[]> = { Bangalore: [3.5, 5.5, 7, 9.5], NCR: [3, 5, 7, 8.5], 'Hyderabad+Mumbai': [1.5, 4, 5, 6.5] };
 const TARGET_STEPS: Record<string, [string, number][]> = {
@@ -124,6 +132,7 @@ function buildMail(type: string, t: any, cur: Week, last: Week, loggedIn: boolea
 }
 
 Deno.serve(async (req) => {
+  if (!isServiceRole(req)) return new Response(JSON.stringify({ error: 'service role only' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const u = new URL(req.url);
     const dry = u.searchParams.get('dry') === '1';
