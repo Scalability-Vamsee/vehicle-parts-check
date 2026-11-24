@@ -25,6 +25,8 @@
 
 **Sync gap fix (Shivani, 24 Nov):** `jc_ops_log` is copied ~5 min before `jc_jc_status_log`, so a just-billed JC briefly had its RFD but no Billed row and showed a false red "RFD without billing" (11 JCs in the 24 Nov Supabase vs card check). An RFD with no Billed row now shows "Billing syncing" (grey) for 45 min, then red. Same check: Supabase vs card gave the same verdicts for 12,826 of 13,034 bikes; rest = 15-min lag, 1,368 stale 26 Aug rows never deleted, 10 rows holding a Metabase error text (13 to 20 Oct syncs), 16 bikes with old temporary reg numbers on older rows.
 
+**Home tiles removed (Shivani, 24 Nov, for everyone):** RSA Tech App and Trace tiles (and the Trace tile's recovery_tickets count fetch) removed from `v8/index.html`. Pages unchanged; still in the sidebar (RSA Operations, Recovery Operations).
+
 **Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 Charan, KA05AQ9991 JC 7781 DMS automatic, MH03FJ1133 JC 407 Srinivas Naik), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
 
 ---
