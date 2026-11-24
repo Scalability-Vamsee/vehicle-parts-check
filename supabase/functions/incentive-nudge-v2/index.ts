@@ -29,11 +29,18 @@ const APP = 'https://www.bounceops.online';
 const ACTIVE_DAYS = 21;
 
 // Caller check (24 Nov 2026, Vamsee's window): only the service role may run this. The public anon key also passes verify_jwt, and this
-// function returns technician emails with ?dry=1 and can mail any address with ?to=. Deploy with verify_jwt = true; the cron sends the
-// service-role key (from Vault, not copied from another job's command).
+// function returns technician emails with ?dry=1 and can mail any address with ?to=. The cron sends a service-role key (from Vault, not
+// copied from another job's command). The role claim is trusted only because the gateway checks the signature: ALWAYS deploy with
+// verify_jwt = true (never false). Exact match with this function's own key is accepted too (two valid service-role keys can differ).
 function isServiceRole(req: Request): boolean {
   const tok = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
-  return !!SB_KEY && tok === SB_KEY;
+  if (!tok) return false;
+  if (SB_KEY && tok === SB_KEY) return true;
+  try {
+    const b = tok.split('.')[1];
+    const p = JSON.parse(atob(b.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b.length + 3) % 4)));
+    return p.role === 'service_role';
+  } catch { return false; }
 }
 
 // same as the page: cut-offs (5 Nov mail) and target per day present by week start
