@@ -4,6 +4,8 @@
 
 ## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (on main since 24 Nov: PR #35)
 
+**5-min refresh for RFD Check (24 Nov evening, Vamsee):** `rfd-check-sync` cron 42 every 2 h -> every 5 min; `jc-ops-sync` rewritten to v7 (inserts new rows only, trims to the card window; was delete-all + reinsert of ~99,000 rows) and cron 31 every 15 -> every 5 min (first 22 runs 20:04 to 21:49 IST all success, 3 to 19 rows each, 6 to 11 s); `jc-status-log-sync` (cron 32) stays at 15 min until card `b1470077` returns only the last 4 days (it downloads 90 days, 33.8 MB, today); `validation-check-sync` (cron 149) every 5 min. The page footer still says "every 2 hours / every 15 min" (page owner to update).
+
 **Promoted 24 Nov (PR #35, Claude Code in Vamsee's window):** staging `390e78a` merged to main as `24cd7d2`; bounceops.online served the new `v8/rfd-check.html`, `v8/index.html` and `v8/sidebar.js` about 45 s after the push (sha256 checked against main). Before the push: technician names taken out of this file (public repo), and migration `20261124000001_jc_sync_tables_close_writes.sql` applied (only the service-role syncs write `jc_ops_log` and `jc_booking_history`; signed-in read unchanged; first `jc-ops-sync` after it: success, 99,091 rows, 19:05 IST). `incentive-nudge-v2` is NOT deployed: it needs a caller check first (Vamsee's window has the detail).
 
 **Ask (Shivani, 24 Nov):** enter a vehicle number → every JC, newest first, with JC number, RFD time, RFD −1 h / +1 h, billed time, RFD validation status and the exact flow. Purpose: RFD must come after billing, never before.
