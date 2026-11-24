@@ -456,13 +456,34 @@ function doSearch(){
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+// Bike not in rfd_violations_cache. That table only holds bikes with an open RFD issue
+// (IoT glue / MCU FW pending, JC not billed), so a known bike that is missing = no open issue.
+// "Known" = it has rows in the JC status log or the vehicle status log; otherwise likely a typo.
 function renderNotFound(reg){
-  document.getElementById('result-area').innerHTML=
-    '<div class="empty-state"><div class="em-icon">🔍</div>'
-    +'<p><strong>'+esc(reg)+'</strong> not found in RFD violation data.</p>'
-    +'<p style="margin-top:6px;font-size:.72rem;color:#9CA3AF">This bike may have no open violations, or the cache hasn\'t synced yet. Last sync shown above. Its job cards are listed below.</p>'
-    +'</div>';
-  loadJcFlow(reg);
+  var area=document.getElementById('result-area');
+  area.innerHTML='<div class="empty-state"><p>Checking '+esc(reg)+'…</p></div>';
+  loadJcFlow(reg,function(known,problems){
+    if(known===null){
+      area.innerHTML='<div class="empty-state"><div class="em-icon">🔍</div>'
+        +'<p><strong>'+esc(reg)+'</strong> has no open RFD issue in the RFD violation list.</p>'
+        +'<p style="margin-top:6px;font-size:.72rem;color:#9CA3AF">Job cards could not be loaded, so the number was not confirmed.</p></div>';
+      return;
+    }
+    if(!known){
+      area.innerHTML='<div class="empty-state"><div class="em-icon">🔍</div>'
+        +'<p><strong>'+esc(reg)+'</strong> not found.</p>'
+        +'<p style="margin-top:6px;font-size:.72rem;color:#9CA3AF">No open RFD issue, no job card in the last ~90 days and no status change in the last ~30 days for this number. Check the spelling.</p></div>';
+      return;
+    }
+    area.innerHTML='<div class="result-card"><div class="rc-header clear">'
+      +'<div class="rc-emoji">✅</div>'
+      +'<div style="flex:1"><div class="rc-verdict clear">NO OPEN RFD ISSUE</div>'
+      +'<div class="rc-meta">IoT glue, MCU firmware (60A) and JC billing are all clear: this bike is not in the RFD violation list (data as of the time above).'
+      +(problems?' <strong style="color:#DC2626">'+problems+' past job card'+(problems>1?'s':'')+' below had an RFD problem.</strong>':'')
+      +'</div></div>'
+      +'<div class="rc-reg">'+esc(reg)+'</div>'
+      +'</div></div>';
+  });
 }
 
 function renderMulti(rows){
@@ -656,7 +677,9 @@ function buildJcFlow(statusRows,opsRows,opsStart){
   return list.reverse();
 }
 
-function loadJcFlow(reg){
+// onDone(known, problems): known = bike has any JC or vehicle status rows (null on error),
+// problems = JCs in the Problems filter. Optional.
+function loadJcFlow(reg,onDone){
   var area=document.getElementById('jc-flow-area');
   if(!reg){area.innerHTML='';return;}
   var seq=++jfState.seq;
@@ -672,9 +695,14 @@ function loadJcFlow(reg){
     var opsStart=res[2]&&res[2][0]?parseIst(res[2][0].created_at_ist):null;
     jfState={reg:reg,jcs:buildJcFlow(res[0],res[1],opsStart),filter:'all',seq:seq,opsStart:opsStart};
     renderJcFlow();
+    if(onDone){
+      var problems=jfState.jcs.filter(function(j){return JF_STATUS[j.status].grp==='problem';}).length;
+      onDone((res[0]||[]).length>0||(res[1]||[]).length>0,problems);
+    }
   }).catch(function(e){
     if(seq!==jfState.seq)return;
     area.innerHTML='<div class="jf-card"><div class="jf-empty">Could not load job cards ('+esc(e.message)+'). Try again.</div></div>';
+    if(onDone)onDone(null,0);
   });
 }
 

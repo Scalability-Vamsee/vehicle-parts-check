@@ -15,6 +15,8 @@
 
 **Open to all signed-in users (Shivani, 24 Nov):** the `rfd-check` feature gate is removed from the page (no redirect to index), the home tile and the sidebar item (moved from Admin to Service Operations). Users with no group still see nothing (unchanged). The `rfd-check` key stays in admin-permissions.html but no longer controls anything. On staging only; Shivani checks it before telling Vamsee.
 
+**Not-found wording (Shivani, 24 Nov):** a bike missing from `rfd_violations_cache` now shows a green **NO OPEN RFD ISSUE** card when it has rows in `jc_jc_status_log` or `jc_ops_log` (plus a red count if any past JC had an RFD problem). "Not found, check the spelling" only when neither log has the number.
+
 **Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 Charan, KA05AQ9991 JC 7781 DMS automatic, MH03FJ1133 JC 407 Srinivas Naik), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
 
 ---
