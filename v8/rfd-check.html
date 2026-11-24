@@ -622,15 +622,17 @@ function renderCard(r){
 // Billed = first Billed row (same as sql/rrr RRR_JC_Main_Query.sql).
 var RFD_WINDOW_MS=3600000;
 var JF_STATUS={
+  rfd_manual:{txt:'RFD by hand (no validation)',cls:'fail',emoji:'🚨',grp:'problem'},
   rfd_before_bill:{txt:'RFD before billing',cls:'fail',emoji:'🚨',grp:'problem'},
   rfd_no_bill:{txt:'RFD without billing',cls:'fail',emoji:'🚨',grp:'problem'},
-  ok_window:{txt:'RFD after billing',cls:'clear',emoji:'✅',grp:'ok'},
-  ok_early:{txt:'RFD after billing',cls:'clear',emoji:'✅',grp:'ok'},
+  ok_window:{txt:'RFD validated (DMS)',cls:'clear',emoji:'✅',grp:'ok'},
+  ok_early:{txt:'RFD validated (DMS)',cls:'clear',emoji:'✅',grp:'ok'},
   wait_rfd:{txt:'Billed, RFD pending',cls:'wait',emoji:'⏳',grp:'other'},
   no_rfd_data:{txt:'RFD not in data',cls:'muted',emoji:'➖',grp:'other'},
   open:{txt:'JC open',cls:'muted',emoji:'🔧',grp:'other'},
   syncing:{txt:'Billing syncing',cls:'muted',emoji:'🔄',grp:'other'}
 };
+function isDmsAuto(by){return /dms automatic/i.test(by||'');}
 var jfState={reg:null,jcs:[],filter:'all',seq:0};
 
 // "2026-10-26 22:15:27.101948" (IST, no zone) → ms on a UTC clock, shown back with timeZone UTC
@@ -685,7 +687,7 @@ function buildJcFlow(statusRows,opsRows,opsStart,nowIst){
     for(var x=0;x<rfds.length;x++){if(rfds[x].t>j.created&&rfds[x].t<next){j.rfd=rfds[x];break;}}
     if(j.rfd&&j.billed!=null){
       var d=j.billed-j.rfd.t;j.gap=d;
-      j.status=d>RFD_WINDOW_MS?'rfd_before_bill':(d<-RFD_WINDOW_MS?'ok_early':'ok_window');
+      j.status=d>RFD_WINDOW_MS?'rfd_before_bill':(!isDmsAuto(j.rfd.by)?'rfd_manual':(d<-RFD_WINDOW_MS?'ok_early':'ok_window'));
     }else if(j.rfd){j.status=(nowIst-j.rfd.t<SYNC_GRACE_MS)?'syncing':'rfd_no_bill';}
     else if(opsStart!=null&&j.created<opsStart){j.status='no_rfd_data';}
     else if(j.billed!=null){j.status='wait_rfd';}
@@ -732,7 +734,7 @@ function renderJcFlow(){
   all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
   var html='<div class="jf-head"><div class="jf-title">Job cards · newest first</div><div class="jf-chips">'
-    +[['all','All'],['problem','RFD before billing'],['ok','OK'],['other','Other']].map(function(c){
+    +[['all','All'],['problem','Problems'],['ok','Validated'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
     }).join('')+'</div></div>';
   if(!all.length){
@@ -754,7 +756,7 @@ function renderJcFlow(){
         +'</div>';
     });
   }
-  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD = bike moved oos → active. The JC must be billed before RFD; up to 1 h of RFD before billing is allowed. JC log ~90 days, RFD log since '
+  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation = bike made active (oos → active) by DMS automatic, which DMS does only after the validation passes at billing. Made active by a person = validation skipped. Made active more than 1 h before billing = flagged. JC log ~90 days, RFD log since '
     +esc(jfState.opsStart!=null?fmtIst(jfState.opsStart).split(',')[0]:'~30 days ago')+'.</div>';
   area.innerHTML=html;
 }
@@ -765,8 +767,8 @@ function jfDetails(j){
   return '<div class="rc-section" style="border-top:none"><div class="ctx-grid">'
     +'<div class="ctx-key">JC created</div><div class="ctx-val">'+fmtIst(j.created)+'</div>'
     +'<div class="ctx-key">Billed</div><div class="ctx-val">'+(j.billed!=null?fmtIst(j.billed)+(j.billedCount>1?' (billed '+j.billedCount+'×, first shown)':''):'Not billed')+'</div>'
-    +'<div class="ctx-key">RFD</div><div class="ctx-val">'+(j.rfd?fmtIst(j.rfd.t):(j.status==='no_rfd_data'?'Not in data (JC older than the RFD log)':'Not yet'))+'</div>'
-    +(j.rfd?'<div class="ctx-key">RFD by</div><div class="ctx-val'+(manual?' manual':'')+'">'+esc(j.rfd.by||'—')+(manual?' (manual)':'')+'</div>':'')
+    +'<div class="ctx-key">Active (RFD)</div><div class="ctx-val">'+(j.rfd?fmtIst(j.rfd.t):(j.status==='no_rfd_data'?'Not in data (JC older than the RFD log)':'Not yet'))+'</div>'
+    +(j.rfd?'<div class="ctx-key">RFD validation</div><div class="ctx-val'+(manual?' manual':'')+'">'+(manual?'Skipped: made active by hand ('+esc(j.rfd.by||'—')+')':'Passed (DMS automatic)')+'</div>':'')
     +(j.rfd&&j.billed!=null?'<div class="ctx-key">Result</div><div class="ctx-val">'+esc(fmtGap(j.gap))+'</div>':'')
     +'</div></div>'
     +'<div class="rc-section"><div class="rc-section-title">Flow</div>'+jfFlowSteps(j)+'</div>';
@@ -778,24 +780,22 @@ function jfFlowSteps(j){
   var bill=null;
   j.steps.forEach(function(s){if(s.status==='Billed'&&bill==null)bill=s;});
   var first=j.steps[0]||{status:'Job Open',tech:''};
-  var st=JF_STATUS[j.status];
   var rfdTxt,rfdCls='rfd';
   if(j.rfd){
-    rfdTxt='RFD check · '+(j.rfd.by||'—');
-    if(j.billed!=null){
-      var a=Math.abs(j.gap);
-      rfdTxt+=st.grp==='problem'?' · 🚨 before billing':(a<60000?' · ✅ after billing (same minute)':(j.gap<0?' · ✅ after billing':' · ✅ allowed (within 1 h of billing)'));
-      if(st.grp==='problem')rfdCls='fail';
-    }else if(j.status==='syncing'){rfdTxt+=' · 🔄 billing still syncing (refresh in 15 min)';rfdCls='pend';}
-    else{rfdTxt+=' · 🚨 JC not billed';rfdCls='fail';}
+    var dms=isDmsAuto(j.rfd.by);
+    if(j.status==='rfd_before_bill'){rfdTxt='RFD validation · '+(j.rfd.by||'—')+' · 🚨 bike made active before billing';rfdCls='fail';}
+    else if(j.status==='syncing'){rfdTxt='RFD validation · '+(j.rfd.by||'—')+' · 🔄 billing still syncing (refresh in 15 min)';rfdCls='pend';}
+    else if(j.status==='rfd_no_bill'){rfdTxt='RFD validation · '+(j.rfd.by||'—')+' · 🚨 JC not billed';rfdCls='fail';}
+    else if(dms){rfdTxt='RFD validation · DMS automatic · ✅ validation passed';}
+    else{rfdTxt='RFD validation · skipped · 🚨 made active by hand ('+(j.rfd.by||'—')+')';rfdCls='fail';}
   }else{
-    rfdTxt='RFD check · '+(j.status==='no_rfd_data'?'not in data (JC older than the RFD log)':'not done yet');
+    rfdTxt='RFD validation · '+(j.status==='no_rfd_data'?'not in data (JC older than the RFD log)':'not done yet');
     rfdCls='pend';
   }
   var rows=[
     {n:1,t:j.created,cls:'',txt:(first.status||'Job Open')},
-    {n:2,t:bill?bill.t:null,cls:bill?'bill':'pend',txt:bill?'Billed'+(bill.tech?' · '+bill.tech:''):'Billed · not yet'},
-    {n:3,t:j.rfd?j.rfd.t:null,cls:rfdCls,txt:rfdTxt}
+    {n:2,t:j.rfd?j.rfd.t:null,cls:rfdCls,txt:rfdTxt},
+    {n:3,t:bill?bill.t:null,cls:bill?'bill':'pend',txt:bill?'Billed'+(bill.tech?' · '+bill.tech:''):'Billed · not yet'}
   ];
   return rows.map(function(e){
     return '<div class="jf-step '+e.cls+'"><span class="t">'+e.n+'. '+(e.t!=null?fmtIst(e.t):'—')+'</span><span>'+esc(e.txt)+'</span></div>';
