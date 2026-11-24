@@ -149,7 +149,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 #sync-bar span{color:rgba(255,255,255,.55);font-weight:500}
 
 /* ── Content ── */
-.content-section{max-width:700px;margin:28px auto;padding:0 16px 60px;flex:1}
+.content-section{max-width:700px;width:100%;margin:28px auto 0;padding:0 16px 20px}
 
 /* ── Match list ── */
 .match-list{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid var(--border);overflow:hidden}
@@ -193,38 +193,42 @@ body.pinned #main{margin-left:var(--sb-width)}
 .ctx-val{font-size:.78rem;font-weight:500;color:var(--text);padding:5px 0;word-break:break-word}
 .ctx-desc{font-size:.65rem;color:#94A3B8;font-weight:400;display:block;margin-top:1px}
 
-/* ── JC flow (RFD vs billed time, per JC) ── */
-#jc-flow-area{max-width:700px;margin:0 auto 60px;padding:0 16px}
-.jf-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-md);border:1px solid var(--border);overflow:hidden}
-.jf-head{padding:16px 20px;border-bottom:1px solid var(--border)}
-.jf-title{font-size:.95rem;font-weight:800}
-.jf-sub{font-size:.7rem;color:var(--muted);margin-top:4px;line-height:1.5}
-.jf-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+/* ── Dropdown cards (RFD card + job cards) ── */
+.fold .rc-header,.jf-h{cursor:pointer;user-select:none}
+.chev{flex-shrink:0;color:#9CA3AF;font-size:.8rem;transition:transform .15s;padding-top:4px}
+.fold.open>.rc-header .chev,.jf-item.open .chev{transform:rotate(90deg)}
+.fold .fold-body{display:none}
+.fold.open .fold-body{display:block}
+.rc-pending{font-size:.72rem;font-weight:600;color:#DC2626;margin-top:4px}
+
+/* ── Job cards ── */
+#jc-flow-area{max-width:700px;width:100%;margin:0 auto 60px;padding:0 16px;flex:1}
+.jf-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 2px 10px}
+.jf-title{font-size:.9rem;font-weight:800;margin-right:auto}
+.jf-chips{display:flex;flex-wrap:wrap;gap:6px}
 .jf-chip{border:1px solid var(--border);background:#fff;border-radius:20px;padding:4px 11px;font-size:.7rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit}
 .jf-chip.on{background:#111827;border-color:#111827;color:#fff}
-.jf-row{border-top:1px solid #F1F5F9}
-.jf-row:first-child{border-top:none}
-.jf-sum{display:flex;align-items:flex-start;gap:12px;padding:12px 20px;cursor:pointer}
-.jf-sum:hover{background:#F9FAFB}
-.jf-jc{font-weight:800;font-size:.85rem;min-width:84px}
-.jf-jc small{display:block;font-size:.62rem;color:var(--muted);font-weight:500;margin-top:2px}
-.jf-grid{flex:1;display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:.72rem}
-.jf-grid .k{color:var(--muted)}
-.jf-grid .v{font-weight:600;color:var(--text)}
-.jf-grid .v.manual{color:#B45309}
-.jf-flow{display:none;padding:4px 20px 14px 116px}
-.jf-row.open .jf-flow{display:block}
-.jf-step{display:flex;gap:10px;font-size:.7rem;padding:3px 0;color:#374151}
-.jf-step .t{color:var(--muted);white-space:nowrap;min-width:128px}
+.jf-item{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;margin-bottom:10px}
+.jf-h{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.jf-h.clear{background:#F0FDF4}
+.jf-h.fail{background:#FEF2F2}
+.jf-h.wait{background:#FFFBEB}
+.jf-h .rc-emoji{font-size:1.2rem;padding-top:0}
+.jf-jc{font-weight:800;font-size:.88rem}
+.jf-when{font-size:.7rem;color:var(--muted);margin-top:2px}
+.jf-verdict{font-size:.78rem;font-weight:800;white-space:nowrap}
+.jf-verdict.clear{color:#15803D}.jf-verdict.fail{color:#DC2626}.jf-verdict.wait{color:#B45309}.jf-verdict.muted{color:#6B7280}
+.jf-body{display:none;border-top:1px solid var(--border)}
+.jf-item.open .jf-body{display:block}
+.jf-step{display:flex;gap:10px;font-size:.72rem;padding:3px 0;color:#374151}
+.jf-step .t{color:var(--muted);white-space:nowrap;min-width:150px}
 .jf-step.rfd{font-weight:700;color:#1D4ED8}
 .jf-step.bill{font-weight:700;color:#065F46}
-.jf-step.win{color:#94A3B8;font-style:italic}
-.jf-empty{padding:24px 20px;text-align:center;font-size:.8rem;color:var(--muted)}
+.manual{color:#B45309!important}
+.jf-empty{padding:24px 20px;text-align:center;font-size:.8rem;color:var(--muted);background:var(--card);border-radius:var(--radius);border:1px solid var(--border)}
 @media(max-width:600px){
-  .jf-flow{padding-left:20px}
-  .jf-sum{flex-wrap:wrap;padding:12px 16px}
-  .jf-jc{flex:1 1 auto}
-  .jf-grid{order:3;flex:1 1 100%}
+  .jf-h{flex-wrap:wrap;gap:8px}
+  .jf-verdict{order:3;flex:1 1 100%;padding-left:34px}
   .jf-step{flex-direction:column;gap:0;padding:4px 0}
   .jf-step .t{min-width:0;font-size:.64rem}
 }
@@ -510,17 +514,21 @@ function renderCard(r){
   var allClear=!iotPending&&!mcuPending&&jcBilled;
   var cls=allClear?'clear':'fail';
 
-  var html='<div class="result-card">';
+  var html='<div class="result-card fold" id="rfd-card">';
 
   // Header
-  html+='<div class="rc-header '+cls+'">'
+  var pend=[];if(iotPending)pend.push('IoT glue');if(mcuPending)pend.push('MCU FW 60A');if(!jcBilled)pend.push('JC billing');
+  html+='<div class="rc-header '+cls+'" onclick="this.parentNode.classList.toggle(\'open\')">'
     +'<div class="rc-emoji">'+(allClear?'✅':'🚨')+'</div>'
     +'<div style="flex:1">'
     +'<div class="rc-verdict '+cls+'">'+(allClear?'RFD CLEAR':'RFD INCOMPLETE')+'</div>'
     +'<div class="rc-meta">'+esc(hub)+' · '+esc(r.vehicle_status||'—')+(r.iot_provider?' · '+esc(r.iot_provider):'')+'</div>'
+    +(pend.length?'<div class="rc-pending">Pending: '+esc(pend.join(', '))+'</div>':'')
     +'</div>'
     +'<div class="rc-reg">'+esc(r.reg_number)+'</div>'
-    +'</div>';
+    +'<span class="chev">▶</span>'
+    +'</div>'
+    +'<div class="fold-body">';
 
   // RFD Checks section
   html+='<div class="rc-section"><div class="rc-section-title">RFD Checks</div>';
@@ -595,13 +603,13 @@ function renderCard(r){
       +'<div class="ctx-grid">'+ctxHtml+'</div></div>';
   }
 
-  html+='</div>';
+  html+='</div></div>';
   document.getElementById('result-area').innerHTML=html;
   document.getElementById('result-area').scrollIntoView({behavior:'smooth',block:'start'});
   loadJcFlow(r.reg_number);
 }
 
-// ── JC flow: every JC of the bike, newest first, RFD ±1 h vs billed time ─────
+// ── JC flow: every JC of the bike, newest first; ±1 h is used only in the check ──
 // Rule: the JC must be billed before the bike goes to RFD (oos → active), never after.
 // Sources (Supabase, refreshed every 15 min from Metabase):
 //   jc_jc_status_log — JC status steps, DMS JC number, Billed rows (last ~90 days)
@@ -610,19 +618,13 @@ function renderCard(r){
 // Billed = first Billed row (same as sql/rrr RRR_JC_Main_Query.sql).
 var RFD_WINDOW_MS=3600000;
 var JF_STATUS={
-  rfd_before_bill:{txt:'RFD before billing',cls:'cb-fail',grp:'problem',
-    why:'Bike moved to RFD more than 1 h before the JC was billed'},
-  rfd_no_bill:{txt:'RFD, JC not billed',cls:'cb-fail',grp:'problem',
-    why:'Bike moved to RFD but this JC has no Billed step'},
-  ok_window:{txt:'OK: billed within RFD ±1 h',cls:'cb-ok',grp:'ok',
-    why:'Billed time falls inside the RFD −1 h to +1 h window'},
-  ok_early:{txt:'OK: billed, RFD later',cls:'cb-ok',grp:'ok',
-    why:'Billed more than 1 h before RFD (billing came first)'},
-  wait_rfd:{txt:'Billed, no RFD yet',cls:'cb-amber',grp:'other',
-    why:'JC billed, no oos → active move found after it'},
-  no_rfd_data:{txt:'RFD not in data',cls:'cb-muted',grp:'other',
-    why:'JC is older than the vehicle status log (starts %s)'},
-  open:{txt:'JC open',cls:'cb-muted',grp:'other',why:'Not billed and no RFD yet'}
+  rfd_before_bill:{txt:'RFD before billing',cls:'fail',emoji:'🚨',grp:'problem'},
+  rfd_no_bill:{txt:'RFD without billing',cls:'fail',emoji:'🚨',grp:'problem'},
+  ok_window:{txt:'RFD after billing',cls:'clear',emoji:'✅',grp:'ok'},
+  ok_early:{txt:'RFD after billing',cls:'clear',emoji:'✅',grp:'ok'},
+  wait_rfd:{txt:'Billed, RFD pending',cls:'wait',emoji:'⏳',grp:'other'},
+  no_rfd_data:{txt:'RFD not in data',cls:'muted',emoji:'➖',grp:'other'},
+  open:{txt:'JC open',cls:'muted',emoji:'🔧',grp:'other'}
 };
 var jfState={reg:null,jcs:[],filter:'all',seq:0};
 
@@ -637,11 +639,15 @@ function fmtIst(ms){
   if(ms==null)return '—';
   return new Date(ms).toLocaleString('en-IN',{timeZone:'UTC',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
 }
+// gap = billed − RFD, shown as when RFD happened compared with billing
 function fmtGap(ms){
-  var a=Math.abs(ms),h=Math.floor(a/3600000),m=Math.round((a%3600000)/60000);
+  var a=Math.abs(ms);
+  if(a<60000)return 'RFD at billing (same minute)';
+  var h=Math.floor(a/3600000),m=Math.round((a%3600000)/60000);
   if(m===60){h++;m=0;}
-  var s=(h?h+' h ':'')+m+' min';
-  return a<60000?'same minute':s+(ms>0?' after RFD':' before RFD');
+  var d=(h?h+' h ':'')+m+' min';
+  if(ms<0)return 'RFD '+d+' after billing';
+  return ms>RFD_WINDOW_MS?'RFD '+d+' before billing':'RFD '+d+' before billing (allowed, within 1 h)';
 }
 
 // Pure: status rows + ops rows → JC list (newest first). opsStart = first time in jc_ops_log.
@@ -683,7 +689,7 @@ function loadJcFlow(reg,onDone){
   var area=document.getElementById('jc-flow-area');
   if(!reg){area.innerHTML='';return;}
   var seq=++jfState.seq;
-  area.innerHTML='<div class="jf-card"><div class="jf-empty">Loading job cards for '+esc(reg)+'…</div></div>';
+  area.innerHTML='<div class="jf-empty">Loading job cards for '+esc(reg)+'…</div>';
   var h={headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}};
   var r=encodeURIComponent(reg);
   Promise.all([
@@ -701,7 +707,7 @@ function loadJcFlow(reg,onDone){
     }
   }).catch(function(e){
     if(seq!==jfState.seq)return;
-    area.innerHTML='<div class="jf-card"><div class="jf-empty">Could not load job cards ('+esc(e.message)+'). Try again.</div></div>';
+    area.innerHTML='<div class="jf-empty">Could not load job cards ('+esc(e.message)+'). Try again.</div>';
     if(onDone)onDone(null,0);
   });
 }
@@ -714,57 +720,53 @@ function renderJcFlow(){
   var cnt={all:all.length,problem:0,ok:0,other:0};
   all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
-  var startTxt=jfState.opsStart!=null?fmtIst(jfState.opsStart).split(',')[0]:'about 30 days ago';
-  var html='<div class="jf-card"><div class="jf-head">'
-    +'<div class="jf-title">Job cards · '+esc(jfState.reg)+' · RFD vs billed time</div>'
-    +'<div class="jf-sub">Newest JC first. Rule: the JC must be billed before the bike goes to RFD (oos → active). '
-    +'Window = RFD time −1 h to +1 h; billed inside it or earlier is OK, billed more than 1 h after RFD is flagged. '
-    +'RFD by "DMS automatic" means DMS moved the bike when the JC was billed; a name means a manual move. '
-    +'JC log covers about 90 days, RFD log since '+esc(startTxt)+'. Tap a JC to see its full flow.</div>'
-    +'<div class="jf-chips">'
-    +[['all','All'],['problem','Problems'],['ok','OK'],['other','Other']].map(function(c){
+  var html='<div class="jf-head"><div class="jf-title">Job cards · newest first</div><div class="jf-chips">'
+    +[['all','All'],['problem','RFD before billing'],['ok','OK'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
-    }).join('')
-    +'</div></div>';
+    }).join('')+'</div></div>';
   if(!all.length){
     html+='<div class="jf-empty">No job cards for '+esc(jfState.reg)+' in the last ~90 days.</div>';
   }else if(!shown.length){
     html+='<div class="jf-empty">No job cards in this filter.</div>';
   }else{
-    shown.forEach(function(j,i){
+    shown.forEach(function(j){
       var st=JF_STATUS[j.status];
-      var why=st.why.replace('%s',startTxt);
-      var manual=j.rfd&&!/dms automatic/i.test(j.rfd.by);
-      html+='<div class="jf-row" id="jf-'+i+'"><div class="jf-sum" onclick="this.parentNode.classList.toggle(\'open\')">'
-        +'<div class="jf-jc">'+(j.dms?'JC '+esc(j.dms):'No DMS #')+'<small>'+esc(j.id)+'</small></div>'
-        +'<div class="jf-grid">'
-        +'<span class="k">JC created</span><span class="v">'+fmtIst(j.created)+'</span>'
-        +'<span class="k">RFD time</span><span class="v">'+(j.rfd?fmtIst(j.rfd.t):'—')+'</span>'
-        +(j.rfd?'<span class="k">RFD −1 h</span><span class="v">'+fmtIst(j.rfd.t-RFD_WINDOW_MS)+'</span>'
-               +'<span class="k">RFD +1 h</span><span class="v">'+fmtIst(j.rfd.t+RFD_WINDOW_MS)+'</span>':'')
-        +'<span class="k">Billed time</span><span class="v">'+(j.billed!=null?fmtIst(j.billed)+(j.billedCount>1?' (billed '+j.billedCount+'×, first shown)':''):'—')+'</span>'
-        +(j.rfd&&j.billed!=null?'<span class="k">Billed vs RFD</span><span class="v">'+fmtGap(j.gap)+'</span>':'')
-        +(j.rfd?'<span class="k">RFD by</span><span class="v'+(manual?' manual':'')+'">'+esc(j.rfd.by||'—')+(manual?' (manual)':'')+'</span>':'')
-        +'<span class="k">RFD validation</span><span class="v">'+esc(why)+'</span>'
+      html+='<div class="jf-item">'
+        +'<div class="jf-h '+st.cls+'" onclick="this.parentNode.classList.toggle(\'open\')">'
+        +'<div class="rc-emoji">'+st.emoji+'</div>'
+        +'<div style="flex:1;min-width:0"><div class="jf-jc">'+(j.dms?'JC '+esc(j.dms):'JC (no DMS #)')+'</div>'
+        +'<div class="jf-when">Created '+fmtIst(j.created)+'</div></div>'
+        +'<div class="jf-verdict '+st.cls+'">'+esc(st.txt)+'</div>'
+        +'<span class="chev">▶</span>'
         +'</div>'
-        +'<span class="check-badge '+st.cls+'">'+esc(st.txt)+'</span>'
-        +'</div><div class="jf-flow">'+jfFlowSteps(j)+'</div></div>';
+        +'<div class="jf-body">'+jfDetails(j)+'</div>'
+        +'</div>';
     });
   }
-  html+='</div>';
+  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD = bike moved oos → active. The JC must be billed before RFD; up to 1 h of RFD before billing is allowed. JC log ~90 days, RFD log since '
+    +esc(jfState.opsStart!=null?fmtIst(jfState.opsStart).split(',')[0]:'~30 days ago')+'.</div>';
   area.innerHTML=html;
 }
 
-// Full flow of one JC: status steps + RFD and its ±1 h window, in time order
+// Opened part of one JC: same layout as the RFD card (details + flow)
+function jfDetails(j){
+  var manual=j.rfd&&!/dms automatic/i.test(j.rfd.by);
+  return '<div class="rc-section" style="border-top:none"><div class="ctx-grid">'
+    +'<div class="ctx-key">JC created</div><div class="ctx-val">'+fmtIst(j.created)+'</div>'
+    +'<div class="ctx-key">Billed</div><div class="ctx-val">'+(j.billed!=null?fmtIst(j.billed)+(j.billedCount>1?' (billed '+j.billedCount+'×, first shown)':''):'Not billed')+'</div>'
+    +'<div class="ctx-key">RFD</div><div class="ctx-val">'+(j.rfd?fmtIst(j.rfd.t):(j.status==='no_rfd_data'?'Not in data (JC older than the RFD log)':'Not yet'))+'</div>'
+    +(j.rfd?'<div class="ctx-key">RFD by</div><div class="ctx-val'+(manual?' manual':'')+'">'+esc(j.rfd.by||'—')+(manual?' (manual)':'')+'</div>':'')
+    +(j.rfd&&j.billed!=null?'<div class="ctx-key">Result</div><div class="ctx-val">'+esc(fmtGap(j.gap))+'</div>':'')
+    +'</div></div>'
+    +'<div class="rc-section"><div class="rc-section-title">Flow</div>'+jfFlowSteps(j)+'</div>';
+}
+
+// Full flow of one JC: status steps + the RFD move, in time order
 function jfFlowSteps(j){
   var ev=j.steps.map(function(s){
     return {t:s.t,cls:s.status==='Billed'?'bill':'',txt:s.status+(s.tech?' · '+s.tech:'')};
   });
-  if(j.rfd){
-    ev.push({t:j.rfd.t-RFD_WINDOW_MS,cls:'win',txt:'RFD −1 h (window opens)'});
-    ev.push({t:j.rfd.t,cls:'rfd',txt:'RFD: vehicle oos → active · '+(j.rfd.by||'—')});
-    ev.push({t:j.rfd.t+RFD_WINDOW_MS,cls:'win',txt:'RFD +1 h (window closes)'});
-  }
+  if(j.rfd)ev.push({t:j.rfd.t,cls:'rfd',txt:'RFD: vehicle oos → active · '+(j.rfd.by||'—')});
   ev.sort(function(a,b){return a.t-b.t||(a.cls==='rfd'?1:0)-(b.cls==='rfd'?1:0);});
   return ev.map(function(e){
     return '<div class="jf-step '+e.cls+'"><span class="t">'+fmtIst(e.t)+'</span><span>'+esc(e.txt)+'</span></div>';

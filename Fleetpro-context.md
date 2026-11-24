@@ -17,6 +17,8 @@
 
 **Not-found wording (Shivani, 24 Nov):** a bike missing from `rfd_violations_cache` now shows a green **NO OPEN RFD ISSUE** card when it has rows in `jc_jc_status_log` or `jc_ops_log` (plus a red count if any past JC had an RFD problem). "Not found, check the spelling" only when neither log has the number.
 
+**Dropdown UI (Shivani, 24 Nov):** the RFD card is closed by default (header shows verdict + "Pending: …"; tap for checks and context). Each JC is a closed row (JC number, created time, verdict: RFD after billing / RFD before billing / RFD without billing / Billed, RFD pending / RFD not in data / JC open); tap for created, billed, RFD, RFD by, result and the flow. RFD −1 h / +1 h are no longer shown: the ±1 h is used only in the check.
+
 **Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 Charan, KA05AQ9991 JC 7781 DMS automatic, MH03FJ1133 JC 407 Srinivas Naik), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
 
 ---
