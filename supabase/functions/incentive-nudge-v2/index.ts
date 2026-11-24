@@ -86,7 +86,7 @@ function buildMail(type: string, t: any, cur: Week, last: Week, loggedIn: boolea
   let subject = '', main = '';
   if (type === 'login') {
     subject = `${first}, log in to FleetPro to see your incentive`;
-    main = `<p style="font-size:15px;color:#374151;margin:0 0 12px">Your incentive is now on <b>My Incentive</b> in FleetPro. Please log in once using the steps above. After that you can check it every day.</p>`;
+    main = `<p style="font-size:15px;color:#374151;margin:0 0 12px">Your incentive is now on <b>My Incentive</b> in FleetPro. Please log in once using the steps above. After that you can <b>track your incentives here every day</b>: points, target and earnings.</p>`;
   } else if (type === 'mon') {
     const ok = last.above > 0;
     subject = ok ? `${first}, last week you earned ${rs(last.pay)}. This week's target: ${tpd} points a day`
@@ -117,7 +117,7 @@ function buildMail(type: string, t: any, cur: Week, last: Week, loggedIn: boolea
 <tr><td style="background:#E8191C;padding:18px 20px"><p style="margin:0;color:#fff;font-size:12px;letter-spacing:1px;text-transform:uppercase">Bounce · Technician Incentive</p>
 <p style="margin:6px 0 0;color:#fff;font-size:22px;font-weight:700">Hi ${esc(first)} 👋</p><p style="margin:2px 0 0;color:#FEE2E2;font-size:12px">${esc(t.hub || '')}${t.hub && t.city ? ' · ' : ''}${esc(t.city || '')}</p></td></tr>
 <tr><td style="padding:20px">${loggedIn ? '' : loginBlock()}${main}
-<a href="${APP}" style="display:block;background:#E8191C;color:#fff;text-align:center;padding:14px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;margin-top:16px">Open My Incentive →</a>
+<a href="${APP}" style="display:block;background:#E8191C;color:#fff;text-align:center;padding:14px;border-radius:12px;font-size:15px;font-weight:700;text-decoration:none;margin-top:16px">Track your incentives here →</a>
 <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:12px 0 0">Points are updated every morning. Week = Monday to Sunday. Rate is final 7 days after the week ends.</p></td></tr>
 </table></td></tr></table></body></html>`;
   return { subject, html };
