@@ -2,7 +2,9 @@
 *Last updated: 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod (staging → main fast-forward, 9690093) + incentive_v9 SQL 21 applied (21-day sign-in rule, past-week job cards); prior: 2026-10-14 — RSA Warroom "FW Map" tab LIVE (PR #30) + FW toggle one-at-a-time / Refresh fix LIVE (PR #31); prior: 2026-09-18 jc-failure-alert v14 (DB-driven FIXED_CC); sync-incentive-technicians edge fn + cron; PR #12 open (staging→main).*
 
 
-## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (on staging 2312378, not on main)
+## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (on main since 24 Nov: PR #35)
+
+**Promoted 24 Nov (PR #35, Claude Code in Vamsee's window):** staging `390e78a` merged to main as `24cd7d2`; bounceops.online served the new `v8/rfd-check.html`, `v8/index.html` and `v8/sidebar.js` about 45 s after the push (sha256 checked against main). Before the push: technician names taken out of this file (public repo), and migration `20261124000001_jc_sync_tables_close_writes.sql` applied (only the service-role syncs write `jc_ops_log` and `jc_booking_history`; signed-in read unchanged; first `jc-ops-sync` after it: success, 99,091 rows, 19:05 IST). `incentive-nudge-v2` is NOT deployed: it needs a caller check first (Vamsee's window has the detail).
 
 **Ask (Shivani, 24 Nov):** enter a vehicle number → every JC, newest first, with JC number, RFD time, RFD −1 h / +1 h, billed time, RFD validation status and the exact flow. Purpose: RFD must come after billing, never before.
 
