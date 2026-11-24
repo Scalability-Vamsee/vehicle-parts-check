@@ -2,6 +2,37 @@
 *Last updated: 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod (staging → main fast-forward, 9690093) + incentive_v9 SQL 21 applied (21-day sign-in rule, past-week job cards); prior: 2026-10-14 — RSA Warroom "FW Map" tab LIVE (PR #30) + FW toggle one-at-a-time / Refresh fix LIVE (PR #31); prior: 2026-09-18 jc-failure-alert v14 (DB-driven FIXED_CC); sync-incentive-technicians edge fn + cron; PR #12 open (staging→main).*
 
 
+## 🆕 2026-11-24 — RFD Check: JC flow per vehicle (on staging 2312378, not on main)
+
+**Ask (Shivani, 24 Nov):** enter a vehicle number → every JC, newest first, with JC number, RFD time, RFD −1 h / +1 h, billed time, RFD validation status and the exact flow. Purpose: RFD must come after billing, never before.
+
+**Built in `v8/rfd-check.html`** (new section under the existing card; also shown when the bike is not in `rfd_violations_cache`):
+- Sources: `jc_jc_status_log` (JC steps, DMS JC number, Billed rows; card `b1470077`, ~90 days, every 15 min) and `jc_ops_log` (vehicle status moves; card `98f2dc7c`, ~30 days, every 15 min). No new table, function or migration.
+- RFD of a JC = first `oos → active` after the JC's first status and before the next JC of the bike. Billed = first Billed row (same as `sql/rrr/RRR_JC_Main_Query.sql`).
+- Result: billed more than 1 h after RFD → **RFD before billing** (red); RFD with no Billed step → red; billed inside RFD ±1 h or earlier → OK; billed, no RFD yet → amber; JC older than the ops log → "RFD not in data".
+- "RFD by" shows `performed_by_name`: "DMS automatic" = DMS moved the bike at billing; any name = manual move (orange).
+- Filter chips All / Problems / OK / Other; tap a JC for the full flow (status steps + RFD and window lines in time order).
+
+**Open to all signed-in users (Shivani, 24 Nov):** the `rfd-check` feature gate is removed from the page (no redirect to index), the home tile and the sidebar item (moved from Admin to Service Operations). Users with no group still see nothing (unchanged). The `rfd-check` key stays in admin-permissions.html but no longer controls anything. On staging only; Shivani checks it before telling Vamsee.
+
+**Not-found wording (Shivani, 24 Nov):** a bike missing from `rfd_violations_cache` now shows a green **NO OPEN RFD ISSUE** card when it has rows in `jc_jc_status_log` or `jc_ops_log` (plus a red count if any past JC had an RFD problem). "Not found, check the spelling" only when neither log has the number.
+
+**Dropdown UI (Shivani, 24 Nov):** the RFD card is closed by default (header shows verdict + "Pending: …"; tap for checks and context). Each JC is a closed row (JC number, created time, verdict: RFD after billing / RFD before billing / RFD without billing / Billed, RFD pending / RFD not in data / JC open); tap for created, billed, RFD, RFD by, result and the flow. RFD −1 h / +1 h are no longer shown: the ±1 h is used only in the check.
+
+**Job cards first (Shivani, 24 Nov):** the job card list sits above the RFD card. Same-minute result reads "RFD done in the same minute as billing (DMS moves the bike to RFD when the JC is billed)".
+
+**Flow as fixed steps (Shivani, 24 Nov):** each JC's Flow shows only 1. Job Open → 2. Billed → 3. RFD check, always in that order with the real times (other DMS statuses dropped). Step 3 says ✅ after billing / ✅ allowed (within 1 h) / 🚨 before billing / 🚨 JC not billed.
+
+**Sync gap fix (Shivani, 24 Nov):** `jc_ops_log` is copied ~5 min before `jc_jc_status_log`, so a just-billed JC briefly had its RFD but no Billed row and showed a false red "RFD without billing" (11 JCs in the 24 Nov Supabase vs card check). An RFD with no Billed row now shows "Billing syncing" (grey) for 45 min, then red. Same check: Supabase vs card gave the same verdicts for 12,826 of 13,034 bikes; rest = 15-min lag, 1,368 stale 26 Aug rows never deleted, 10 rows holding a Metabase error text (13 to 20 Oct syncs), 16 bikes with old temporary reg numbers on older rows.
+
+**Home tiles removed (Shivani, 24 Nov, for everyone):** RSA Tech App and Trace tiles (and the Trace tile's recovery_tickets count fetch) removed from `v8/index.html`. Pages unchanged; still in the sidebar (RSA Operations, Recovery Operations).
+
+**Rule changed (Shivani, 24 Nov): DMS automatic = RFD validation passed.** DMS makes the bike active (oos → active, `performed_by_name = 'DMS automatic'`) only after the RFD validation passes at billing; any other mover (a person, bulk update) = validation skipped. Verdicts: ✅ RFD validated (DMS) / 🚨 RFD by hand (no validation) / 🚨 RFD before billing (active > 1 h before billing) / 🚨 RFD without billing. Flow order: 1 Job Open → 2 RFD validation → 3 Billed (real times). 24 Nov card data: 15,012 JCs DMS automatic, **310 made active by hand** (almost all by two people; the notes on those moves say the RFD validation was not working at the time; names left out of this public file, the page shows who moved each bike), 3 before billing, 2 without billing. Filters: All / Problems / Validated / Other. The `rfd_validation_status` follow-up is no longer needed for this check.
+
+**Checked on the 24 Nov card pull (status log 26 Aug to 24 Nov, ops log 25 Oct to 24 Nov):** 42,239 JCs; of 15,275 billed JCs with an RFD, 15,101 billed within ±1 h (most in the same minute, DMS automatic), 174 billed more than 1 h before RFD, **3 RFD before billing** (BLRBD00432 JC 9481 and MH03FJ1133 JC 407 made active by hand, KA05AQ9991 JC 7781 by DMS automatic), 2 RFD with no billing. Same counts from a Python prototype and the page's own JS. Page tested locally with fixture rows (desktop + 375 px), not tested signed in.
+
+---
+
 ## 🆕 2026-11-21 — Incentive v2 (My Incentive) LIVE on prod; staging → main
 
 - **What went live:** staging `9690093` was fast-forwarded into main (`dd4f46f` → `9690093`; 65 commits, 21 files):

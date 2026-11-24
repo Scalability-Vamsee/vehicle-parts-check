@@ -351,37 +351,10 @@ body.pinned #hbg{display:none}
           <button class="tile-cta" style="background:#F5F3FF;color:#7C3AED;align-self:center">Open →</button>
         </div>
       </a>
-      <a class="tile" href="./rsa-tech.html" data-feature="tech-app" style="grid-column:1/-1">
-        <div class="tile-accent" style="background:linear-gradient(90deg,#0891B2,#06B6D4)"></div>
-        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
-          <div style="flex:1;min-width:180px">
-            <div class="tile-icon">📱</div>
-            <div class="tile-title">RSA Tech App</div>
-            <div class="tile-desc">Field tech PWA — start/end duty, log your shift</div>
-          </div>
-          <button class="tile-cta" style="background:#ECFEFF;color:#0891B2;align-self:center">Open →</button>
-        </div>
-      </a>
+      <!-- RSA Tech App and Trace tiles removed from home (Shivani, 24 Nov 2026); pages still open from the sidebar -->
 
-      <!-- FPI Recovery -->
-      <a class="tile" href="./trace-ho.html" data-feature="trace-ho" style="grid-column:1/-1">
-        <div class="tile-accent" style="background:linear-gradient(90deg,#F59E0B,#EF4444)"></div>
-        <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
-          <div style="flex:1;min-width:180px">
-            <div class="tile-icon">🎯</div>
-            <div class="tile-title">Trace</div>
-            <div class="tile-desc">Trace &amp; Hunter — live recovery map, zone cards, hunter dispatch queue</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:baseline">
-            <div id="fpi-stat" class="tile-stat tile-loading">—</div>
-            <div id="fpi-label" class="tile-stat-label tile-loading" style="font-size:.75rem">loading…</div>
-          </div>
-          <button class="tile-cta" style="background:#FEF3C7;color:#92400E;align-self:center">Open →</button>
-        </div>
-      </a>
-
-      <!-- RFD Check tile — Admin only -->
-      <a class="tile" href="./rfd-check.html" data-feature="rfd-check" style="grid-column:1/-1">
+      <!-- RFD Check tile — every signed-in user (no feature gate since 24 Nov 2026) -->
+      <a class="tile" href="./rfd-check.html" style="grid-column:1/-1">
         <div class="tile-accent" style="background:linear-gradient(90deg,#374151,#6B7280)"></div>
         <div class="tile-body" style="flex-direction:row;align-items:center;gap:20px;flex-wrap:wrap">
           <div style="flex:1;min-width:180px">
@@ -706,29 +679,6 @@ async function loadTileStats(){
     });
   });
 
-  // Trace stats — count pending recovery tickets (not cancelled/at_hub)
-  // also fetch critical (72h+) for secondary label
-  var traceH={headers:Object.assign({},h.headers,{'Prefer':'count=exact','Range':'0-0'})};
-  var criticalCutoff=new Date(Date.now()-72*3600*1000).toISOString();
-  Promise.all([
-    fetch(base+'recovery_tickets?select=id&status=not.in.(cancelled,at_hub)',traceH),
-    fetch(base+'recovery_tickets?select=id&status=not.in.(cancelled,at_hub)&marked_at_utc=lt.'+encodeURIComponent(criticalCutoff),traceH)
-  ]).then(function(rs){
-    function cnt(r){var cr=r.headers.get('Content-Range');return cr?parseInt(cr.split('/')[1])||0:0;}
-    var total=cnt(rs[0]);
-    var critical=cnt(rs[1]);
-    var el=document.getElementById('fpi-stat');
-    el.textContent=total;
-    el.className='tile-stat';
-    el.style.color='#F59E0B';
-    var lbl=document.getElementById('fpi-label');
-    lbl.className='tile-stat-label';
-    lbl.textContent=critical>0?critical+' critical · pending recovery':'pending recovery';
-    if(critical>0)lbl.style.color='#EF4444';
-  }).catch(function(){
-    document.getElementById('fpi-stat').textContent='—';
-    document.getElementById('fpi-label').textContent='error loading';
-  });
 }
 
 // Refresh all tile stats every 5 minutes
