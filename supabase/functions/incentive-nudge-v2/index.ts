@@ -6,7 +6,7 @@
 //   Monday    - last week's result (points, target, above/below, rate, earned) and this week's target
 //   Wednesday - points so far this week, target so far, points still needed
 //   Friday    - final push: how far they are and what is needed before Sunday
-// Until a technician has opened My Incentive once (no row in incentive_login_lock), every mail starts with "How to log in".
+// Until a technician has opened My Incentive once (no row in incentive_login_lock), they get ONLY the login mail (24 Nov, Shivani); after that the mails above.
 //
 // Query options (for testing):  ?dry=1      -> no mail is sent; returns the subjects and a preview of the first mails
 //                               ?type=mon|wed|fri|login  -> force a mail type (default: by IST weekday; other days send nothing)
@@ -85,8 +85,8 @@ function buildMail(type: string, t: any, cur: Week, last: Week, loggedIn: boolea
   const tpd = targetFor(t.city, cur.ws);
   let subject = '', main = '';
   if (type === 'login') {
-    subject = `${first}, see your incentive points every day on FleetPro`;
-    main = `<p style="font-size:15px;color:#374151;margin:0 0 12px">Your points, target and earnings are now on <b>My Incentive</b> in FleetPro, updated every day.</p>`;
+    subject = `${first}, log in to FleetPro to see your incentive`;
+    main = `<p style="font-size:15px;color:#374151;margin:0 0 12px">Your incentive is now on <b>My Incentive</b> in FleetPro. Please log in once using the steps above. After that you can check it every day.</p>`;
   } else if (type === 'mon') {
     const ok = last.above > 0;
     subject = ok ? `${first}, last week you earned ${rs(last.pay)}. This week's target: ${tpd} points a day`
@@ -163,7 +163,9 @@ Deno.serve(async (req) => {
     let sent = 0; const errors: string[] = []; const preview: any[] = [];
     for (const t of targets) {
       const cur = week(curWs, t.city, t.jcs, t.days), last = week(lastWs, t.city, t.jcs, t.days);
-      const m = buildMail(type, t, cur, last, locked.has(t.name), asOf);
+      // 24 Nov (Shivani): until a technician has opened My Incentive once, send ONLY the login mail (no target or points)
+      const loggedIn = locked.has(t.name);
+      const m = buildMail(loggedIn ? type : 'login', t, cur, last, loggedIn, asOf);
       if (dry) { if (preview.length < 3) preview.push({ to: t.email, subject: m.subject, html: m.html }); else preview.push({ to: t.email, subject: m.subject }); continue; }
       const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: FROM_EMAIL, to: testTo || t.email, subject: m.subject, html: m.html }) });
