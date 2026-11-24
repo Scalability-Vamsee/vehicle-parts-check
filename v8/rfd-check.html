@@ -370,7 +370,7 @@ function activateSession(session){
         .then(function(r){return r.json();}).then(function(features){
           var f={};(features||[]).forEach(function(ft){f[ft.feature_key]=true;});
           document.querySelectorAll('[data-feature]').forEach(function(el){if(!f[el.dataset.feature])el.style.display='none';});
-          if(!f['rfd-check']){window.location.href='./index.html';return;}
+          // RFD Check is open to every signed-in user with a group (24 Nov 2026); no rfd-check gate
           hideAuthScreen();
           document.getElementById('logout-btn').style.display='block';
           loadPostAuthData();

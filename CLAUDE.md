@@ -148,7 +148,7 @@ v8/
   admin-techs.html    — Admin: Manage Technicians
   admin-permissions.html — Admin: Permissions (role badges in user directory, 2026-08)
   admin-analytics.html — Admin: Page Analytics + Sync Jobs + Void Rate tabs
-  rfd-check.html      — Admin: RFD Check (reg search → IoT/MCU/JC pass-fail; reads rfd_violations_cache)
+  rfd-check.html      — RFD Check, every signed-in user since 24 Nov 2026 (reg search → IoT/MCU/JC pass-fail from rfd_violations_cache + JC flow: RFD ±1 h vs billed time)
   jc-approval.html    — Admin: Manual JC Approval Check
   incentive.html      — Technician Incentive Portal (dashboard/leaderboard/admin/Analytics tabs) + PWA
   incentive-manifest.json — Incentive PWA manifest
@@ -189,7 +189,7 @@ Sections and their labels:
 - **Hub Operations**: Deployment Queue
 - **RSA Operations**: FW Pending Map, RSA Warroom, RSA Tech App ← (data-feature="tech-app", added 2026-08-01)
 - **Recovery Operations**: Trace, Hunter ← (data-feature="trace-ho")
-- **Admin**: Manage Technicians, Permissions, RFD Check ← (data-feature="rfd-check")
+- **Admin**: Manage Technicians, Permissions (RFD Check moved to Service Operations, no feature gate, 24 Nov 2026)
 - **Coming Soon**: Fleet Analytics, Alert Centre
 
 `tech-app` feature key gates the RSA Tech PWA link; group membership is auto-assigned from `rsa_technicians.city` via `sync_rsa_tech_groups()` (daily cron, 02:00 IST) and can be set manually per-tech via the Directory Role dropdown in `rsa.html` (calls `assign_rsa_role()` RPC).

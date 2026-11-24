@@ -25,6 +25,8 @@
     { label:'Service Operations', items:[
       { href:'./maintenance.html', icon:'🔧', label:'Preventive Maintenance', feature:'maintenance' },
       { href:'./queue.html',       icon:'📋', label:'OOS Queue',              feature:'oos-queue' },
+      // RFD Check: open to every signed-in user since 24 Nov 2026 (no feature gate)
+      { href:'./rfd-check.html',   icon:'🚦', label:'RFD Check' },
     ]},
     { label:'Hub Operations', items:[
       { href:'./deployment.html',  icon:'🚲', label:'Deployment Queue',       feature:'deployment' },
@@ -46,7 +48,6 @@
       { href:'./admin-permissions.html', icon:'🔐', label:'Permissions',        feature:'admin-panel' },
       { href:'./jc-approval.html',       icon:'🔧', label:'JC Approval Check',  feature:'admin-panel' },
       { href:'./admin-analytics.html',   icon:'📊', label:'Analytics',          feature:'admin-panel' },
-      { href:'./rfd-check.html',         icon:'🚦', label:'RFD Check',          feature:'rfd-check'   },
     ]},
     { label:'Coming Soon', mt:8, items:[
       { disabled:true, icon:'📈', label:'Fleet Analytics' },
