@@ -628,7 +628,8 @@ var JF_STATUS={
   ok_early:{txt:'RFD after billing',cls:'clear',emoji:'✅',grp:'ok'},
   wait_rfd:{txt:'Billed, RFD pending',cls:'wait',emoji:'⏳',grp:'other'},
   no_rfd_data:{txt:'RFD not in data',cls:'muted',emoji:'➖',grp:'other'},
-  open:{txt:'JC open',cls:'muted',emoji:'🔧',grp:'other'}
+  open:{txt:'JC open',cls:'muted',emoji:'🔧',grp:'other'},
+  syncing:{txt:'Billing syncing',cls:'muted',emoji:'🔄',grp:'other'}
 };
 var jfState={reg:null,jcs:[],filter:'all',seq:0};
 
@@ -655,7 +656,13 @@ function fmtGap(ms){
 }
 
 // Pure: status rows + ops rows → JC list (newest first). opsStart = first time in jc_ops_log.
-function buildJcFlow(statusRows,opsRows,opsStart){
+// nowIst: current time on the same IST-as-UTC clock as parseIst (default: now). RFD with no
+// Billed row is held as 'syncing' for SYNC_GRACE_MS: jc_ops_log is copied ~5 min before
+// jc_jc_status_log, so a just-billed JC briefly has its RFD but not yet its Billed row
+// (24 Nov 2026 check: 11 false 'RFD without billing').
+var SYNC_GRACE_MS=45*60000;
+function buildJcFlow(statusRows,opsRows,opsStart,nowIst){
+  if(nowIst==null)nowIst=Date.now()+19800000;
   var by={};
   (statusRows||[]).forEach(function(r){
     var id=r.job_card_id;if(!id)return;
@@ -679,7 +686,7 @@ function buildJcFlow(statusRows,opsRows,opsStart){
     if(j.rfd&&j.billed!=null){
       var d=j.billed-j.rfd.t;j.gap=d;
       j.status=d>RFD_WINDOW_MS?'rfd_before_bill':(d<-RFD_WINDOW_MS?'ok_early':'ok_window');
-    }else if(j.rfd){j.status='rfd_no_bill';}
+    }else if(j.rfd){j.status=(nowIst-j.rfd.t<SYNC_GRACE_MS)?'syncing':'rfd_no_bill';}
     else if(opsStart!=null&&j.created<opsStart){j.status='no_rfd_data';}
     else if(j.billed!=null){j.status='wait_rfd';}
     else{j.status='open';}
@@ -779,7 +786,8 @@ function jfFlowSteps(j){
       var a=Math.abs(j.gap);
       rfdTxt+=st.grp==='problem'?' · 🚨 before billing':(a<60000?' · ✅ after billing (same minute)':(j.gap<0?' · ✅ after billing':' · ✅ allowed (within 1 h of billing)'));
       if(st.grp==='problem')rfdCls='fail';
-    }else{rfdTxt+=' · 🚨 JC not billed';rfdCls='fail';}
+    }else if(j.status==='syncing'){rfdTxt+=' · 🔄 billing still syncing (refresh in 15 min)';rfdCls='pend';}
+    else{rfdTxt+=' · 🚨 JC not billed';rfdCls='fail';}
   }else{
     rfdTxt='RFD check · '+(j.status==='no_rfd_data'?'not in data (JC older than the RFD log)':'not done yet');
     rfdCls='pend';
