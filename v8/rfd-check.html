@@ -138,6 +138,20 @@ body.pinned #main{margin-left:var(--sb-width)}
 #search-btn:disabled{background:#CBD5E1;cursor:not-allowed}
 
 .hint{font-size:.72rem;color:rgba(255,255,255,.35);margin-top:12px}
+/* Vehicle suggestions while typing (same source as Preventive Maintenance) */
+.sw-wrap{position:relative;max-width:520px;margin:0 auto}
+.sug{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);z-index:60;text-align:left;overflow:hidden}
+.sug.show{display:block}
+.sug-item{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;border-bottom:1px solid #F1F5F9}
+.sug-item:last-child{border-bottom:none}
+.sug-item.on,.sug-item:hover{background:#F3F4F6}
+.sug-reg{font-size:.88rem;font-weight:600;color:#111827;letter-spacing:.02em}
+.sug-reg b{color:#E8191C;font-weight:800}
+.sug-hub{margin-left:auto;font-size:.72rem;color:#6B7280}
+.sug-empty{padding:12px 16px;font-size:.8rem;color:#6B7280}
+.jf-reg{font-size:1rem;font-weight:800}
+.jf-reg .jf-hubname{font-weight:600;color:#6B7280;font-size:.85rem}
+.jf-sub2{font-size:.7rem;color:var(--muted);font-weight:600;margin-top:2px}
 .hint .ex{
   display:inline-block;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
   border-radius:6px;padding:2px 9px;margin:2px 3px;cursor:pointer;
@@ -301,10 +315,13 @@ body.pinned #main{margin-left:var(--sb-width)}
   <section class="search-section">
     <h2 class="search-title">🚦 RFD Check</h2>
     <p class="search-sub">Enter a registration number to verify IoT, MCU &amp; JC billing before deploying a bike</p>
+    <div class="sw-wrap">
     <div class="sw">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="si" type="text" placeholder="e.g. KA05AQ1234" autocomplete="off" spellcheck="false"/>
+      <input id="si" type="text" placeholder="Vehicle number or last 4 digits, e.g. 8544" autocomplete="off" spellcheck="false"/>
       <button id="search-btn" onclick="doSearch()">Check →</button>
+    </div>
+    <div id="sug" class="sug" role="listbox"></div>
     </div>
     <div class="hint" id="hint-area">Try: <span class="ex" style="opacity:.4">loading…</span></div>
     <div id="sync-bar">Data as of <span id="sync-time-val">—</span><span id="next-run-wrap" style="display:none"> · Next sync ~<span id="next-run-val">—</span></span></div>
@@ -355,7 +372,6 @@ async function sendMagicLink(){
   }
 }
 document.getElementById('auth-email').addEventListener('keydown',function(e){if(e.key==='Enter')sendMagicLink();});
-document.getElementById('si').addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
 
 async function signOut(){await sb.auth.signOut();document.getElementById('logout-btn').style.display='none';showAuthScreen();}
 
@@ -434,33 +450,115 @@ function loadPostAuthData(){
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
+// Vehicles + hub come from vehicle_parts_check_flag (the Preventive Maintenance table: one row
+// per bike, whole fleet, refreshed hourly). RFD card data stays in rfd_violations_cache.
+var hubByReg={};
+function normReg(s){return String(s||'').toUpperCase().replace(/[\s\-]/g,'');}
+function pmLookup(q,limit){
+  return fetch(SB_URL+'/rest/v1/vehicle_parts_check_flag?select=reg_number,deployed_hub&reg_number=ilike.'+encodeURIComponent('*'+q+'*')+'&order=reg_number&limit='+limit,
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(rows){(rows||[]).forEach(function(r){if(r.deployed_hub)hubByReg[r.reg_number]=r.deployed_hub;});return rows||[];})
+    .catch(function(){return [];});
+}
+
+// Suggestions while typing (2+ characters, e.g. the last 4 digits)
+var sugT=null,sugSeq=0,sugIdx=-1,sugRows=[];
+var siEl=document.getElementById('si'),sugEl=document.getElementById('sug');
+function hideSug(){sugEl.classList.remove('show');sugEl.innerHTML='';sugRows=[];sugIdx=-1;}
+function renderSug(q){
+  if(!sugRows.length){sugEl.innerHTML='<div class="sug-empty">No vehicle matching '+esc(q)+'</div>';sugEl.classList.add('show');return;}
+  sugEl.innerHTML=sugRows.map(function(r,i){
+    var reg=r.reg_number||'',k=reg.indexOf(q);
+    var regHtml=k<0?esc(reg):esc(reg.slice(0,k))+'<b>'+esc(reg.slice(k,k+q.length))+'</b>'+esc(reg.slice(k+q.length));
+    return '<div class="sug-item'+(i===sugIdx?' on':'')+'" role="option" data-reg="'+esc(reg)+'">'
+      +'<span class="sug-reg">'+regHtml+'</span><span class="sug-hub">'+esc(r.deployed_hub||'')+'</span></div>';
+  }).join('');
+  sugEl.classList.add('show');
+  sugEl.querySelectorAll('.sug-item').forEach(function(el){
+    el.addEventListener('mousedown',function(e){e.preventDefault();pickSug(el.dataset.reg);});
+  });
+}
+function pickSug(reg){siEl.value=reg;hideSug();doSearch();}
+siEl.addEventListener('input',function(){
+  clearTimeout(sugT);
+  var q=normReg(siEl.value);
+  if(q.length<2){hideSug();return;}
+  var seq=++sugSeq;
+  sugT=setTimeout(function(){
+    pmLookup(q,8).then(function(rows){
+      if(seq!==sugSeq||normReg(siEl.value)!==q)return;
+      sugRows=rows;sugIdx=-1;renderSug(q);
+    });
+  },250);
+});
+siEl.addEventListener('keydown',function(e){
+  var open=sugEl.classList.contains('show')&&sugRows.length;
+  if(e.key==='ArrowDown'&&open){e.preventDefault();sugIdx=(sugIdx+1)%sugRows.length;renderSug(normReg(siEl.value));}
+  else if(e.key==='ArrowUp'&&open){e.preventDefault();sugIdx=(sugIdx-1+sugRows.length)%sugRows.length;renderSug(normReg(siEl.value));}
+  else if(e.key==='Escape'){hideSug();}
+  else if(e.key==='Enter'){e.preventDefault();if(open&&sugIdx>=0)pickSug(sugRows[sugIdx].reg_number);else{hideSug();doSearch();}}
+});
+siEl.addEventListener('blur',function(){setTimeout(hideSug,150);});
+
 function doSearch(){
-  var raw=document.getElementById('si').value.trim().toUpperCase();
+  var raw=normReg(document.getElementById('si').value);
   if(!raw)return;
+  clearTimeout(sugT);sugSeq++;hideSug();
   var btn=document.getElementById('search-btn');
   btn.disabled=true;btn.textContent='Checking…';
   document.getElementById('result-area').innerHTML='';
   document.getElementById('jc-flow-area').innerHTML='';
+  function done(){btn.disabled=false;btn.textContent='Check →';}
+  pmLookup(raw,20).then(function(rows){
+    var exact=rows.filter(function(r){return r.reg_number===raw;});
+    if(exact.length){done();checkReg(raw);return;}
+    if(rows.length===1){done();document.getElementById('si').value=rows[0].reg_number;checkReg(rows[0].reg_number);return;}
+    if(rows.length>1){done();renderPick(rows,raw);return;}
+    legacySearch(raw,done);
+  });
+}
 
-  fetch(SB_URL+'/rest/v1/rfd_violations_cache?select=*&reg_number=ilike.'+encodeURIComponent(raw)+'&order=reg_number&limit=20',
+// One vehicle chosen: RFD card (or "no open issue") + its job cards
+function checkReg(reg){
+  document.getElementById('result-area').innerHTML='';
+  document.getElementById('jc-flow-area').innerHTML='';
+  fetch(SB_URL+'/rest/v1/rfd_violations_cache?select=*&reg_number=eq.'+encodeURIComponent(reg)+'&limit=1',
+    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(rows){if(rows&&rows.length)renderCard(rows[0]);else renderNotFound(reg);})
+    .catch(function(){renderNotFound(reg);});
+}
+
+// Several vehicles match (e.g. last 4 digits): pick one
+function renderPick(rows,q){
+  var html='<div class="match-list"><div class="match-list-hdr">'+rows.length+(rows.length===20?'+':'')+' vehicles match '+esc(q)+' — select one</div>';
+  rows.forEach(function(r){
+    html+='<div class="match-item" data-reg="'+esc(r.reg_number)+'">'
+      +'<div><div class="match-reg">'+esc(r.reg_number)+'</div>'
+      +'<div class="match-meta">'+esc(r.deployed_hub||'Hub not known')+'</div></div>'
+      +'<div style="margin-left:auto;color:#9CA3AF;font-size:.9rem">›</div></div>';
+  });
+  html+='</div>';
+  var area=document.getElementById('result-area');
+  area.innerHTML=html;
+  area.querySelectorAll('.match-item').forEach(function(el){
+    el.addEventListener('click',function(){document.getElementById('si').value=el.dataset.reg;checkReg(el.dataset.reg);});
+  });
+}
+
+// Vehicle not in the PM table: old search on the RFD cache only
+function legacySearch(raw,done){
+  fetch(SB_URL+'/rest/v1/rfd_violations_cache?select=*&reg_number=ilike.'+encodeURIComponent('*'+raw+'*')+'&order=reg_number&limit=20',
     {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
     .then(function(r){return r.json();})
-    .then(function(rows){
-      btn.disabled=false;btn.textContent='Check →';
-      if(!rows||!rows.length){
-        // Fallback: partial match
-        return fetch(SB_URL+'/rest/v1/rfd_violations_cache?select=*&reg_number=ilike.*'+encodeURIComponent(raw)+'*&order=reg_number&limit=20',
-          {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
-          .then(function(r){return r.json();}).then(function(r2){
-            if(!r2||!r2.length)renderNotFound(raw);
-            else if(r2.length===1)renderCard(r2[0]);
-            else renderMulti(r2);
-          });
-      }
-      if(rows.length===1)renderCard(rows[0]);
-      else renderMulti(rows);
+    .then(function(r2){
+      done();
+      if(!r2||!r2.length)renderNotFound(raw);
+      else if(r2.length===1)renderCard(r2[0]);
+      else renderMulti(r2);
     })
-    .catch(function(){btn.disabled=false;btn.textContent='Check →';renderNotFound(raw);});
+    .catch(function(){done();renderNotFound(raw);});
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -497,7 +595,7 @@ function renderNotFound(reg){
 function renderMulti(rows){
   var html='<div class="match-list"><div class="match-list-hdr">'+rows.length+' vehicles found — select one</div>';
   rows.forEach(function(r){
-    var hub=hubName(r.hub_id);
+    var hub=hubByReg[r.reg_number]||hubName(r.hub_id);
     html+='<div class="match-item" onclick="renderCard('+JSON.stringify(r).replace(/"/g,'&quot;')+')">'
       +'<div><div class="match-reg">'+esc(r.reg_number)+'</div>'
       +'<div class="match-meta">'+esc(hub)+' · '+esc(r.vehicle_status||'')+'</div></div>'
@@ -509,7 +607,7 @@ function renderMulti(rows){
 }
 
 function renderCard(r){
-  var hub=hubName(r.hub_id);
+  var hub=hubByReg[r.reg_number]||hubName(r.hub_id);
   // iot_glue_check_needed=true → check is still NEEDED → PENDING (bad)
   // iot_glue_check_needed=false → check NOT needed → DONE (good)
   var iotPending=(r.iot_glue_check_needed===true);
@@ -708,11 +806,13 @@ function loadJcFlow(reg,onDone){
   Promise.all([
     fetch(SB_URL+'/rest/v1/jc_jc_status_log?select=job_card_id,new_status,technician_name,dmsjcid,created_at_ist&reg_number=eq.'+r+'&order=created_at_ist.desc&limit=5000',h).then(function(x){if(!x.ok)throw new Error('status log '+x.status);return x.json();}),
     fetch(SB_URL+'/rest/v1/jc_ops_log?select=previous_vehicle_status,new_vehicle_status,performed_by_name,created_at_ist&reg_number=eq.'+r+'&order=created_at_ist.asc&limit=5000',h).then(function(x){if(!x.ok)throw new Error('ops log '+x.status);return x.json();}),
-    fetch(SB_URL+'/rest/v1/jc_ops_log?select=created_at_ist&order=created_at_ist.asc&limit=1',h).then(function(x){return x.ok?x.json():[];}).catch(function(){return [];})
+    fetch(SB_URL+'/rest/v1/jc_ops_log?select=created_at_ist&order=created_at_ist.asc&limit=1',h).then(function(x){return x.ok?x.json():[];}).catch(function(){return [];}),
+    hubByReg[reg]?Promise.resolve([{deployed_hub:hubByReg[reg]}]):fetch(SB_URL+'/rest/v1/vehicle_parts_check_flag?select=deployed_hub&reg_number=eq.'+r+'&limit=1',h).then(function(x){return x.ok?x.json():[];}).catch(function(){return [];})
   ]).then(function(res){
     if(seq!==jfState.seq)return;
     var opsStart=res[2]&&res[2][0]?parseIst(res[2][0].created_at_ist):null;
-    jfState={reg:reg,jcs:buildJcFlow(res[0],res[1],opsStart),filter:'all',seq:seq,opsStart:opsStart};
+    var hub=res[3]&&res[3][0]?res[3][0].deployed_hub:null;if(hub)hubByReg[reg]=hub;
+    jfState={reg:reg,hub:hub,jcs:buildJcFlow(res[0],res[1],opsStart),filter:'all',seq:seq,opsStart:opsStart};
     renderJcFlow();
     if(onDone){
       var problems=jfState.jcs.filter(function(j){return JF_STATUS[j.status].grp==='problem';}).length;
@@ -733,7 +833,7 @@ function renderJcFlow(){
   var cnt={all:all.length,problem:0,ok:0,other:0};
   all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
-  var html='<div class="jf-head"><div class="jf-title">Job cards · newest first</div><div class="jf-chips">'
+  var html='<div class="jf-head"><div class="jf-title"><div class="jf-reg">'+esc(jfState.reg)+(jfState.hub?' <span class="jf-hubname">· '+esc(jfState.hub)+'</span>':'')+'</div><div class="jf-sub2">Job cards · newest first</div></div><div class="jf-chips">'
     +[['all','All'],['problem','Problems'],['ok','Validated'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
     }).join('')+'</div></div>';
