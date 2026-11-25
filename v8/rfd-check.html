@@ -223,6 +223,8 @@ body.pinned #main{margin-left:var(--sb-width)}
 .jr-k{font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .jr-v{font-size:.76rem;font-weight:600;margin-top:2px}
 .jr-note{display:block;font-size:.66rem;font-weight:500;color:var(--muted);margin-top:1px}
+.jr-res{display:block;font-size:.68rem;font-weight:700;margin-top:3px;color:var(--muted)}
+.jr-res.pass{color:#15803D}.jr-res.failv{color:#DC2626}
 @media(max-width:600px){.jr-grid{grid-template-columns:1fr;gap:6px}.jr-top{flex-wrap:wrap}.jr-verdict{margin-left:0;flex:1 1 100%}}
 
 /* ── Dropdown cards (RFD card + job cards) ── */
@@ -671,6 +673,16 @@ function checkReg(reg){
 
 function jfSetFilter(f){jfState.filter=f;renderJobCards();}
 
+// validation_check.result, shown on every JC: 'Vehicle passed the validation' (green) or the failed checks (red,
+// stored joined with ' - ', shown comma-separated)
+function valResult(r){
+  r=String(r||'').trim();
+  if(!r)return '<span class="jr-res">Result not recorded</span>';
+  if(r===VALID_PASS)return '<span class="jr-res pass">✓ '+esc(r)+'</span>';
+  var parts=r.split(/\s+-\s*/).map(function(x){return x.trim();}).filter(Boolean);
+  return '<span class="jr-res failv">✗ '+esc(parts.join(', '))+'</span>';
+}
+
 function statusCls(st){
   st=String(st||'');
   if(/^Active/i.test(st))return 'st-active';
@@ -697,8 +709,8 @@ function renderJobCards(){
   else shown.forEach(function(j){
     var st=JF_STATUS[j.status];
     var valTxt;
-    if(j.val&&j.status==='sameminute')valTxt=fmtIst(j.val.t)+'<span class="jr-note">same minute as billing; this old record has no seconds'+(j.val.result&&j.val.result!==VALID_PASS?' · '+esc(j.val.result.replace(/\s*-\s*$/,'')):'')+'</span>';
-    else if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+(isMinuteOnly(j.val.t)?'about ':'')+esc(fmtVsBill(j.val.t-j.billed))+(j.val.result&&j.val.result!==VALID_PASS?' · '+esc(j.val.result.replace(/\s*-\s*$/,'')):'')+'</span>';
+    if(j.val&&j.status==='sameminute')valTxt=fmtIst(j.val.t)+'<span class="jr-note">same minute as billing; this old record has no seconds</span>'+valResult(j.val.result);
+    else if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+(isMinuteOnly(j.val.t)?'about ':'')+esc(fmtVsBill(j.val.t-j.billed))+'</span>'+valResult(j.val.result);
     else if(j.status==='nodata')valTxt='—<span class="jr-note">validation data starts '+esc(jfState.valStart!=null?fmtIst(jfState.valStart).split(',')[0]:'—')+'</span>';
     else if(j.status==='open')valTxt='—';
     else valTxt='—<span class="jr-note">none from billed −1 h to +1 h</span>';
