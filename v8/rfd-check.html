@@ -719,7 +719,7 @@ function renderJobCards(){
       +'<span class="jr-verdict '+st.cls+'">'+st.emoji+' '+esc(st.txt)+'</span></div>'
       +'<div class="jr-grid">'
       +'<div><div class="jr-k">JC created</div><div class="jr-v">'+fmtIst(j.created)+'</div></div>'
-      +'<div><div class="jr-k">RFD validation</div><div class="jr-v">'+valTxt+'</div></div>'
+      +'<div><div class="jr-k">RFD validation status</div><div class="jr-v">'+valTxt+'</div></div>'
       +'<div><div class="jr-k">JC billed</div><div class="jr-v">'+(j.billed!=null?fmtIst(j.billed):'Not billed yet')+'</div></div>'
       +'</div></div>';
   });
