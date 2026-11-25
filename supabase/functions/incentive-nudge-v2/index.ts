@@ -46,8 +46,9 @@ function isServiceRole(req: Request): boolean {
 // same as the page: cut-offs (5 Nov mail) and target per day present by week start
 const CUTS: Record<string, number[]> = { Bangalore: [3.5, 5.5, 7, 9.5], NCR: [3, 5, 7, 8.5], 'Hyderabad+Mumbai': [1.5, 4, 5, 6.5] };
 const TARGET_STEPS: Record<string, [string, number][]> = {
-  Bangalore: [['2026-11-02', 7], ['2026-11-30', 7.5], ['2026-12-28', 8]],
-  other: [['2026-11-02', 6], ['2026-11-30', 6.5], ['2026-12-28', 7]],
+  // 25 Nov (Shivani): December keeps the November target; same steps as the page
+  Bangalore: [['2026-11-02', 7], ['2026-12-28', 8]],
+  other: [['2026-11-02', 6], ['2026-12-28', 7]],
 };
 const grp = (city: string) => city === 'Bangalore' ? 'Bangalore' : city === 'NCR' ? 'NCR' : 'Hyderabad+Mumbai';
 function targetFor(city: string, ws: string): number {
