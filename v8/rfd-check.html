@@ -575,8 +575,12 @@ var JF_STATUS={
   failed:{txt:'Validation failed, still billed',cls:'fail',emoji:'🚨',grp:'problem'},
   none:{txt:'No validation within ±1 h',cls:'wait',emoji:'⚠️',grp:'other'},
   nodata:{txt:'Validation not in data',cls:'muted',emoji:'➖',grp:'other'},
-  open:{txt:'Not billed yet',cls:'muted',emoji:'🔧',grp:'other'}
+  open:{txt:'Not billed yet',cls:'muted',emoji:'🔧',grp:'other'},
+  sameminute:{txt:'Same minute, order not known',cls:'muted',emoji:'⏱️',grp:'other'}
 };
+// Old validation_check rows were imported without seconds (time rounded down to the minute). When such a
+// row is the last run before billing and falls in the same minute as billing, the real order is unknown.
+function isMinuteOnly(t){return t%60000===0;}
 var jfState={reg:null,jcs:[],filter:'all',seq:0};
 
 // "2026-10-26 22:15:27.101948" (IST, no zone) → ms on a UTC clock, shown back with timeZone UTC
@@ -629,7 +633,8 @@ function buildJobCards(statusRows,valRows,valStart){
       if(v.t<j.billed-RFD_WINDOW_MS||v.t>j.billed+RFD_WINDOW_MS)return;
       if(v.t<=j.billed)before=v;else if(!after)after=v;
     });
-    if(before){j.val=before;j.status=before.result===VALID_PASS?'ok':'failed';}
+    if(before&&isMinuteOnly(before.t)&&Math.floor(j.billed/60000)*60000===before.t){j.val=before;j.status='sameminute';}
+    else if(before){j.val=before;j.status=before.result===VALID_PASS?'ok':'failed';}
     else if(after){j.val=after;j.status='after';}
     else j.status=(j.billed-RFD_WINDOW_MS<valStart)?'nodata':'none';
   });
@@ -692,7 +697,8 @@ function renderJobCards(){
   else shown.forEach(function(j){
     var st=JF_STATUS[j.status];
     var valTxt;
-    if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+esc(fmtVsBill(j.val.t-j.billed))+(j.val.result&&j.val.result!==VALID_PASS?' · '+esc(j.val.result.replace(/\s*-\s*$/,'')):'')+'</span>';
+    if(j.val&&j.status==='sameminute')valTxt=fmtIst(j.val.t)+'<span class="jr-note">same minute as billing; this old record has no seconds'+(j.val.result&&j.val.result!==VALID_PASS?' · '+esc(j.val.result.replace(/\s*-\s*$/,'')):'')+'</span>';
+    else if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+(isMinuteOnly(j.val.t)?'about ':'')+esc(fmtVsBill(j.val.t-j.billed))+(j.val.result&&j.val.result!==VALID_PASS?' · '+esc(j.val.result.replace(/\s*-\s*$/,'')):'')+'</span>';
     else if(j.status==='nodata')valTxt='—<span class="jr-note">validation data starts '+esc(jfState.valStart!=null?fmtIst(jfState.valStart).split(',')[0]:'—')+'</span>';
     else if(j.status==='open')valTxt='—';
     else valTxt='—<span class="jr-note">none from billed −1 h to +1 h</span>';
