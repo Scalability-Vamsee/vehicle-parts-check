@@ -575,13 +575,12 @@ var JF_STATUS={
   ok:{txt:'Validated before billing',cls:'clear',emoji:'✅',grp:'ok'},
   after:{txt:'Validated after billing',cls:'fail',emoji:'🚨',grp:'problem'},
   failed:{txt:'Validation failed, still billed',cls:'fail',emoji:'🚨',grp:'problem'},
-  none:{txt:'No validation within ±1 h',cls:'wait',emoji:'⚠️',grp:'other'},
-  nodata:{txt:'Validation not in data',cls:'muted',emoji:'➖',grp:'other'},
-  open:{txt:'Not billed yet',cls:'muted',emoji:'🔧',grp:'other'},
-  sameminute:{txt:'Same minute, order not known',cls:'muted',emoji:'⏱️',grp:'other'}
+  none:{txt:'No validation before billing',cls:'fail',emoji:'🚨',grp:'problem'},
+  open:{txt:'Not billed yet',cls:'muted',emoji:'🔧',grp:'other'}
 };
-// Old validation_check rows were imported without seconds (time rounded down to the minute). When such a
-// row is the last run before billing and falls in the same minute as billing, the real order is unknown.
+// Billed JCs are only green or red (Shivani, 25 Nov 2026). Old validation_check rows were imported without
+// seconds; a minute-only row in the same minute as billing counts as before billing (validation normally
+// runs ~25 s before billing). No validation found = red.
 function isMinuteOnly(t){return t%60000===0;}
 var jfState={reg:null,jcs:[],filter:'all',seq:0};
 
@@ -629,16 +628,14 @@ function buildJobCards(statusRows,valRows,valStart){
   list.forEach(function(j){
     j.val=null;
     if(j.billed==null){j.status='open';return;}
-    if(valStart==null||j.billed+RFD_WINDOW_MS<valStart){j.status='nodata';return;}
     var before=null,after=null;
     vals.forEach(function(v){
       if(v.t<j.billed-RFD_WINDOW_MS||v.t>j.billed+RFD_WINDOW_MS)return;
       if(v.t<=j.billed)before=v;else if(!after)after=v;
     });
-    if(before&&isMinuteOnly(before.t)&&Math.floor(j.billed/60000)*60000===before.t){j.val=before;j.status='sameminute';}
-    else if(before){j.val=before;j.status=before.result===VALID_PASS?'ok':'failed';}
+    if(before){j.val=before;j.status=before.result===VALID_PASS?'ok':'failed';}
     else if(after){j.val=after;j.status='after';}
-    else j.status=(j.billed-RFD_WINDOW_MS<valStart)?'nodata':'none';
+    else j.status='none';
   });
   return list.sort(function(a,b){return b.created-a.created;});
 }
@@ -709,9 +706,7 @@ function renderJobCards(){
   else shown.forEach(function(j){
     var st=JF_STATUS[j.status];
     var valTxt;
-    if(j.val&&j.status==='sameminute')valTxt=fmtIst(j.val.t)+'<span class="jr-note">same minute as billing; this old record has no seconds</span>'+valResult(j.val.result);
-    else if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+(isMinuteOnly(j.val.t)?'about ':'')+esc(fmtVsBill(j.val.t-j.billed))+'</span>'+valResult(j.val.result);
-    else if(j.status==='nodata')valTxt='—<span class="jr-note">validation data starts '+esc(jfState.valStart!=null?fmtIst(jfState.valStart).split(',')[0]:'—')+'</span>';
+    if(j.val)valTxt=fmtIst(j.val.t)+'<span class="jr-note">'+(isMinuteOnly(j.val.t)?'about ':'')+esc(fmtVsBill(j.val.t-j.billed))+'</span>'+valResult(j.val.result);
     else if(j.status==='open')valTxt='—';
     else valTxt='—<span class="jr-note">none from billed −1 h to +1 h</span>';
     html+='<div class="jr '+st.cls+'">'
@@ -723,7 +718,7 @@ function renderJobCards(){
       +'<div><div class="jr-k">JC billed</div><div class="jr-v">'+(j.billed!=null?fmtIst(j.billed):'Not billed yet')+'</div></div>'
       +'</div></div>';
   });
-  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green, after billing or failed = red. Status and hub are live (every 15 min).</div>';
+  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green; after billing, failed, or no validation = red. Status and hub are live (every 15 min).</div>';
   area.innerHTML=html;
 }
 
