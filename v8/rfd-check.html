@@ -208,10 +208,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 .ctx-desc{font-size:.65rem;color:#94A3B8;font-weight:400;display:block;margin-top:1px}
 
 /* ── Vehicle header + job card rows (25 Nov 2026) ── */
-.veh-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:14px 18px}
-/* Vehicle header stays on screen while scrolling the job cards (Shivani, 25 Nov): a full-width strip in the
-   page colour is pinned under the top bar, so nothing shows around the card's rounded corners */
-.veh-sticky{position:sticky;top:var(--topbar-h);z-index:50;background:var(--bg);margin:0 -16px 8px;padding:8px 16px 10px}
+.veh-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;margin-bottom:16px}
 .veh-reg{font-size:1.1rem;font-weight:800}
 .veh-meta{font-size:.75rem;color:var(--muted);margin-top:2px}
 .veh-status{margin-left:auto;padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;white-space:nowrap}
@@ -697,9 +694,9 @@ function renderJobCards(){
   var cnt={all:all.length,problem:0,ok:0,other:0};
   all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
-  var html='<div class="veh-sticky"><div class="veh-card"><div><div class="veh-reg">'+esc(jfState.reg)+'</div>'
+  var html='<div class="veh-card"><div><div class="veh-reg">'+esc(jfState.reg)+'</div>'
     +'<div class="veh-meta">'+esc(b.hub_name||'Hub not known')+(b.city_name?' · '+esc(b.city_name):'')+'</div></div>'
-    +'<div class="veh-status '+statusCls(b.status)+'">'+esc(b.status||'Status not known')+'</div></div></div>';
+    +'<div class="veh-status '+statusCls(b.status)+'">'+esc(b.status||'Status not known')+'</div></div>';
   html+='<div class="jf-head"><div class="jf-title"><div class="jf-sub2">Job cards · newest first</div></div><div class="jf-chips">'
     +[['all','All'],['problem','Red'],['ok','Green'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
