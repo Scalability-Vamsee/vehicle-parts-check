@@ -334,7 +334,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 
   <footer class="site-footer">
     FleetPro v8 · RFD Check · Bounce Fleet Operations<br/>
-    RFD check data synced every 2 hours, job card flow every 15 min, from Metabase · Internal use only
+    RFD check and vehicle status data refresh every 5 min, job card statuses every 15 min, from Metabase · Internal use only
   </footer>
 </div>
 
@@ -427,7 +427,7 @@ function loadPostAuthData(){
       if(!rows||!rows.length)return;
       var ts=rows[0].synced_at;
       document.getElementById('sync-time-val').textContent=fmtSyncTime(ts);
-      document.getElementById('next-run-val').textContent=calcNextRun(ts,2*3600000);
+      document.getElementById('next-run-val').textContent=calcNextRun(ts,5*60000);
       document.getElementById('next-run-wrap').style.display='';
     }).catch(function(){});
 
