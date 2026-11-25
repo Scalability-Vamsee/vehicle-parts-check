@@ -679,7 +679,7 @@ function valResult(r){
   r=String(r||'').trim();
   if(!r)return '<span class="jr-res">Result not recorded</span>';
   if(r===VALID_PASS)return '<span class="jr-res pass">✓ '+esc(r)+'</span>';
-  var parts=r.split(/\s+-\s*/).map(function(x){return x.trim();}).filter(Boolean);
+  var seen={},parts=r.split(/\s+-\s*/).map(function(x){return x.trim();}).filter(function(x){if(!x||seen[x])return false;seen[x]=1;return true;});
   return '<span class="jr-res failv">✗ '+esc(parts.join(', '))+'</span>';
 }
 
