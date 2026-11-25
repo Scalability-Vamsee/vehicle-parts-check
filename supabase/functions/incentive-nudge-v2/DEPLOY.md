@@ -13,7 +13,7 @@ For Vamsee's Claude (written 24 Nov 2026 for Shivani). The project token is enou
 
 ## Steps
 
-1. Read `index.ts`. Use the same `verify_jwt` setting as the old `incentive-nudge`.
+1. Read `index.ts`. Deploy with `verify_jwt = true`. **Every call must send the service-role key** as `Authorization: Bearer` (caller check added 24 Nov: any other caller, including the anon key, gets 401).
 2. Deploy: `supabase functions deploy incentive-nudge-v2 --project-ref clkfvmmlgwcvntxnolsv`.
    Check that `RESEND_API_KEY` is in the project secrets. Set `NUDGE_SUMMARY_TO` to Shivani's work email (Vamsee knows it).
 3. **Dry run (sends nothing):** call the function with `?dry=1&type=login`. Expect about 115 technicians.

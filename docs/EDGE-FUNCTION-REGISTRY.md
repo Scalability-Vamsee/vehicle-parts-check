@@ -16,7 +16,7 @@ All active Supabase edge functions for the FleetPro project (`clkfvmmlgwcvntxnol
 | `jc-history-sync` | `a2c3e48b-1b15-4c14-830d-5d65199d143f` | _(backfill)_ | Every 2h + every 3h | 90-day rolling JC history sync (streaming reader to avoid OOM); writes to `jc_history` |
 | `jc-approval-sync` | `c100308c-250f-46b2-b389-e8bc4a419d4c` | _(backfill)_ | Every 5 min | JC HO approval status sync |
 | `jc-booking-sync` | `c1efbecd-4686-49da-8117-795ba4a7e2f2` | _(backfill)_ | Every 15 min | JC booking data sync |
-| `jc-ops-sync` | `98f2dc7c-a97f-47e8-9995-96e8aa19c56a` | _(backfill)_ | Every 15 min (:05,:20,:35,:50) | JC operational data sync |
+| `jc-ops-sync` | `98f2dc7c-a97f-47e8-9995-96e8aa19c56a` | _(backfill)_ | Every 5 min (:04, :09, ...; cron 31, since 24 Nov 2026) | JC operational data sync; v7 (24 Nov): inserts new rows only and trims to the card window (was delete-all + reinsert) |
 | `jc-status-log-sync` | `b1470077-f81c-4484-b78a-b5a86124d20c` | _(backfill)_ | Every 15 min (:10,:25,:40,:55) | JC status log sync — technician names, billed status; used by `csat_enriched` view |
 | `OOS_QUEUE` | `13db90ad-9379-45d5-82ed-fbfd204dc9f7` | _(backfill)_ | Every hour (:05) | OOS work queue sync |
 
@@ -100,7 +100,7 @@ All active Supabase edge functions for the FleetPro project (`clkfvmmlgwcvntxnol
 | `archive-location-partition` | — | — | Monthly (1st, 02:00 IST) | Archives old `bike_location_cache` partitions |
 | `health-check` / `db-health-check` | — | — | Daily 03:00 IST | Supabase health ping |
 | `send-feedback` | — | — | On-demand | Sends user feedback emails |
-| `rfd-check-sync` | — | — | Every 2h | RFD violations cache refresh for `rfd-check.html` |
+| `rfd-check-sync` | `0cfdcf89-0134-445c-9044-7e5c3f4cb5ea` | — | Every 5 min (:01, :06, ...; cron 42, since 24 Nov 2026; job name still says 2h) | RFD violations cache refresh for `rfd-check.html` (delete all + reinsert ~2,000 rows) |
 | `jc-context-sync` | — | — | On-demand | JC context data sync |
 | `bulk-invite-techs` | — | — | On-demand | Bulk technician invite utility |
 

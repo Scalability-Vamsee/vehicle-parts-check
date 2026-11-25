@@ -10,8 +10,7 @@
 -- After: anon and signed-in users cannot insert, update or delete; signed-in read (auth_read_* policies) and the service-role syncs are unchanged.
 --   Dry-run after the fix: anon insert denied, anon/signed-in delete denied, signed-in read 1 of 1, service role delete 1 of 1.
 -- jc_jc_status_log (same 23 Jun migration) already had its write policies removed before 24 Nov.
--- Same open-write pattern, NOT changed here (writers not checked yet): jc_approval_alerts, jc_approval_status, recovery_blocked_vehicles,
---   recovery_tickets, recovery_tickets_cache, zone_configs.
+-- Other tables: see the private workspace TODO (24 Nov).
 -- Rollback (re-opens the hole; not recommended):
 --   create policy service_write_jc_ops_log on public.jc_ops_log for insert with check (true);
 --   create policy service_delete_jc_ops_log on public.jc_ops_log for delete using (true);
