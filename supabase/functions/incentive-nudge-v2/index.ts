@@ -46,9 +46,10 @@ function isServiceRole(req: Request): boolean {
 // same as the page: cut-offs (5 Nov mail) and target per day present by week start
 const CUTS: Record<string, number[]> = { Bangalore: [3.5, 5.5, 7, 9.5], NCR: [3, 5, 7, 8.5], 'Hyderabad+Mumbai': [1.5, 4, 5, 6.5] };
 const TARGET_STEPS: Record<string, [string, number][]> = {
-  // 25 Nov (Shivani): December keeps the November target; same steps as the page
-  Bangalore: [['2026-11-02', 7], ['2026-12-28', 8]],
-  other: [['2026-11-02', 6], ['2026-12-28', 7]],
+  // 25 Nov (Shivani): December keeps the November target. 25 Nov (Vamsee): November targets only, no step-up (the 28 Dec step is dropped too;
+  // incentive_config keeps only the 2 Nov rows). The page's TARGET_STEPS still has the 28 Dec step until its owner removes it.
+  Bangalore: [['2026-11-02', 7]],
+  other: [['2026-11-02', 6]],
 };
 const grp = (city: string) => city === 'Bangalore' ? 'Bangalore' : city === 'NCR' ? 'NCR' : 'Hyderabad+Mumbai';
 function targetFor(city: string, ws: string): number {
