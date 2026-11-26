@@ -494,7 +494,7 @@ function bikeLookup(q,limit,exact){
 
 // Status shown on the page (Shivani, 26 Nov 2026), from bike.vehicle_status + bike.rental_status:
 //   active + blocked for booking = On booking · active + available = RFD
-//   oos + blocked for booking = Intrip · oos + available = OOS
+//   oos + blocked for booking = Intrip OOS · oos + available = OOS
 //   marked for recovery + blocked for booking = MFR · marked for recovery + available = OOS
 //   everything else = Others
 // If the raw pair is missing, fall back to bike_status_cache.status.
@@ -511,7 +511,7 @@ function bikeLabel(vs,rs,fallback){
   }
   var blocked=/^blocked for booking/.test(rs),avail=rs==='available';
   if(vs==='active')return blocked?'On booking':(avail?'RFD':'Others');
-  if(vs==='oos')return blocked?'Intrip':(avail?'OOS':'Others');
+  if(vs==='oos')return blocked?'Intrip OOS':(avail?'OOS':'Others');
   if(vs==='marked for recovery')return blocked?'MFR':(avail?'OOS':'Others');
   return 'Others';
 }
@@ -723,7 +723,7 @@ function valResult(r){
 }
 
 function statusCls(label){
-  return {'On booking':'st-active','RFD':'st-rfd','OOS':'st-oos','Intrip':'st-intrip','MFR':'st-mfr'}[label]||'st-other';
+  return {'On booking':'st-active','RFD':'st-rfd','OOS':'st-oos','Intrip OOS':'st-intrip','MFR':'st-mfr'}[label]||'st-other';
 }
 
 function renderJobCards(){
@@ -760,7 +760,7 @@ function renderJobCards(){
       +'<div><div class="jr-k">JC billed</div><div class="jr-v">'+(j.billed!=null?fmtIst(j.billed):'Not billed yet')+'</div></div>'
       +'</div></div>';
   });
-  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green; after billing, failed, or no validation = red. Status: On booking = active + blocked for booking, RFD = active + available, Intrip = OOS + blocked, OOS = OOS or MFR + available, MFR = MFR + blocked, else Others (every 5 min). Hub every 15 min.</div>';
+  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green; after billing, failed, or no validation = red. Status: On booking = active + blocked for booking, RFD = active + available, Intrip OOS = OOS + blocked, OOS = OOS or MFR + available, MFR = MFR + blocked, else Others (every 5 min). Hub every 15 min.</div>';
   area.innerHTML=html;
 }
 
