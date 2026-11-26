@@ -85,6 +85,7 @@ All active Supabase edge functions for the FleetPro project (`clkfvmmlgwcvntxnol
 | `sync-incentive-data` | `9a4c0477-92b1-450d-93b2-6b4ccd1e3473` | _(backfill)_ | Every 5 min + Thu 12:00 noon IST freeze | Technician incentive data sync; `/query/json` used (no 2000-row cap) |
 | `incentive-metabase-sync` | _(check source)_ | _(backfill)_ | On-demand | Secondary incentive Metabase sync |
 | `incentive-nudge` | — | — | Daily 14:30 IST | Push nudge notifications to technicians |
+| `sync-incentive-technicians` | — (Google Sheet, Technician Nomenclature Map tab) | — | Daily 06:00 IST (cron 95) | Fills `incentive_technicians`, one row per normalized name; never deletes; each Employee ID and each email on one row only; `?dry=1` (service key) shows the plan without writing. Rewritten 26 Nov 2026 (version 5) |
 
 ---
 
