@@ -495,7 +495,7 @@ function renderSug(q){
     var reg=r.reg_number||'',k=reg.indexOf(q);
     var regHtml=k<0?esc(reg):esc(reg.slice(0,k))+'<b>'+esc(reg.slice(k,k+q.length))+'</b>'+esc(reg.slice(k+q.length));
     return '<div class="sug-item'+(i===sugIdx?' on':'')+'" role="option" data-reg="'+esc(reg)+'">'
-      +'<span class="sug-reg">'+regHtml+'</span><span class="sug-hub">'+esc(r.hub_name||'')+(r.status?' · '+esc(r.status):'')+'</span></div>';
+      +'<span class="sug-reg">'+regHtml+'</span><span class="sug-hub">'+esc(r.hub_name||'')+(r.status?' · '+esc(statusLabel(r.status)):'')+'</span></div>';
   }).join('');
   sugEl.classList.add('show');
   sugEl.querySelectorAll('.sug-item').forEach(function(el){
@@ -550,7 +550,7 @@ function renderPick(rows,q){
   rows.forEach(function(r){
     html+='<div class="match-item" data-reg="'+esc(r.reg_number)+'">'
       +'<div><div class="match-reg">'+esc(r.reg_number)+'</div>'
-      +'<div class="match-meta">'+esc(r.hub_name||'Hub not known')+(r.status?' · '+esc(r.status):'')+'</div></div>'
+      +'<div class="match-meta">'+esc(r.hub_name||'Hub not known')+(r.status?' · '+esc(statusLabel(r.status)):'')+'</div></div>'
       +'<div style="margin-left:auto;color:#9CA3AF;font-size:.9rem">›</div></div>';
   });
   html+='</div>';
@@ -667,7 +667,9 @@ function checkReg(reg){
       var valStart=res[2]&&res[2][0]?parseUtcToIst(res[2][0].created_at):null;
       var hubByJc={};(res[3]||[]).forEach(function(r){if(r.jc_no&&r.hub_name&&!hubByJc[r.jc_no])hubByJc[r.jc_no]=r.hub_name;});
       var jcs=buildJobCards(res[0],res[1],valStart);
-      jcs.forEach(function(j){j.hub=hubByJc[j.id]||null;});
+      // Open JC with no line item yet has no jc_history hub: the bike is at its repair hub, so use the
+      // bike's current hub (bike_status_cache) for it (Shivani, 26 Nov 2026)
+      jcs.forEach(function(j){j.hub=hubByJc[j.id]||(j.billed==null&&bike&&bike.hub_name?bike.hub_name:null);});
       jfState={reg:reg,bike:bike,jcs:jcs,filter:'all',seq:seq,valStart:valStart};
       renderJobCards();
     });
@@ -689,6 +691,8 @@ function valResult(r){
   return '<span class="jr-res failv">✗ '+esc(parts.join(', '))+'</span>';
 }
 
+// Active Rental Paid / Not Paid → "Active" (Shivani, 26 Nov 2026); other statuses as they are
+function statusLabel(st){st=String(st||'');if(!st)return 'Status not known';return /^Active/i.test(st)?'Active':st;}
 function statusCls(st){
   st=String(st||'');
   if(/^Active/i.test(st))return 'st-active';
@@ -705,10 +709,10 @@ function renderJobCards(){
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
   var html='<div class="veh-card"><div><div class="veh-reg">'+esc(jfState.reg)+'</div>'
     +'<div class="veh-meta">Current hub: '+esc(b.hub_name||'not known')+(b.city_name?' · '+esc(b.city_name):'')+'</div>'
-    +(function(){var last=null;all.forEach(function(j){if(j.hub&&(!last||j.created>last.created))last=j;});
+    +(function(){var last=null;all.forEach(function(j){if(!last||j.created>last.created)last=j;});
       return last?'<div class="veh-meta">Latest JC hub: <b>'+esc(last.hub||'not known yet')+'</b> (JC '+esc(last.dms||'—')+', '+esc(fmtIst(last.created).split(',')[0])+')</div>':'';})()
     +'</div>'
-    +'<div class="veh-status '+statusCls(b.status)+'">'+esc(b.status||'Status not known')+'</div></div>';
+    +'<div class="veh-status '+statusCls(b.status)+'">'+esc(statusLabel(b.status))+'</div></div>';
   html+='<div class="jf-head"><div class="jf-title"><div class="jf-sub2">Job cards · newest first</div></div><div class="jf-chips">'
     +[['all','All'],['problem','Red'],['ok','Green'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
