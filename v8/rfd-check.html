@@ -212,7 +212,7 @@ body.pinned #main{margin-left:var(--sb-width)}
 .veh-reg{font-size:1.1rem;font-weight:800}
 .veh-meta{font-size:.75rem;color:var(--muted);margin-top:2px}
 .veh-status{margin-left:auto;padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:700;white-space:nowrap}
-.st-active{background:#D1FAE5;color:#065F46}.st-rfd{background:#DBEAFE;color:#1D4ED8}.st-oos{background:#FEE2E2;color:#991B1B}.st-other{background:#F3F4F6;color:#374151}
+.st-active{background:#D1FAE5;color:#065F46}.st-intrip{background:#FEF3C7;color:#92400E}.st-mfr{background:#EDE9FE;color:#5B21B6}.st-rfd{background:#DBEAFE;color:#1D4ED8}.st-oos{background:#FEE2E2;color:#991B1B}.st-other{background:#F3F4F6;color:#374151}
 .jr{background:var(--card);border:1px solid var(--border);border-left:4px solid #D1D5DB;border-radius:12px;padding:12px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
 .jr.clear{border-left-color:#22C55E}.jr.fail{border-left-color:#EF4444}.jr.wait{border-left-color:#F59E0B}
 .jr-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -477,12 +477,43 @@ function loadPostAuthData(){
 var bikeByReg={};
 function normReg(s){return String(s||'').toUpperCase().replace(/[\s\-]/g,'');}
 function bikeLookup(q,limit,exact){
-  return fetch(SB_URL+'/rest/v1/bike_status_cache?select=bike_id,reg_number,hub_name,city_name,status&reg_number='
-      +(exact?'eq.'+encodeURIComponent(q):'ilike.'+encodeURIComponent('*'+q+'*'))+'&order=reg_number&limit='+limit,
-    {headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}})
-    .then(function(r){return r.ok?r.json():[];})
-    .then(function(rows){(rows||[]).forEach(function(r){bikeByReg[r.reg_number]=r;});return rows||[];})
-    .catch(function(){return [];});
+  var f='reg_number='+(exact?'eq.'+encodeURIComponent(q):'ilike.'+encodeURIComponent('*'+q+'*'))+'&order=reg_number&limit='+limit;
+  var h={headers:{apikey:ANON_KEY,Authorization:'Bearer '+K}};
+  function get(u){return fetch(u,h).then(function(r){return r.ok?r.json():[];}).catch(function(){return [];});}
+  return Promise.all([
+    get(SB_URL+'/rest/v1/bike_status_cache?select=bike_id,reg_number,hub_name,city_name,status&'+f),
+    // raw vehicle_status + rental_status for the whole fleet (jc_approval_status, every 5 min)
+    get(SB_URL+'/rest/v1/jc_approval_status?select=reg_number,vehicle_status,rental_status&'+f)
+  ]).then(function(res){
+    var raw={};(res[1]||[]).forEach(function(r){raw[r.reg_number]=r;});
+    var rows=res[0]||[];
+    rows.forEach(function(r){var x=raw[r.reg_number]||{};r.label=bikeLabel(x.vehicle_status,x.rental_status,r.status);bikeByReg[r.reg_number]=r;});
+    return rows;
+  });
+}
+
+// Status shown on the page (Shivani, 26 Nov 2026), from bike.vehicle_status + bike.rental_status:
+//   active + blocked for booking = On booking · active + available = RFD
+//   oos + blocked for booking = Intrip · oos + available = OOS
+//   marked for recovery + blocked for booking = MFR · marked for recovery + available = OOS
+//   everything else = Others
+// If the raw pair is missing, fall back to bike_status_cache.status.
+function bikeLabel(vs,rs,fallback){
+  vs=String(vs||'').trim().toLowerCase();rs=String(rs||'').trim().toLowerCase();
+  if(!vs){
+    var st=String(fallback||'');
+    if(!st)return 'Status not known';
+    if(/^Active Rental/i.test(st))return 'On booking';
+    if(/^RFD$/i.test(st))return 'RFD';
+    if(/^OOS$/i.test(st))return 'OOS';
+    if(/^Marked For Recovery$/i.test(st))return 'MFR';
+    return 'Others';
+  }
+  var blocked=/^blocked for booking/.test(rs),avail=rs==='available';
+  if(vs==='active')return blocked?'On booking':(avail?'RFD':'Others');
+  if(vs==='oos')return blocked?'Intrip':(avail?'OOS':'Others');
+  if(vs==='marked for recovery')return blocked?'MFR':(avail?'OOS':'Others');
+  return 'Others';
 }
 
 // Suggestions while typing (2+ characters, e.g. the last 4 digits)
@@ -495,7 +526,7 @@ function renderSug(q){
     var reg=r.reg_number||'',k=reg.indexOf(q);
     var regHtml=k<0?esc(reg):esc(reg.slice(0,k))+'<b>'+esc(reg.slice(k,k+q.length))+'</b>'+esc(reg.slice(k+q.length));
     return '<div class="sug-item'+(i===sugIdx?' on':'')+'" role="option" data-reg="'+esc(reg)+'">'
-      +'<span class="sug-reg">'+regHtml+'</span><span class="sug-hub">'+esc(r.hub_name||'')+(r.status?' · '+esc(statusLabel(r.status)):'')+'</span></div>';
+      +'<span class="sug-reg">'+regHtml+'</span><span class="sug-hub">'+esc(r.hub_name||'')+(r.label?' · '+esc(r.label):'')+'</span></div>';
   }).join('');
   sugEl.classList.add('show');
   sugEl.querySelectorAll('.sug-item').forEach(function(el){
@@ -550,7 +581,7 @@ function renderPick(rows,q){
   rows.forEach(function(r){
     html+='<div class="match-item" data-reg="'+esc(r.reg_number)+'">'
       +'<div><div class="match-reg">'+esc(r.reg_number)+'</div>'
-      +'<div class="match-meta">'+esc(r.hub_name||'Hub not known')+(r.status?' · '+esc(statusLabel(r.status)):'')+'</div></div>'
+      +'<div class="match-meta">'+esc(r.hub_name||'Hub not known')+(r.label?' · '+esc(r.label):'')+'</div></div>'
       +'<div style="margin-left:auto;color:#9CA3AF;font-size:.9rem">›</div></div>';
   });
   html+='</div>';
@@ -691,14 +722,8 @@ function valResult(r){
   return '<span class="jr-res failv">✗ '+esc(parts.join(', '))+'</span>';
 }
 
-// Active Rental Paid / Not Paid → "Active" (Shivani, 26 Nov 2026); other statuses as they are
-function statusLabel(st){st=String(st||'');if(!st)return 'Status not known';return /^Active/i.test(st)?'Active':st;}
-function statusCls(st){
-  st=String(st||'');
-  if(/^Active/i.test(st))return 'st-active';
-  if(/^RFD$/i.test(st))return 'st-rfd';
-  if(/^OOS$/i.test(st))return 'st-oos';
-  return 'st-other';
+function statusCls(label){
+  return {'On booking':'st-active','RFD':'st-rfd','OOS':'st-oos','Intrip':'st-intrip','MFR':'st-mfr'}[label]||'st-other';
 }
 
 function renderJobCards(){
@@ -712,7 +737,7 @@ function renderJobCards(){
     +(function(){var last=null;all.forEach(function(j){if(!last||j.created>last.created)last=j;});
       return last?'<div class="veh-meta">Latest JC hub: <b>'+esc(last.hub||'not known yet')+'</b> (JC '+esc(last.dms||'—')+', '+esc(fmtIst(last.created).split(',')[0])+')</div>':'';})()
     +'</div>'
-    +'<div class="veh-status '+statusCls(b.status)+'">'+esc(statusLabel(b.status))+'</div></div>';
+    +'<div class="veh-status '+statusCls(b.label)+'">'+esc(b.label||'Status not known')+'</div></div>';
   html+='<div class="jf-head"><div class="jf-title"><div class="jf-sub2">Job cards · newest first</div></div><div class="jf-chips">'
     +[['all','All'],['problem','Red'],['ok','Green'],['other','Other']].map(function(c){
       return '<button class="jf-chip'+(f===c[0]?' on':'')+'" onclick="jfSetFilter(\''+c[0]+'\')">'+c[1]+' ('+cnt[c[0]]+')</button>';
@@ -735,7 +760,7 @@ function renderJobCards(){
       +'<div><div class="jr-k">JC billed</div><div class="jr-v">'+(j.billed!=null?fmtIst(j.billed):'Not billed yet')+'</div></div>'
       +'</div></div>';
   });
-  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green; after billing, failed, or no validation = red. Status and hub are live (every 15 min).</div>';
+  html+='<div style="font-size:.66rem;color:#9CA3AF;margin:8px 2px">RFD validation must be done before billing. The check looks at validation runs from 1 h before to 1 h after billing: passed before billing = green; after billing, failed, or no validation = red. Status: On booking = active + blocked for booking, RFD = active + available, Intrip = OOS + blocked, OOS = OOS or MFR + available, MFR = MFR + blocked, else Others (every 5 min). Hub every 15 min.</div>';
   area.innerHTML=html;
 }
 
