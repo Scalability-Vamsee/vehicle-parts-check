@@ -217,6 +217,8 @@ body.pinned #main{margin-left:var(--sb-width)}
 .jr.clear{border-left-color:#22C55E}.jr.fail{border-left-color:#EF4444}.jr.wait{border-left-color:#F59E0B}
 .jr-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .jr-jc{font-weight:800;font-size:.9rem}
+.jr-hub{font-size:.75rem;font-weight:600;color:#374151;background:#F3F4F6;border-radius:12px;padding:2px 9px}
+.veh-meta b{color:#111827}
 .jr-verdict{margin-left:auto;font-size:.75rem;font-weight:800;white-space:nowrap}
 .jr-verdict.clear{color:#15803D}.jr-verdict.fail{color:#DC2626}.jr-verdict.wait{color:#B45309}.jr-verdict.muted{color:#6B7280}
 .jr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -655,11 +657,18 @@ function checkReg(reg){
       bikeId?fetch(SB_URL+'/rest/v1/validation_check?select=created_at,result,ops_user_id&bike_id=eq.'+encodeURIComponent(bikeId)+'&order=created_at.asc&limit=5000',h)
         .then(function(x){if(!x.ok)throw new Error('validation '+x.status);return x.json();}):Promise.resolve([]),
       fetch(SB_URL+'/rest/v1/validation_check?select=created_at&order=created_at.asc&limit=1',h)
+        .then(function(x){return x.ok?x.json():[];}).catch(function(){return [];}),
+      // JC hub: jc_history (one row per part / labour line, hub_name of the JC); billed JCs ~98% covered,
+      // open JCs only once they have a line item
+      fetch(SB_URL+'/rest/v1/jc_history?select=jc_no,hub_name&'+(bikeId?'bike_id=eq.'+encodeURIComponent(bikeId):'reg_number=eq.'+encodeURIComponent(reg))+'&limit=20000',h)
         .then(function(x){return x.ok?x.json():[];}).catch(function(){return [];})
     ]).then(function(res){
       if(seq!==jfState.seq)return;
       var valStart=res[2]&&res[2][0]?parseUtcToIst(res[2][0].created_at):null;
-      jfState={reg:reg,bike:bike,jcs:buildJobCards(res[0],res[1],valStart),filter:'all',seq:seq,valStart:valStart};
+      var hubByJc={};(res[3]||[]).forEach(function(r){if(r.jc_no&&r.hub_name&&!hubByJc[r.jc_no])hubByJc[r.jc_no]=r.hub_name;});
+      var jcs=buildJobCards(res[0],res[1],valStart);
+      jcs.forEach(function(j){j.hub=hubByJc[j.id]||null;});
+      jfState={reg:reg,bike:bike,jcs:jcs,filter:'all',seq:seq,valStart:valStart};
       renderJobCards();
     });
   }).catch(function(e){
@@ -695,7 +704,10 @@ function renderJobCards(){
   all.forEach(function(j){cnt[JF_STATUS[j.status].grp]++;});
   var shown=all.filter(function(j){return f==='all'||JF_STATUS[j.status].grp===f;});
   var html='<div class="veh-card"><div><div class="veh-reg">'+esc(jfState.reg)+'</div>'
-    +'<div class="veh-meta">'+esc(b.hub_name||'Hub not known')+(b.city_name?' · '+esc(b.city_name):'')+'</div></div>'
+    +'<div class="veh-meta">Current hub: '+esc(b.hub_name||'not known')+(b.city_name?' · '+esc(b.city_name):'')+'</div>'
+    +(function(){var last=null;all.forEach(function(j){if(j.hub&&(!last||j.created>last.created))last=j;});
+      return last?'<div class="veh-meta">Latest JC hub: <b>'+esc(last.hub||'not known yet')+'</b> (JC '+esc(last.dms||'—')+', '+esc(fmtIst(last.created).split(',')[0])+')</div>':'';})()
+    +'</div>'
     +'<div class="veh-status '+statusCls(b.status)+'">'+esc(b.status||'Status not known')+'</div></div>';
   html+='<div class="jf-head"><div class="jf-title"><div class="jf-sub2">Job cards · newest first</div></div><div class="jf-chips">'
     +[['all','All'],['problem','Red'],['ok','Green'],['other','Other']].map(function(c){
@@ -711,6 +723,7 @@ function renderJobCards(){
     else valTxt='—<span class="jr-note">none from billed −1 h to +1 h</span>';
     html+='<div class="jr '+st.cls+'">'
       +'<div class="jr-top"><span class="jr-jc">'+(j.dms?'JC '+esc(j.dms):'JC (no DMS #)')+'</span>'
+      +'<span class="jr-hub">📍 '+esc(j.hub||'Hub not known yet')+'</span>'
       +'<span class="jr-verdict '+st.cls+'">'+st.emoji+' '+esc(st.txt)+'</span></div>'
       +'<div class="jr-grid">'
       +'<div><div class="jr-k">JC created</div><div class="jr-v">'+fmtIst(j.created)+'</div></div>'
